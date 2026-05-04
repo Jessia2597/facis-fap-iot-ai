@@ -77,12 +77,21 @@ export async function initAuth(): Promise<void> {
     auth.isAuthenticated = true
 
     // Clean KC callback params from URL — preserve the SPA base path AND the
-    // deep-link the user actually requested (e.g. /aiInsight/admin/users), so
-    // bookmarks and shared URLs survive the Keycloak round-trip.
+    // deep-link the user actually requested (e.g. /orce/aiInsight/admin/users),
+    // so bookmarks and shared URLs survive the Keycloak round-trip.
+    //
+    // Important: only honour a deep-link when the current path is genuinely
+    // under our base. If the SPA was served from an unexpected origin (e.g.
+    // the legacy /aiInsight/ path before the ingress 301 was in place), the
+    // current path can't be naively concatenated to the base — that produces
+    // /orce/aiInsight/aiInsight/. Default to /dashboard in that case.
     const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
     const currentPath = window.location.pathname
-    const stripped = currentPath.startsWith(base) ? currentPath.slice(base.length) : currentPath
-    const target = stripped && stripped !== '/' ? stripped : '/dashboard'
+    let target = '/dashboard'
+    if (base === '' || currentPath === base || currentPath.startsWith(base + '/')) {
+      const stripped = currentPath.slice(base.length)
+      if (stripped && stripped !== '/') target = stripped
+    }
     window.history.replaceState({}, '', `${window.location.origin}${base}${target}`)
   }
 }
