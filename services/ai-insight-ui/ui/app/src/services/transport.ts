@@ -13,6 +13,7 @@
 //            FAP_UI_General_Guideline_Reference_Aligned.md  §11
 
 import { useUiBuilderStore } from '@/stores/uibuilder'
+import { useAppStore } from './state'
 import type {
   CommandRequest,
   ResultResponse,
@@ -85,15 +86,25 @@ export function submit<P, D = unknown>(
   opts: { sessionId?: string; step?: string; timeoutMs?: number } = {}
 ): Promise<ResultResponse<D>> {
   const uib = useUiBuilderStore()
+  const app = useAppStore()
+
+  // FAP §11 outbound rule: set ui.loading + ui.pendingAction BEFORE send so
+  // views show progress immediately. The reducer clears these on result; the
+  // timeout/disconnect paths below also clear them.
+  app.state.ui.loading = true
+  app.state.ui.pendingAction = { action }
+
   if (!uib.connected) {
+    app.state.ui.loading = false
+    app.state.ui.pendingAction = null
     return Promise.reject({ system: 'UIBUILDER not connected' } as ContractErrors)
   }
   const requestId = newRequestId()
   const req: CommandRequest<P> = {
     type: 'command',
     action,
-    sessionId: opts.sessionId,
-    step: opts.step,
+    sessionId: opts.sessionId ?? app.state.sessionId ?? undefined,
+    step: opts.step ?? app.state.step,
     requestId,
     payload,
     meta: { clientTs: Date.now(), source: 'dashboard' },
@@ -101,6 +112,11 @@ export function submit<P, D = unknown>(
   return new Promise<ResultResponse<D>>((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(requestId)
+      // Mirror the reducer's cleanup so the UI doesn't stay stuck on "loading".
+      if (app.state.ui.pendingAction?.action === action) {
+        app.state.ui.pendingAction = null
+      }
+      app.state.ui.loading = false
       reject({ system: `timeout: ${action}` } as ContractErrors)
     }, opts.timeoutMs ?? 10_000)
     pending.set(requestId, {
