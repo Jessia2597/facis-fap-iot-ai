@@ -77,8 +77,12 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
           connected.value = val
         })
 
-        // Listen to all incoming messages and dispatch to handlers + pending resolvers
-        uib.onTopic('*', (msg: UibMessage) => {
+        // Listen to all incoming messages and dispatch to handlers + pending
+        // resolvers. We use onChange('msg', …) rather than onTopic('*', …)
+        // because FAP §9 envelopes carry no `topic` field and onTopic filters
+        // can fail to match topic-less messages on some UIBUILDER versions.
+        // onChange('msg') fires for every inbound frame regardless of shape.
+        uib.onChange('msg', (msg: UibMessage) => {
           _dispatch(msg)
         })
 
