@@ -175,9 +175,11 @@ const navItems: NavItem[] = [
   {
     label: 'Use Cases', icon: 'pi-briefcase', children: [
       { label: 'Smart Energy', icon: 'pi-bolt', to: '/use-cases/smart-energy/overview' },
+      { label: 'Smart City',   icon: 'pi-building', to: '/use-cases/smart-city/overview' },
     ]
   },
-  { label: 'Data Sources', icon: 'pi-database', to: '/data-sources/all' },
+  { label: 'Data Sources',  icon: 'pi-database',     to: '/data-sources/all' },
+  { label: 'Data Products', icon: 'pi-box',          to: '/data-products/all' },
   { label: 'Analytics', icon: 'pi-chart-bar', to: '/analytics/overview' },
   { label: 'Alerts & Events', icon: 'pi-bell', to: '/alerts/all' },
   { label: 'Integrations', icon: 'pi-link', to: '/integrations/overview', roles: ['analyst', 'operator', 'admin'] },
