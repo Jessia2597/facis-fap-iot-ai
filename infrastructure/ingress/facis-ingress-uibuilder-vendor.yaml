@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: facis-ingress-uibuilder-vendor
+  namespace: orce
+  annotations:
+    # Suppress early 404s on /orce/uibuilder/vendor/* (Socket.IO polling).
+    #
+    # Background: The SPA loads at /orce/aiInsight/. UIBUILDER's iife.js
+    # constructor parses window.location.pathname to derive httpNodeRoot,
+    # which becomes "/orce". Before our SPA store's init() runs an override
+    # to set httpNodeRoot="" + ioPath="/uibuilder/vendor/socket.io", the lib
+    # may emit one polling request to /orce/uibuilder/vendor/socket.io that
+    # 404s. The reviewer requirement is "no console errors", so route that
+    # path harmlessly to the real /uibuilder/vendor/* mount via rewrite.
+    #
+    # The OPERATIONAL socket is on /uibuilder/vendor/socket.io (no /orce
+    # prefix) handled by the plain Prefix rule in facis-ingress.yaml. That
+    # path forwards WS upgrades cleanly. This rewrite ingress only catches
+    # the transient initial-load polling probe; subsequent ongoing traffic
+    # never uses /orce/uibuilder/vendor/* once the override has applied.
+    nginx.ingress.kubernetes.io/rewrite-target: /uibuilder/vendor/$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: fap-iotai.facis.cloud
+      http:
+        paths:
+          - path: /orce/uibuilder/vendor(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+  tls:
+    - hosts:
+        - fap-iotai.facis.cloud
+      secretName: facis-wild
