@@ -1,3 +1,14 @@
+# SPA application-data audit (Phase 3.5):
+#   The 6 AI Insight UI Phase-5 features (alerts, data-sources, provenance,
+#   integrations, schemas, admin) no longer expose http in/response under
+#   /api/v1/* — they are pure UIBUILDER subflows (PRs 16d0300, 801ab28,
+#   1963fa8, c347144, ec4a800, a66ae36). The /api/v1 Ingress rule remains
+#   because it is also the entry for the simulation REST snapshots (meters,
+#   PV, weather, prices, loads) which are still HTTP. Likewise /api/ai is
+#   shared with the ai-insight-service backend.
+#   The standard FAP zip-POST deploy (/orce/backendtest/aiInsight) and the
+#   operator-only /orce/api/v1/_internal/* endpoints are covered by the
+#   /orce Prefix rule.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
