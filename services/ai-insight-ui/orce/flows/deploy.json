@@ -4,20 +4,24 @@
     "type": "tab",
     "label": "AI Insight UI — Deploy",
     "disabled": false,
-    "info": "Standard FAP deploy endpoint for the AI Insight UI bundle.\n\nReceives a built Vite SPA (zip) at POST /backendtest/aiInsight, persists it,\nextracts it into /data/uibuilder/aiInsight/src/, and runs a defensive sed to\nensure asset paths resolve under the served URL (/orce/aiInsight/...). The\nsed pattern is a no-op when Vite was built with `base: '/orce/aiInsight/'`\n(which is the source-of-truth default in vite.config.ts).\n\nAuth: Bearer token validated against env var FACIS_DEPLOY_TOKEN. Operators set\nthe token via Helm values or `kubectl set env` and provide it in CI as\n$FACIS_DEPLOY_TOKEN.\n\nFAP Guideline reference: pattern adapted from the reference example flow at\nguidelines and examples/flows.json (Atlas workspace root)."
+    "info": "Standard FAP deploy endpoint for the AI Insight UI bundle.\n\nReceives a built Vite SPA (zip) at POST /api/v1/aiInsight/deploy, persists it,\nextracts it into /data/uibuilder/aiInsight/src/, and runs a defensive sed to\nensure asset paths resolve under the served URL (/orce/aiInsight/...). The\nsed pattern is a no-op when Vite was built with `base: '/orce/aiInsight/'`\n(which is the source-of-truth default in vite.config.ts).\n\nAuth: Bearer token validated against env var FACIS_DEPLOY_TOKEN. Operators set\nthe token via Helm values or `kubectl set env` and provide it in CI as\n$FACIS_DEPLOY_TOKEN.\n\nFAP Guideline reference: pattern adapted from the reference example flow at\nguidelines and examples/flows.json (Atlas workspace root)."
   },
   {
     "id": "node_deploy_in",
     "type": "http in",
     "z": "tab_aiui_deploy",
-    "name": "POST /backendtest/aiInsight",
-    "url": "/backendtest/aiInsight",
+    "name": "POST /api/v1/aiInsight/deploy",
+    "url": "/api/v1/aiInsight/deploy",
     "method": "post",
     "upload": false,
     "swaggerDoc": "",
     "x": 180,
     "y": 100,
-    "wires": [["fn_deploy_auth"]]
+    "wires": [
+      [
+        "fn_deploy_auth"
+      ]
+    ]
   },
   {
     "id": "fn_deploy_auth",
@@ -33,8 +37,12 @@
     "x": 460,
     "y": 100,
     "wires": [
-      ["fn_deploy_writebuf"],
-      ["node_deploy_response"]
+      [
+        "fn_deploy_writebuf"
+      ],
+      [
+        "node_deploy_response"
+      ]
     ]
   },
   {
@@ -51,8 +59,12 @@
     "x": 460,
     "y": 200,
     "wires": [
-      ["node_deploy_filewrite"],
-      ["node_deploy_response"]
+      [
+        "node_deploy_filewrite"
+      ],
+      [
+        "node_deploy_response"
+      ]
     ]
   },
   {
@@ -68,14 +80,18 @@
     "encoding": "setbymsg",
     "x": 760,
     "y": 200,
-    "wires": [["fn_deploy_unzip_cmd"]]
+    "wires": [
+      [
+        "fn_deploy_unzip_cmd"
+      ]
+    ]
   },
   {
     "id": "fn_deploy_unzip_cmd",
     "type": "function",
     "z": "tab_aiui_deploy",
     "name": "build unzip command",
-    "func": "const name = msg.uibuildername;\nmsg.command =\n    `sh -c 'set -e; ZIP=\"/data/uibuilder/aiInsight-bundle.zip\"; ` +\n    `DST=\"/data/uibuilder/${name}/src\"; ` +\n    `TMP=\"$(mktemp -d)\"; ` +\n    `mkdir -p \"$DST\"; ` +\n    `unzip -q -o \"$ZIP\" -d \"$TMP\"; ` +\n    `SRC=\"$TMP/dist\"; [ -d \"$SRC\" ] || SRC=\"$TMP\"; ` +\n    `rm -rf \"$DST\"/*; ` +\n    `cp -a \"$SRC\"/. \"$DST\"/; ` +\n    `chmod -R u+rw,g+rw,o+rw \"$DST\"; ` +\n    `rm -rf \"$TMP\"'`;\nreturn msg;\n",
+    "func": "const name = msg.uibuildername;\nmsg.command =\n    `sh -c 'set -e; ZIP=\"/data/uibuilder/aiInsight-bundle.zip\"; ` +\n    `DST=\"/data/uibuilder/${name}/src\"; ` +\n    `TMP=\"$(mktemp -d)\"; ` +\n    `mkdir -p \"$DST\"; ` +\n    `unzip -q -o \"$ZIP\" -d \"$TMP\"; ` +\n    `SRC=\"$TMP/dist\"; [ -d \"$SRC\" ] || SRC=\"$TMP\"; ` +\n    `rm -rf \"$DST\"/*; ` +\n    `cp -a \"$SRC\"/. \"$DST\"/; ` +\n    `chmod -R u+rw,g+rw,o+rw \"$DST\"; ` +\n    `rm -rf \"$TMP\"'`;\nmsg._stage = 'unzip';\nreturn msg;\n",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -83,7 +99,11 @@
     "libs": [],
     "x": 1060,
     "y": 200,
-    "wires": [["node_deploy_unzip"]]
+    "wires": [
+      [
+        "node_deploy_unzip"
+      ]
+    ]
   },
   {
     "id": "node_deploy_unzip",
@@ -102,7 +122,34 @@
     "wires": [
       [],
       [],
-      ["fn_deploy_rewrite_cmd"]
+      [
+        "switch_unzip_rc"
+      ]
+    ]
+  },
+  {
+    "id": "switch_unzip_rc",
+    "type": "switch",
+    "z": "tab_aiui_deploy",
+    "name": "rc==0?",
+    "property": "payload.code",
+    "propertyType": "msg",
+    "rules": [
+      {"t": "eq", "v": "0", "vt": "num"},
+      {"t": "else"}
+    ],
+    "checkall": "false",
+    "repair": false,
+    "outputs": 2,
+    "x": 180,
+    "y": 320,
+    "wires": [
+      [
+        "fn_deploy_rewrite_cmd"
+      ],
+      [
+        "fn_deploy_error"
+      ]
     ]
   },
   {
@@ -110,7 +157,7 @@
     "type": "function",
     "z": "tab_aiui_deploy",
     "name": "build asset-path rewrite",
-    "func": "const name = msg.uibuildername;\nconst file = `/data/uibuilder/${name}/src/index.html`;\n// Defensive: rewrite bare `/assets/` to `/orce/<name>/assets/`. No-op when\n// the bundle was built with `base: '/orce/aiInsight/'` (the default in\n// vite.config.ts) since asset URLs already include the prefix.\nmsg.command =\n    `sh -c '[ -f \"${file}\" ] || { echo \"index.html not found: ${file}\" >&2; exit 1; }; ` +\n    `sed -E -i \"s#(src|href)=\\\\\\\"/assets/#\\\\\\\\1=\\\\\\\"/orce/${name}/assets/#g\" \"${file}\"'`;\nreturn msg;\n",
+    "func": "const name = msg.uibuildername;\nconst file = `/data/uibuilder/${name}/src/index.html`;\n// Defensive: rewrite bare `/assets/` to `/orce/<name>/assets/`. No-op when\n// the bundle was built with `base: '/orce/aiInsight/'` (the default in\n// vite.config.ts) since asset URLs already include the prefix.\nmsg.command =\n    `sh -c '[ -f \"${file}\" ] || { echo \"index.html not found: ${file}\" >&2; exit 1; }; ` +\n    `sed -E -i \"s#(src|href)=\\\\\\\"/assets/#\\\\\\\\1=\\\\\\\"/orce/${name}/assets/#g\" \"${file}\"'`;\nmsg._stage = 'rewrite';\nreturn msg;\n",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -118,7 +165,11 @@
     "libs": [],
     "x": 460,
     "y": 320,
-    "wires": [["node_deploy_rewrite"]]
+    "wires": [
+      [
+        "node_deploy_rewrite"
+      ]
+    ]
   },
   {
     "id": "node_deploy_rewrite",
@@ -136,8 +187,35 @@
     "y": 320,
     "wires": [
       [],
-      ["fn_deploy_ok"],
-      ["fn_deploy_error"]
+      [],
+      [
+        "switch_rewrite_rc"
+      ]
+    ]
+  },
+  {
+    "id": "switch_rewrite_rc",
+    "type": "switch",
+    "z": "tab_aiui_deploy",
+    "name": "rc==0?",
+    "property": "payload.code",
+    "propertyType": "msg",
+    "rules": [
+      {"t": "eq", "v": "0", "vt": "num"},
+      {"t": "else"}
+    ],
+    "checkall": "false",
+    "repair": false,
+    "outputs": 2,
+    "x": 920,
+    "y": 320,
+    "wires": [
+      [
+        "fn_deploy_ok"
+      ],
+      [
+        "fn_deploy_error"
+      ]
     ]
   },
   {
@@ -153,22 +231,30 @@
     "libs": [],
     "x": 1060,
     "y": 320,
-    "wires": [["node_deploy_response"]]
+    "wires": [
+      [
+        "node_deploy_response"
+      ]
+    ]
   },
   {
     "id": "fn_deploy_error",
     "type": "function",
     "z": "tab_aiui_deploy",
     "name": "500 error",
-    "func": "msg.statusCode = 500;\nmsg.headers = { 'Content-Type': 'application/json' };\nconst detail = (msg.payload && msg.payload.toString) ? msg.payload.toString().slice(0, 500) : '';\nmsg.payload = { ok: false, error: 'asset rewrite failed', detail };\nreturn msg;\n",
+    "func": "msg.statusCode = 500;\nmsg.headers = { 'Content-Type': 'application/json' };\nconst stage = msg._stage || 'deploy';\nconst rc = (msg.payload && typeof msg.payload === 'object') ? msg.payload : {};\nconst detail = `${stage} exited with code ${rc.code ?? '?'} signal ${rc.signal ?? '—'}`;\nmsg.payload = { ok: false, error: `${stage} step failed`, detail };\nreturn msg;\n",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
     "finalize": "",
     "libs": [],
     "x": 1060,
-    "y": 380,
-    "wires": [["node_deploy_response"]]
+    "y": 400,
+    "wires": [
+      [
+        "node_deploy_response"
+      ]
+    ]
   },
   {
     "id": "node_deploy_response",

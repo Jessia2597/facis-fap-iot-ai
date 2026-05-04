@@ -9,30 +9,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!--
-    UIBUILDER client library — injected at runtime so Vite's HTML build pass
-    doesn't try to resolve the path against the source tree. The script is
-    served by UIBUILDER's httpNode middleware at <orce-base>/uibuilder/vendor/...
-    Resolving via `document.baseURI` makes this portable across base-path
-    changes. Loading explicitly here guarantees window.uibuilder is defined
-    regardless of whether UIBUILDER auto-injects the script tag for
-    non-template-served HTML.
+    UIBUILDER client library — injected at runtime. UIBUILDER serves the
+    instance-scoped client lib at <spa-url>/uibuilder.iife.js (NOT under
+    /uibuilder/vendor/, despite older docs). Loading via document.baseURI
+    keeps the URL consistent regardless of the mount path (/orce/aiInsight/
+    vs /aiInsight/ during transitions).
 
     If the script 404s the SPA still mounts (the Pinia store falls back to
-    mock mode). The console.error below makes that failure mode visible to
-    operators rather than silently degrading.
+    mock mode). The console.error makes that failure mode visible.
   -->
   <script>
     (function () {
       var s = document.createElement('script');
-      s.type = 'module';
-      s.src = new URL('../uibuilder/vendor/uibuilder.module.js', document.baseURI).href;
+      s.type = 'text/javascript';
+      s.src = new URL('uibuilder.iife.js', document.baseURI).href;
       s.onerror = function () {
         console.error(
           '[FACIS] Failed to load UIBUILDER client library at ' + s.src + '. ' +
           'window.uibuilder will be undefined and the SPA will run in mock mode. ' +
-          'Verify ORCE serves /uibuilder/vendor/uibuilder.module.js (the standard ' +
-          'UIBUILDER httpNode mount) and that the served path resolves under the ' +
-          'SPA\'s base URL.'
+          'Verify ORCE serves <spa-url>/uibuilder.iife.js — that file is ' +
+          'shipped by node-red-contrib-uibuilder out of the per-instance front-end folder.'
         );
       };
       document.head.appendChild(s);

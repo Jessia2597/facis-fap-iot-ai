@@ -7,7 +7,7 @@ ORCE pod. All backend communication flows over a single UIBUILDER WebSocket
 channel using the FAP General Guideline §9 message contract; HTTP routes
 exist only for the simulation snapshot endpoints, the AI Insight backend's
 `/api/v1/insights/*`, the operator-facing `/api/v1/_internal/*`, and the
-standard FAP deploy endpoint at `/orce/backendtest/aiInsight`.
+standard FAP deploy endpoint at `/api/v1/aiInsight/deploy`.
 
 The architecture follows FAP General Guideline §10 (root dispatcher +
 responsibility-based subflows) and §11 (one inbound handler + one outbound
@@ -159,7 +159,7 @@ services/reducers.ts:
 
 | Path | Purpose |
 |---|---|
-| `/orce/backendtest/aiInsight` (POST) | Standard FAP zip-POST deploy mechanism — accepts a Vite-built bundle, extracts to `/data/uibuilder/aiInsight/src`, rewrites `/assets/` paths. |
+| `/api/v1/aiInsight/deploy` (POST) | Standard FAP zip-POST deploy mechanism — accepts a Vite-built bundle, extracts to `/data/uibuilder/aiInsight/src`, rewrites `/assets/` paths. |
 | `/orce/api/v1/_internal/connections` (GET) | Operator endpoint reporting live UIBUILDER connection count + per-socket session metadata. |
 | `/orce/api/v1/health` | ORCE liveness. |
 | `/orce/api/v1/streetlights` / `/traffic` / `/events` / `/city-weather` (and per-id `/current` / `/history`) | Smart City HTTP shape consumed by the restored Vue views via `services/api.ts` simGet helpers. Backed by the same Trino queries as the FAP `smart-city.*` actions. |

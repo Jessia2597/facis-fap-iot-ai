@@ -17,7 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_ROOT="$SCRIPT_DIR/.."
 APP_DIR="$SERVICE_ROOT/ui/app"
-DEFAULT_URL="https://fap-iotai.facis.cloud/orce/backendtest/aiInsight"
+DEFAULT_URL="https://fap-iotai.facis.cloud/api/v1/aiInsight/deploy"
 DEPLOY_URL="${FACIS_DEPLOY_URL:-$DEFAULT_URL}"
 SKIP_BUILD=false
 
@@ -50,7 +50,7 @@ echo "[3/3] POST to $DEPLOY_URL"
 HTTP_CODE=$(curl -sSL -o /tmp/deploy-response.json -w '%{http_code}' \
   -X POST "$DEPLOY_URL" \
   -H "Authorization: Bearer $FACIS_DEPLOY_TOKEN" \
-  -H "Content-Type: application/zip" \
+  -H "Content-Type: application/octet-stream" \
   --data-binary "@$ZIP")
 
 if [[ "$HTTP_CODE" != "200" ]]; then
