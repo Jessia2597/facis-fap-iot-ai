@@ -303,6 +303,16 @@
         "wires": [["merge-session-send"]]
     },
     {
+        "id": "link-from-broadcast",
+        "type": "link in",
+        "z": "tab_aiui_dispatcher",
+        "name": "← broadcast events",
+        "links": ["link-broadcast"],
+        "x": 380,
+        "y": 540,
+        "wires": [["merge-session-send"]]
+    },
+    {
         "id": "merge-session-send",
         "type": "function",
         "z": "tab_aiui_dispatcher",
