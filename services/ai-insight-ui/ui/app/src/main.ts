@@ -8,6 +8,8 @@ import Tooltip from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
 import './styles/tokens.css'      // FAP §14 design tokens (canonical)
 import './styles/variables.css'   // legacy alias forwarders
+import './styles/shell.css'        // FAP §15 main-shell layout
+import './styles/components.css'   // FAP §15 button/input/card recipes
 import './styles/overrides.css'   // PrimeVue Aura → FAP token bridges
 import App from './App.vue'
 import router from './router'

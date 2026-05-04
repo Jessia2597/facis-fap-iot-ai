@@ -255,8 +255,9 @@ const breadcrumbs = computed(() =>
   <!-- Login / 404: render bare (no sidebar) -->
   <RouterView v-if="isLoginPage" />
 
-  <!-- Authenticated: full app layout with sidebar -->
-  <div v-else class="app-layout">
+  <!-- Authenticated: FAP §15 main shell wraps the split layout -->
+  <div v-else class="facis-shell">
+    <div class="app-layout">
     <!-- Mobile overlay -->
     <div
       v-if="mobileOpen"
@@ -455,6 +456,7 @@ const breadcrumbs = computed(() =>
         </RouterView>
       </main>
     </div>
+    </div>
 
     <!-- Notification overlay panel -->
     <OverlayPanel ref="notificationPanel" class="notif-panel">
@@ -543,11 +545,20 @@ const breadcrumbs = computed(() =>
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ─── Layout ──────────────────────────────────────── */
+/* The .app-layout sits INSIDE .facis-shell (FAP §15 main-shell). Its height
+ * is bounded by the shell rather than the full viewport so the cool-gray
+ * canvas frames the shell on top + bottom + left + right at desktop widths. */
 .app-layout {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - var(--space-4) * 2);
   overflow: hidden;
   position: relative;
+}
+
+@media (max-width: 1200px) {
+  .app-layout {
+    height: 100vh;
+  }
 }
 
 .app-mobile-overlay {
