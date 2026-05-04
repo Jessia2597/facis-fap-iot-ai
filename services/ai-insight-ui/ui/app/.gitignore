@@ -11,3 +11,4 @@ src/**/*.d.ts
 # Vite resolves vite.config.js in preference to vite.config.ts. A stale .js
 # next to the .ts shadows source-of-truth changes silently.
 vite.config.js
+bundle.zip
