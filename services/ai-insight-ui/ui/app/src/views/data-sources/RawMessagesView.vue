@@ -69,7 +69,7 @@ async function fetchData(): Promise<void> {
         parserStatus: 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -85,7 +85,7 @@ async function fetchData(): Promise<void> {
         parserStatus: 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -101,7 +101,7 @@ async function fetchData(): Promise<void> {
         parserStatus: 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -117,7 +117,7 @@ async function fetchData(): Promise<void> {
         parserStatus: 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -133,7 +133,7 @@ async function fetchData(): Promise<void> {
         parserStatus: curr.severity === 'high' ? 'warning' : 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 

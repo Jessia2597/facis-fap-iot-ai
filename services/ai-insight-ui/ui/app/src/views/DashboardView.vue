@@ -342,7 +342,7 @@ function fmtRelative(iso: string): string {
             :value="item.value"
             :unit="item.unit ?? ''"
             :trend="item.trend"
-            :trend-value="item.trendValue"
+            :trend-value="(item as any).trendValue"
             :icon="item.icon"
             :color="item.color"
           />

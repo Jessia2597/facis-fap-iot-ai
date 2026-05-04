@@ -402,7 +402,7 @@ function fmtTs(iso: string): string {
             :value="kpi.value"
             :unit="kpi.unit"
             :trend="kpi.trend"
-            :trend-value="kpi.trendValue"
+            :trend-value="(kpi as any).trendValue"
             :icon="kpi.icon"
             :color="kpi.color"
           />

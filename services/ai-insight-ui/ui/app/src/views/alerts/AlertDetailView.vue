@@ -25,7 +25,7 @@ onMounted(async () => {
     meterIdForSource.value = metersRes.meters[0].meter_id
     const hist = await getMeterHistory(metersRes.meters[0].meter_id)
     if (hist?.readings?.length) {
-      liveAnomalies.value = detectAnomalies(hist.readings, metersRes.meters[0].meter_id, 'active_power_kw', 'Smart Energy')
+      liveAnomalies.value = detectAnomalies(hist.readings as unknown as { [key: string]: unknown; timestamp: string }[], metersRes.meters[0].meter_id, 'active_power_kw', 'Smart Energy')
       isLive.value = true
     }
   }

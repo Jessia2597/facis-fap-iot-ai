@@ -29,7 +29,7 @@ onMounted(async () => {
     for (const meter of (metersRes?.meters ?? []).slice(0, 2)) {
       const hist = await getMeterHistory(meter.meter_id)
       if (!hist?.readings?.length) continue
-      const anoms = detectAnomalies(hist.readings, meter.meter_id, 'active_power_kw', 'Smart Energy')
+      const anoms = detectAnomalies(hist.readings as unknown as { [key: string]: unknown; timestamp: string }[], meter.meter_id, 'active_power_kw', 'Smart Energy')
       for (const a of anoms.slice(0, 2)) {
         if (notifications.alerts.some(x => x.id === a.id)) continue
         notifications.alerts.unshift({

@@ -24,7 +24,7 @@ const STATUS_FROM_FEED: Record<string, DataSource['status']> = {
 }
 
 const QUALITY_FROM_STATUS: Record<DataSource['status'], number> = {
-  healthy: 99.0, warning: 75.0, error: 30.0, info: 50.0,
+  healthy: 99.0, warning: 75.0, error: 30.0, offline: 0,
 }
 
 async function fetchData(): Promise<void> {

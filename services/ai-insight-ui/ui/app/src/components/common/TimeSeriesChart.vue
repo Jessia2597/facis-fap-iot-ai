@@ -69,7 +69,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
     title: props.title ? {
       display: true,
       text: props.title,
-      font: { family: 'Inter', size: 13, weight: '600' },
+      font: { family: 'Inter', size: 13, weight: 'bold' },
       padding: { bottom: 12 }
     } : { display: false },
     tooltip: {

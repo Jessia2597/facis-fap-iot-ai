@@ -53,7 +53,12 @@ const product = computed(() => ({
   version: '2.1.0',
   sourceCount: meterCount.value + pvCount.value,
   apiStatus: simStatus.value === 'ok' ? 'available' : 'maintenance',
-  description: 'Harmonised energy metering and PV generation data from simulation API.'
+  description: 'Harmonised energy metering and PV generation data from simulation API.',
+  category: 'Energy',
+  useCase: 'Smart Energy',
+  semanticScope: 'energy.metering.harmonised.v2',
+  exportStatus: simStatus.value === 'ok' ? 'available' : 'unavailable',
+  lastUpdated: new Date().toISOString(),
 }))
 
 const tabs = [

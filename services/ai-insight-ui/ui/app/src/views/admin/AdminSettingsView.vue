@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
@@ -263,11 +264,11 @@ function saveSettings(): void {
           </div>
           <div class="sf-row">
             <label class="sf-label">Request Timeout (s)</label>
-            <InputText v-model.number="apiConfig.timeout" type="number" class="sf-input sf-input--sm" />
+            <InputNumber v-model="apiConfig.timeout" :min="1" class="sf-input sf-input--sm" />
           </div>
           <div class="sf-row">
             <label class="sf-label">Max Retries</label>
-            <InputText v-model.number="apiConfig.retries" type="number" class="sf-input sf-input--sm" />
+            <InputNumber v-model="apiConfig.retries" :min="0" class="sf-input sf-input--sm" />
           </div>
           <div class="sf-divider"></div>
           <div class="sf-row">

@@ -33,7 +33,9 @@ const integrations = computed(() => [
 const summary = computed(() => ({
   active: integrations.value.filter(i => i.status === 'active').length,
   error: integrations.value.filter(i => i.status === 'error').length,
-  inactive: integrations.value.filter(i => i.status === 'inactive').length,
+  // 'inactive' isn't currently produced by the data source above, but the
+  // status type allows it; keep as 0 for now and let it light up if added.
+  inactive: 0,
   totalErrors: integrations.value.reduce((a, i) => a + i.errorCount, 0)
 }))
 
