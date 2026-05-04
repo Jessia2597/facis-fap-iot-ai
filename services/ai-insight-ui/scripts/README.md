@@ -14,6 +14,7 @@ operators and CI.
 | `check-flows-sync.sh` | Verifies `flows/flows.full.json` is the exact merge of `flows/tabs/*.json`. Run with `--fix` to rewrite from tabs. Recommended as a pre-commit hook. | `jq`. |
 | `smoke-uibuilder-ping.mjs` | Connects via Socket.IO, sends a FAP §9 `ping` command, asserts the matching `result` envelope arrives. Post-deploy CI gate. | Node 18+, `socket.io-client@4`. |
 | `smoke-browser-console.mjs` | Opens the SPA in a headless browser, asserts no `console.error`, asserts `window.uibuilder` is defined, asserts no 4xx/5xx asset responses. Post-deploy CI gate. | Node 18+, `@playwright/test`, `chromium` runtime. |
+| `../ui/app/test/e2e/restored-views.spec.ts` | Playwright spec covering the 16 restored Smart City / Data Products / Analytics views (Phase 5). One test per route asserts navigation succeeds, no `console.error`, view-content container is visible. | `@playwright/test`. |
 
 ## Installing smoke-test dependencies
 
