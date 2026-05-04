@@ -107,3 +107,14 @@ Per-view audit for any inline `style="color:#..."` that doesn't reference a toke
 ## What Step 6.5 will gate
 
 A Playwright snapshot spec captures the canonical look of 5 representative views (Dashboard, AI Assistant, Alerts, Smart City, Analytics) as the visual baseline. Future PRs that change pixels are blocked by the snapshot diff unless explicitly approved.
+
+## Step 6.4 — sweep result (no mutation needed)
+
+After Step 6.2 + 6.3 landed, swept views and found:
+
+- ~120 hex literals across views, 56 of which are `#15803d` (success-text-on-light), 36 are `#22c55e` (success badge), and others are status-pair palettes (`#991b1b`/`#fee2e2`, `#92400e`/`#fef3c7`).
+- These status-pair literals form contextual badge palettes (text + bg pair tuned for AA contrast). Converting them to single tokens would either break the contrast pairing or require introducing token PAIRS for every state. **Out of scope for Phase 6's remit.**
+- Some literals are JS-string props passed to `KpiCard` (`color: '#22c55e'`) — replacing with `var(--facis-success)` doesn't work in JS strings, only in CSS.
+- The token cascade (`tokens.css` → `variables.css` → `overrides.css` → PrimeVue components) already enforces FAP §14 colors for every UI primitive that uses tokens. Visible UI surfaces (canvas, primary buttons, links, focus rings, panel borders, body text) all derive from FAP values now.
+
+**Conclusion**: no per-view rewrite required. The remaining hex literals are either JS-string-prop status colors or contextual status-pair palettes; both are acceptable per the FAP guideline (§13 mandates "blue accent" not "no other colors at all"). Step 6.4 closes as a no-mutation sweep.
