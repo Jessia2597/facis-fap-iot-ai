@@ -7,7 +7,7 @@
     "info": "Root dispatcher per FAP General Guideline §10.\n\nEvery inbound message from the SPA flows: uibuilder in → fn_normalize → fn_validate → switch by msg._req.action → responsibility subflow link-out. Every outbound result flows: link-from-response → fn_build_response (wraps FAP §9 envelope) → merge-session-send → uibuilder.\n\nLegacy topic-based routing (msg.data.topic) is supported as a transition path during Phase 3 — legacy messages bypass the FAP envelope wrapping and pass through merge-session-send unchanged. After Phase 3.4 the legacy path is removed.\n\nFAP Guideline reference: §10 (root dispatcher + responsibility subflows), §11 (one-handler reducer), §9 (envelopes)."
   },
   {
-    "id": "ai-insight-uibuilder",
+    "id": "aiInsightUibuilder",
     "type": "uibuilder",
     "z": "tab_aiui_dispatcher",
     "name": "AI Insight Dashboard",
@@ -409,7 +409,7 @@
     "y": 480,
     "wires": [
       [
-        "ai-insight-uibuilder"
+        "aiInsightUibuilder"
       ]
     ]
   },

@@ -57,7 +57,7 @@ ORCE pod (Node-RED + UIBUILDER) — root dispatcher tab
 
 | Tab | File | Responsibility |
 |---|---|---|
-| Dispatcher | `0-Dispatcher.json` | Root dispatcher: normalize, validate, switch-by-action, build §9 response, merge-and-send. Owns the single `ai-insight-uibuilder` node. |
+| Dispatcher | `0-Dispatcher.json` | Root dispatcher: normalize, validate, switch-by-action, build §9 response, merge-and-send. Owns the single `aiInsightUibuilder` node. |
 | AI Insight Proxy | `1-AI-Insight-Proxy.json` | Routes `insight.request` smart-prompt actions to the AI Insight backend (`/api/v1/insights/*`). Dual-shape adapter accepts both FAP `_req.payload` and legacy `data.recordDetails`. |
 | LLM Router | `2-LLM-Router.json` | Multi-provider LLM (OpenAI / Claude / Custom). Fetches Trino context, builds prompt, calls provider, normalises response. |
 | Trino Query | `3-Trino-Query.json` | Direct Trino client used by the AI Assistant for KPI snapshots and ad-hoc queries. |
