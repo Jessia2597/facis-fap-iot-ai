@@ -5,12 +5,37 @@
  *   VITE_SIM_API_URL  — defaults to /api/sim  (ingress routes to facis-simulation)
  *   VITE_AI_API_URL   — defaults to /api/ai   (ingress routes to facis-ai-insight)
  *
- * Every function wraps its fetch in try/catch and returns null on failure so
- * callers can fall back to mock data without crashing the UI.
+ * The simulation snapshot endpoints (meters, PV, weather, prices, loads)
+ * remain HTTP — they are produced by the simulation runtime and consumed
+ * directly by the SPA at the simulation Ingress prefix.
+ *
+ * The 6 Phase-5 helpers (alerts, data-sources, provenance, integrations,
+ * schemas, admin) route through UIBUILDER per FAP §9 — see submit() in
+ * services/transport.ts. The function names below are preserved for caller
+ * compatibility but their bodies dispatch the FAP §9 command and unwrap the
+ * matching result envelope.
+ *
+ * Every helper wraps failures in try/catch and returns null so callers can
+ * fall back gracefully.
  */
+
+import { submit } from './transport'
 
 const SIM_BASE: string = (import.meta.env?.VITE_SIM_API_URL as string) || '/api/sim'
 const AI_BASE: string = (import.meta.env?.VITE_AI_API_URL as string) || '/api/ai'
+
+// Adapter that runs a FAP §9 command via UIBUILDER and returns the result.data
+// payload, or null on transport / ok=false failure. Mirrors the legacy
+// simGet/aiGet contract so call sites do not need to change.
+async function uib<T>(action: string, payload: unknown = {}): Promise<T | null> {
+  try {
+    const r = await submit<unknown, T>(action, payload)
+    return r.ok ? (r.data as T) : null
+  } catch (err) {
+    console.warn(`[api] UIB ${action} failed:`, err)
+    return null
+  }
+}
 
 // ─── Low-level helpers ────────────────────────────────────────────────────────
 
@@ -710,7 +735,7 @@ export interface DataSourceRow {
   status: string
 }
 export function getDataSources(): Promise<{ sources: DataSourceRow[]; count: number; engine_state: string } | null> {
-  return simGet('/data-sources')
+  return uib('data-sources.list')
 }
 
 export interface ProvenanceTransfer {
