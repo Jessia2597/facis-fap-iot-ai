@@ -30,18 +30,22 @@ API docs:
 - `http://localhost:8080/docs`
 - `http://localhost:8080/redoc`
 
-## Quick Start (Docker Compose)
+## Quick Start (local development only)
+
+> Production deployment uses Kubernetes + Helm (`helm/`) and ORCE flows
+> (`orce/`). The Docker Compose path below is for **local development only**
+> and is not part of any FACIS deliverable (TDR §9.1.1). See `dev/README.md`.
 
 ```bash
 cd services/ai-insight-service
 cp .env.example .env
-docker compose up --build
+docker compose -f dev/docker-compose.yml up --build
 ```
 
 Stop:
 
 ```bash
-docker compose down
+docker compose -f dev/docker-compose.yml down
 ```
 
 ## Documentation

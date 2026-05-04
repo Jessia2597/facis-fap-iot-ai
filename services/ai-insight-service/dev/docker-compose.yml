@@ -1,6 +1,6 @@
 services:
   ai-insight:
-    build: .
+    build: ..
     container_name: facis-ai-insight
     ports:
       - "${AI_INSIGHT_HTTP__PORT:-8080}:${AI_INSIGHT_HTTP__PORT:-8080}"

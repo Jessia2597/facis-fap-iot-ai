@@ -220,11 +220,18 @@ open http://localhost:8080/docs
 
 ---
 
-## 5. Docker Compose Deployment
+## 5. Docker Compose Deployment (local development only)
+
+> **TDR notice:** Docker Compose is **not part of any FACIS deliverable**
+> (TDR §9.1.1). Production deployment uses Kubernetes + Helm (`helm/`) and
+> ORCE flows (`orce/`). The compose file lives at `dev/docker-compose.yml`.
+> All commands below assume CWD is the service root (`services/ai-insight-service/`)
+> and use the `-f dev/docker-compose.yml` flag — set
+> `alias dc='docker compose -f dev/docker-compose.yml'` if you want shorter forms.
 
 ### 5.1 Local Stack with Docker Compose
 
-The `docker-compose.yml` starts the service and Redis for caching:
+The compose file at `dev/docker-compose.yml` starts the service and Redis for caching:
 
 ```bash
 # Build and start all services

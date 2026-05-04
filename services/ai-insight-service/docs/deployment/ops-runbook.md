@@ -190,9 +190,16 @@ helm install facis-ai-insight ./facis-ai-insight -n facis -f values-cluster.yaml
 
 ## 3. Docker Compose for Dev/Demo
 
+> **TDR notice:** Docker Compose is **not part of any FACIS deliverable**
+> (TDR §9.1.1). Production runs on Kubernetes via the Helm chart in `helm/`
+> and the ORCE flows in `orce/`. The compose file lives at `dev/docker-compose.yml`
+> and all commands below assume CWD is the service root (`services/ai-insight-service/`)
+> with the `-f dev/docker-compose.yml` flag — set
+> `alias dc='docker compose -f dev/docker-compose.yml'` for shorter forms.
+
 ### 3.1 Local Development Stack
 
-The `docker-compose.yml` runs the service with Redis for caching and Trino connectivity:
+The compose file at `dev/docker-compose.yml` runs the service with Redis for caching and Trino connectivity:
 
 | Service | Image | Ports | Purpose |
 |---------|-------|-------|---------|
