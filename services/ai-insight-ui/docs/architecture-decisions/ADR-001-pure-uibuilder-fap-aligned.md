@@ -81,18 +81,6 @@ surfaces that survive on the SPA's served origin are:
   one connection). Acceptable given typical bootstrap is a few KB and the
   WebSocket is reused for all subsequent traffic.
 
-## Migration log
-
-| Phase | PR | Highlights |
-|---|---|---|
-| 1 | PR-1 (commits c41b417, c41a5e2, 92a61e8) | Trino link wiring fix; flows.json drift script; Docker Compose relocated to `dev/` per TDR. |
-| 2 | PR-2 (commits cd14cdf, 75062f8, b8a9ea5, …) | UIBUILDER native serve at `/orce/aiInsight/`; app-level UIBUILDER init; runtime client-lib injection in `index.html`; standard FAP zip-POST deploy flow + `deploy.sh`; this ADR + `contract.ts` for §9 envelopes. Subsequent steps add `transport.ts` (§11), `state.ts` (§8 reducer state), `reducers.ts`, ping subflow (§18 step 4), CI smoke tests. |
-| 3 | PR-3 | Root dispatcher (§10) + per-feature responsibility subflows; Vue migrates to `submit()` calls; HTTP rules for SPA data removed from Ingress. |
-| 4 | PR-4 | Session Context implemented (lifecycle, conversation history, `_internal/connections` endpoint). |
-| 5 | PR-5 | Restore 16 deleted views with real Trino-backed subflows (Smart City, Data Products, deep Analytics). |
-| 6 | PR-6 | Visual system aligned to FAP §13–§16 (canvas `#E1E7EF`, primary `#005FFF`, shell radius 20px, contained shell layout, Percy/Playwright regression gate). |
-| 7 | PR-7 | PR description rewrite; `flow-architecture.md` rewrite; final E2E verification. |
-
 ## Consequences
 
 - The `services/ai-insight-ui/ui/app/src/services/api.ts` file is replaced
