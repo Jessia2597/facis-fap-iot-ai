@@ -12,7 +12,7 @@ import App from './App.vue'
 import router from './router'
 import { initAuth } from './auth'
 import { useUiBuilderStore } from './stores/uibuilder'
-import { registerInboundHandler } from './services/transport'
+import { registerInboundHandler, submit } from './services/transport'
 import { reduceResult, reduceEvent } from './services/reducers'
 
 // Authenticate BEFORE mounting the app.
@@ -50,6 +50,16 @@ initAuth().then(async () => {
   // over the UIBUILDER socket flows through reduceResult/reduceEvent — the
   // only writers to the app store.
   registerInboundHandler(reduceResult, reduceEvent)
+
+  // FAP §11 "Refresh and recovery": after a hard reload the SPA has no local
+  // session state. Ask ORCE to restore authoritative state. The reducer
+  // persists the returned sessionId and seeds state.model.bootstrap with the
+  // initial view-model (recent alerts, KPIs, conversation history). Failure
+  // is non-fatal — we just mount with empty state and let per-view loaders
+  // populate as the user navigates.
+  if (useUiBuilderStore().connected) {
+    submit('bootstrap.session', {}).catch(() => { /* see comment above */ })
+  }
 
   app.mount('#app')
 }).catch((err) => {
