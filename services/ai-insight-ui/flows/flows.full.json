@@ -1,174 +1,5 @@
 [
   {
-    "id": "ai-insight-uibuilder",
-    "type": "uibuilder",
-    "z": "tab-ui",
-    "name": "AI Insight Dashboard",
-    "url": "aiInsight",
-    "fwdInMessages": false,
-    "allowScripts": false,
-    "allowStyles": false,
-    "copyIndex": false,
-    "templateFolder": "blank",
-    "extTemplate": "",
-    "showfolder": false,
-    "useSecurity": false,
-    "sessionLength": 604800,
-    "tokenAutoExtend": false,
-    "x": 180,
-    "y": 200,
-    "wires": [
-      [
-        "route-outbound"
-      ],
-      [
-        "session-init"
-      ]
-    ]
-  },
-  {
-    "id": "tab-ui",
-    "type": "tab",
-    "label": "AI Insight UI",
-    "disabled": false,
-    "info": "UIBUILDER entry point and message routing for the AI Insight Dashboard"
-  },
-  {
-    "id": "route-outbound",
-    "type": "function",
-    "z": "tab-ui",
-    "name": "Route by Topic",
-    "func": "// FAP §9 envelope path: handle commands with action='ping' inline as the\n// boot-transport check (§18 step 4). Phase 3's dispatcher will absorb this\n// switch entirely and route every FAP action to its responsibility subflow.\nconst env = msg && msg.payload;\nif (env && env.type === 'command' && typeof env.action === 'string') {\n    if (env.action === 'ping') {\n        return [null, null, null, msg];\n    }\n    // Unknown FAP action during Phase 2 — pass through to legacy router.\n}\n\n// Legacy topic-based path — replaced wholesale by Phase 3 dispatcher.\nconst topic = msg && msg.data && msg.data.topic;\nif (!topic) return null;\n\n// Preserve socketId for response routing\nmsg._socketId = msg._socketId || (msg.data && msg.data.session && msg.data.session._socketId);\n\nswitch(topic) {\n    case 'insight.request':\n    case 'init':\n        return [msg, null, null, null];\n    case 'llm.freeform':\n        return [null, null, msg, null];\n    case 'trino.query':\n        return [null, msg, null, null];\n    default:\n        node.warn('Unknown topic: ' + topic);\n        return null;\n}\n",
-    "outputs": 4,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 420,
-    "y": 180,
-    "wires": [
-      [
-        "link-to-insight-proxy"
-      ],
-      [
-        "link-to-trino-query"
-      ],
-      [
-        "link-to-llm-router"
-      ],
-      [
-        "link-to-ping"
-      ]
-    ]
-  },
-  {
-    "id": "link-to-ping",
-    "type": "link out",
-    "z": "tab-ui",
-    "name": "→ Ping",
-    "mode": "link",
-    "links": [
-      "link-from-ui-ping"
-    ],
-    "x": 675,
-    "y": 320,
-    "wires": []
-  },
-  {
-    "id": "session-init",
-    "type": "function",
-    "z": "tab-ui",
-    "name": "Session Init",
-    "func": "// Handle client connect/disconnect\nconst action = msg?.uibuilderCtrl;\nif (action === 'client connect') {\n    node.log('Client connected: ' + msg._socketId);\n    // Store session in flow context\n    const sessions = flow.get('sessions') || {};\n    sessions[msg._socketId] = {\n        connected: new Date().toISOString(),\n        conversationHistory: []\n    };\n    flow.set('sessions', sessions);\n}\nreturn null;\n",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 420,
-    "y": 280,
-    "wires": [
-      []
-    ]
-  },
-  {
-    "id": "link-to-insight-proxy",
-    "type": "link out",
-    "z": "tab-ui",
-    "name": "\u2192 AI Insight Proxy",
-    "mode": "link",
-    "links": [
-      "link-from-ui-insight"
-    ],
-    "x": 675,
-    "y": 140,
-    "wires": []
-  },
-  {
-    "id": "link-to-trino-query",
-    "type": "link out",
-    "z": "tab-ui",
-    "name": "\u2192 Trino Query",
-    "mode": "link",
-    "links": [
-      "link-from-ui-trino"
-    ],
-    "x": 675,
-    "y": 200,
-    "wires": []
-  },
-  {
-    "id": "link-to-llm-router",
-    "type": "link out",
-    "z": "tab-ui",
-    "name": "\u2192 LLM Router",
-    "mode": "link",
-    "links": [
-      "link-from-ui-llm"
-    ],
-    "x": 675,
-    "y": 260,
-    "wires": []
-  },
-  {
-    "id": "link-from-response",
-    "type": "link in",
-    "z": "tab-ui",
-    "name": "\u2190 Response to UI",
-    "links": [
-      "link-response-insight",
-      "link-response-llm",
-      "link-response-trino",
-      "link-response-ping"
-    ],
-    "x": 115,
-    "y": 380,
-    "wires": [
-      [
-        "merge-session-send"
-      ]
-    ]
-  },
-  {
-    "id": "merge-session-send",
-    "type": "function",
-    "z": "tab-ui",
-    "name": "Merge Session & Send to Client",
-    "func": "// Ensure _socketId is set for routing to correct client\nif (msg._socketId) {\n    msg._uib = { clientId: msg._socketId };\n}\nreturn msg;\n",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 370,
-    "y": 380,
-    "wires": [
-      [
-        "ai-insight-uibuilder"
-      ]
-    ]
-  },
-  {
     "id": "tab-insight-proxy",
     "type": "tab",
     "label": "AI Insight Proxy",
@@ -179,7 +10,7 @@
     "id": "link-from-ui-insight",
     "type": "link in",
     "z": "tab-insight-proxy",
-    "name": "\u2190 From UI (Insight)",
+    "name": "← From UI (Insight)",
     "links": [
       "link-to-insight-proxy"
     ],
@@ -257,7 +88,7 @@
     "id": "link-response-insight",
     "type": "link out",
     "z": "tab-insight-proxy",
-    "name": "\u2192 Response to UI",
+    "name": "→ Response to UI",
     "mode": "link",
     "links": [
       "link-from-response"
@@ -277,7 +108,7 @@
     "id": "link-from-ui-llm",
     "type": "link in",
     "z": "tab-llm-router",
-    "name": "\u2190 From UI (LLM Freeform)",
+    "name": "← From UI (LLM Freeform)",
     "links": [
       "link-to-llm-router"
     ],
@@ -556,7 +387,7 @@
     "id": "link-response-llm",
     "type": "link out",
     "z": "tab-llm-router",
-    "name": "\u2192 Response to UI (LLM)",
+    "name": "→ Response to UI (LLM)",
     "mode": "link",
     "links": [
       "link-from-response"
@@ -576,7 +407,7 @@
     "id": "link-from-ui-trino",
     "type": "link in",
     "z": "tab-trino-query",
-    "name": "\u2190 From UI (Trino)",
+    "name": "← From UI (Trino)",
     "links": [
       "link-to-trino-query"
     ],
@@ -695,7 +526,7 @@
     "id": "link-response-trino",
     "type": "link out",
     "z": "tab-trino-query",
-    "name": "\u2192 Response to UI (Trino)",
+    "name": "→ Response to UI (Trino)",
     "mode": "link",
     "links": [
       "link-from-response"
@@ -720,5 +551,407 @@
     "x": 200,
     "y": 80,
     "wires": []
+  },
+  {
+    "id": "tab_aiui_dispatcher",
+    "type": "tab",
+    "label": "AI Insight UI — Dispatcher",
+    "disabled": false,
+    "info": "Root dispatcher per FAP General Guideline §10.\n\nEvery inbound message from the SPA flows: uibuilder in → fn_normalize → fn_validate → switch by msg._req.action → responsibility subflow link-out. Every outbound result flows: link-from-response → fn_build_response (wraps FAP §9 envelope) → merge-session-send → uibuilder.\n\nLegacy topic-based routing (msg.data.topic) is supported as a transition path during Phase 3 — legacy messages bypass the FAP envelope wrapping and pass through merge-session-send unchanged. After Phase 3.4 the legacy path is removed.\n\nFAP Guideline reference: §10 (root dispatcher + responsibility subflows), §11 (one-handler reducer), §9 (envelopes)."
+  },
+  {
+    "id": "ai-insight-uibuilder",
+    "type": "uibuilder",
+    "z": "tab_aiui_dispatcher",
+    "name": "AI Insight Dashboard",
+    "url": "aiInsight",
+    "fwdInMessages": false,
+    "allowScripts": false,
+    "allowStyles": false,
+    "copyIndex": false,
+    "templateFolder": "blank",
+    "extTemplate": "",
+    "showfolder": false,
+    "useSecurity": false,
+    "sessionLength": 604800,
+    "tokenAutoExtend": false,
+    "x": 180,
+    "y": 200,
+    "wires": [
+      [
+        "fn_dispatcher_normalize"
+      ],
+      [
+        "session-init"
+      ]
+    ]
+  },
+  {
+    "id": "fn_dispatcher_normalize",
+    "type": "function",
+    "z": "tab_aiui_dispatcher",
+    "name": "normalize",
+    "func": "// FAP §10 subflow design rule 2: normalize at the boundary.\n// UIBUILDER delivers the client's send-payload at msg.data (confirmed by\n// the existing legacy subflows reading msg.data.topic and\n// msg.data.recordDetails). We classify into three shapes: FAP §9 command,\n// legacy {topic, payload}, or junk. FAP commands get msg._req set; legacy\n// messages get msg._legacy set; junk gets routed to the unknown handler.\nconst d = msg && msg.data;\nif (d && typeof d === 'object') {\n    if (d.type === 'command' && typeof d.action === 'string' && typeof d.requestId === 'string') {\n        msg._req = d;\n        return msg;\n    }\n    if (typeof d.topic === 'string') {\n        msg._legacy = { topic: d.topic, payload: d.payload, session: d.session, recordDetails: d.recordDetails };\n        return msg;\n    }\n}\nmsg._malformed = true;\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 100,
+    "wires": [
+      [
+        "fn_dispatcher_validate"
+      ]
+    ]
+  },
+  {
+    "id": "fn_dispatcher_validate",
+    "type": "function",
+    "z": "tab_aiui_dispatcher",
+    "name": "validate",
+    "func": "// FAP §10 subflow design rule 3: separate validation from execution.\n// FAP envelopes that fail validation get a structured error reply directly\n// from here, bypassing the action switch. Legacy messages pass through\n// untouched.\nif (msg._malformed) {\n    msg._result = { ok: false, errors: { action: 'malformed envelope' } };\n    msg._req = { action: 'unknown', requestId: 'n/a' };\n    return [null, msg];\n}\nreturn [msg, null];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 600,
+    "y": 100,
+    "wires": [
+      [
+        "switch_dispatcher_action"
+      ],
+      [
+        "fn_build_response"
+      ]
+    ]
+  },
+  {
+    "id": "switch_dispatcher_action",
+    "type": "function",
+    "z": "tab_aiui_dispatcher",
+    "name": "switch by action",
+    "func": "// FAP §10: route to responsibility subflows by action namespace. Each\n// case returns to one specific output corresponding to a link-out below.\n// Outputs (in order): insight | trino | llm | ping | bootstrap |\n// alerts | data-sources | provenance | integrations | schemas | admin |\n// smart-city | data-products | analytics | unknown(legacy or 404)\n//\n// Phase 3 lands action handlers incrementally: link-outs that have no\n// subscribing subflow yet still wire up cleanly, but the message will be\n// dropped server-side until that feature's subflow lands. The transport.ts\n// timeout handles client-side awareness.\n\nfunction route(idx) {\n    const out = new Array(15).fill(null);\n    out[idx] = msg;\n    return out;\n}\n\n// Legacy topic-based path — preserved during Phase 3 transition.\nif (msg._legacy) {\n    msg._socketId = msg._socketId || (msg._legacy.session && msg._legacy.session._socketId);\n    switch (msg._legacy.topic) {\n        case 'insight.request':\n        case 'init':\n            return route(0);\n        case 'trino.query':\n            return route(1);\n        case 'llm.freeform':\n            return route(2);\n        default:\n            node.warn('Unknown legacy topic: ' + msg._legacy.topic);\n            msg._req = { action: 'legacy.' + msg._legacy.topic, requestId: 'n/a' };\n            msg._result = { ok: false, errors: { action: 'unknown action' } };\n            return route(14);\n    }\n}\n\nconst action = msg._req && msg._req.action;\nif (!action) {\n    msg._result = { ok: false, errors: { action: 'no action specified' } };\n    return route(14);\n}\n\nif (action === 'insight.request' || action === 'init')   return route(0);\nif (action === 'trino.query')                            return route(1);\nif (action === 'llm.freeform')                           return route(2);\nif (action === 'ping')                                   return route(3);\nif (action === 'bootstrap.session')                      return route(4);\nif (action.startsWith('alerts.'))                        return route(5);\nif (action.startsWith('data-sources.'))                  return route(6);\nif (action.startsWith('provenance.'))                    return route(7);\nif (action.startsWith('integrations.'))                  return route(8);\nif (action.startsWith('schemas.'))                       return route(9);\nif (action.startsWith('admin.'))                         return route(10);\nif (action.startsWith('smart-city.'))                    return route(11);\nif (action.startsWith('data-products.'))                 return route(12);\nif (action.startsWith('analytics.'))                     return route(13);\n\nnode.warn('Unknown action: ' + action);\nmsg._result = { ok: false, errors: { action: 'unknown action: ' + action } };\nreturn route(14);\n",
+    "outputs": 15,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 820,
+    "y": 100,
+    "wires": [
+      [
+        "link-to-insight-proxy"
+      ],
+      [
+        "link-to-trino-query"
+      ],
+      [
+        "link-to-llm-router"
+      ],
+      [
+        "link-to-ping"
+      ],
+      [
+        "link-to-bootstrap"
+      ],
+      [
+        "link-to-alerts"
+      ],
+      [
+        "link-to-data-sources"
+      ],
+      [
+        "link-to-provenance"
+      ],
+      [
+        "link-to-integrations"
+      ],
+      [
+        "link-to-schemas"
+      ],
+      [
+        "link-to-admin"
+      ],
+      [
+        "link-to-smart-city"
+      ],
+      [
+        "link-to-data-products"
+      ],
+      [
+        "link-to-analytics"
+      ],
+      [
+        "fn_build_response"
+      ]
+    ]
+  },
+  {
+    "id": "session-init",
+    "type": "function",
+    "z": "tab_aiui_dispatcher",
+    "name": "Session Init",
+    "func": "// Handle client connect/disconnect from UIBUILDER control output.\n// Phase 4 moves this into a dedicated Session Context subflow with proper\n// disconnect cleanup, conversation history persistence, and the internal\n// /api/v1/_internal/connections operator endpoint.\nconst action = msg && msg.uibuilderCtrl;\nif (action === 'client connect') {\n    node.log('Client connected: ' + msg._socketId);\n    const sessions = flow.get('sessions') || {};\n    sessions[msg._socketId] = {\n        connected: new Date().toISOString(),\n        conversationHistory: []\n    };\n    flow.set('sessions', sessions);\n}\nreturn null;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 280,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "link-to-insight-proxy",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ AI Insight Proxy",
+    "mode": "link",
+    "links": [
+      "link-from-ui-insight"
+    ],
+    "x": 1120,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "link-to-trino-query",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Trino Query",
+    "mode": "link",
+    "links": [
+      "link-from-ui-trino"
+    ],
+    "x": 1120,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "link-to-llm-router",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ LLM Router",
+    "mode": "link",
+    "links": [
+      "link-from-ui-llm"
+    ],
+    "x": 1120,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "id": "link-to-ping",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Ping",
+    "mode": "link",
+    "links": [
+      "link-from-ui-ping"
+    ],
+    "x": 1120,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "link-to-bootstrap",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Bootstrap",
+    "mode": "link",
+    "links": [
+      "link-from-ui-bootstrap"
+    ],
+    "x": 1120,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "link-to-alerts",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Alerts",
+    "mode": "link",
+    "links": [
+      "link-from-ui-alerts"
+    ],
+    "x": 1120,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "link-to-data-sources",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Data Sources",
+    "mode": "link",
+    "links": [
+      "link-from-ui-data-sources"
+    ],
+    "x": 1120,
+    "y": 300,
+    "wires": []
+  },
+  {
+    "id": "link-to-provenance",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Provenance",
+    "mode": "link",
+    "links": [
+      "link-from-ui-provenance"
+    ],
+    "x": 1120,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "id": "link-to-integrations",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Integrations",
+    "mode": "link",
+    "links": [
+      "link-from-ui-integrations"
+    ],
+    "x": 1120,
+    "y": 380,
+    "wires": []
+  },
+  {
+    "id": "link-to-schemas",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Schemas",
+    "mode": "link",
+    "links": [
+      "link-from-ui-schemas"
+    ],
+    "x": 1120,
+    "y": 420,
+    "wires": []
+  },
+  {
+    "id": "link-to-admin",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Admin",
+    "mode": "link",
+    "links": [
+      "link-from-ui-admin"
+    ],
+    "x": 1120,
+    "y": 460,
+    "wires": []
+  },
+  {
+    "id": "link-to-smart-city",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Smart City",
+    "mode": "link",
+    "links": [
+      "link-from-ui-smart-city"
+    ],
+    "x": 1120,
+    "y": 500,
+    "wires": []
+  },
+  {
+    "id": "link-to-data-products",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Data Products",
+    "mode": "link",
+    "links": [
+      "link-from-ui-data-products"
+    ],
+    "x": 1120,
+    "y": 540,
+    "wires": []
+  },
+  {
+    "id": "link-to-analytics",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Analytics",
+    "mode": "link",
+    "links": [
+      "link-from-ui-analytics"
+    ],
+    "x": 1120,
+    "y": 580,
+    "wires": []
+  },
+  {
+    "id": "link-from-response",
+    "type": "link in",
+    "z": "tab_aiui_dispatcher",
+    "name": "← Response to UI",
+    "links": [
+      "link-response-insight",
+      "link-response-llm",
+      "link-response-trino",
+      "link-response-ping",
+      "link-response-bootstrap",
+      "link-response-alerts",
+      "link-response-data-sources",
+      "link-response-provenance",
+      "link-response-integrations",
+      "link-response-schemas",
+      "link-response-admin",
+      "link-response-smart-city",
+      "link-response-data-products",
+      "link-response-analytics"
+    ],
+    "x": 115,
+    "y": 480,
+    "wires": [
+      [
+        "fn_build_response"
+      ]
+    ]
+  },
+  {
+    "id": "fn_build_response",
+    "type": "function",
+    "z": "tab_aiui_dispatcher",
+    "name": "build FAP §9 result envelope",
+    "func": "// FAP §10 subflow design rule 4: return explicit success or explicit failure.\n// Two paths converge here: (a) subflows that produce a FAP-aware msg._result\n// get wrapped into a §9 result envelope; (b) legacy subflows that set\n// msg.payload directly pass through unchanged. After Phase 3.4 the legacy\n// path is removed.\nconst req = msg._req;\nconst result = msg._result;\nif (req && result) {\n    msg.payload = {\n        type: 'result',\n        ok: !!result.ok,\n        action: req.action,\n        sessionId: msg._sessionId,\n        requestId: req.requestId,\n        next: result.next,\n        data: result.data,\n        ui: result.ui,\n        errors: result.errors || null\n    };\n}\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 480,
+    "wires": [
+      [
+        "merge-session-send"
+      ]
+    ]
+  },
+  {
+    "id": "merge-session-send",
+    "type": "function",
+    "z": "tab_aiui_dispatcher",
+    "name": "Merge Session & Send to Client",
+    "func": "// Route to the requesting client by _socketId. Absent _socketId implies a\n// broadcast (e.g. alerts.new push event) — UIBUILDER fans it out to all\n// connected clients when _uib.clientId is unset.\nif (msg._socketId) {\n    msg._uib = { clientId: msg._socketId };\n}\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 660,
+    "y": 480,
+    "wires": [
+      [
+        "ai-insight-uibuilder"
+      ]
+    ]
   }
 ]

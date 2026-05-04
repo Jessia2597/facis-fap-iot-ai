@@ -21,7 +21,7 @@
     "type": "function",
     "z": "tab_aiui_ping",
     "name": "build ping result envelope",
-    "func": "// FAP §9 result envelope. Mirrors the inbound requestId so transport.ts can\n// resolve the matching submit() promise. data.serverTs lets the smoke test\n// measure roundtrip latency.\nconst env = msg.payload || {};\nconst result = {\n    type: 'result',\n    ok: true,\n    action: 'ping',\n    requestId: env.requestId,\n    sessionId: env.sessionId,\n    data: { pong: true, serverTs: Date.now() }\n};\nmsg.payload = result;\n// Preserve _socketId so merge-session-send routes to the requesting client.\nreturn msg;\n",
+    "func": "// FAP §9: produce a result for the dispatcher's fn_build_response to wrap.\n// data.serverTs lets the smoke-uibuilder-ping.mjs test measure roundtrip\n// latency. _socketId is preserved automatically by Node-RED for routing back\n// to the requesting client through merge-session-send.\nmsg._result = {\n    ok: true,\n    data: { pong: true, serverTs: Date.now() }\n};\nreturn msg;\n",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
