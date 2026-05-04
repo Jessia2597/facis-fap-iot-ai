@@ -8,7 +8,7 @@
     "fwdInMessages": false,
     "allowScripts": false,
     "allowStyles": false,
-    "copyIndex": true,
+    "copyIndex": false,
     "templateFolder": "blank",
     "extTemplate": "",
     "showfolder": false,

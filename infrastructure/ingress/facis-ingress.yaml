@@ -75,17 +75,11 @@ spec:
                 name: orce
                 port:
                   number: 1880
-          # AI Insight UI — Vue SPA served by uibuilder at
-          # https://fap-iotai.facis.cloud/aiInsight/. The bundle is
-          # populated onto /data/uibuilder/aiInsight/src by the
-          # init-ai-ui container in init-ai-ui-patch.yaml.
-          - path: /aiInsight
-            pathType: Prefix
-            backend:
-              service:
-                name: orce
-                port:
-                  number: 1880
+          # AI Insight UI is served by UIBUILDER at
+          # https://fap-iotai.facis.cloud/orce/aiInsight/ — covered by the
+          # `/orce` Prefix rule above. The bundle is populated onto
+          # /data/uibuilder/aiInsight/src by init-ai-ui-patch.yaml (bootstrap)
+          # and live updates flow through /orce/backendtest/aiInsight (PR-2.3).
           # ORCE editor's theme CSS references /dynamicsrc/font/*.woff
           # (Manrope, Poppins) at the bare-root path. Node-RED's static
           # handler maps `/data > /`, so /dynamicsrc/* is served from
