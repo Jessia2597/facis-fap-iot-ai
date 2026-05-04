@@ -206,6 +206,16 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
     uib.send({ topic, payload })
   }
 
+  /** Send a complete FAP §9 envelope as-is (no topic wrapping). Use this for
+   *  FAP-aligned command/event messages routed by the transport layer. */
+  function sendEnvelope(envelope: object): void {
+    if (!uib || !connected.value) {
+      console.debug('[UIBuilder] sendEnvelope skipped (not connected):', envelope)
+      return
+    }
+    uib.send(envelope)
+  }
+
   function onMessage(handler: MessageHandler): () => void {
     handlers.push(handler)
     return () => {
@@ -239,6 +249,7 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
     isAvailable,
     init,
     send,
+    sendEnvelope,
     requestInsight,
     requestLlm,
     onMessage,

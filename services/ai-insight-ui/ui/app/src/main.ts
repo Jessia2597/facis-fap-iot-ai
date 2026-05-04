@@ -12,6 +12,8 @@ import App from './App.vue'
 import router from './router'
 import { initAuth } from './auth'
 import { useUiBuilderStore } from './stores/uibuilder'
+import { registerInboundHandler } from './services/transport'
+import { reduceResult, reduceEvent } from './services/reducers'
 
 // Authenticate BEFORE mounting the app.
 // The index.html splash screen stays visible during this time.
@@ -43,6 +45,11 @@ initAuth().then(async () => {
   // view mounts. The store guards against a missing client lib and falls back
   // to mock mode, so this is safe even if the page is opened standalone.
   await useUiBuilderStore().init()
+
+  // FAP §11: register the single inbound handler. Every result/event arriving
+  // over the UIBUILDER socket flows through reduceResult/reduceEvent — the
+  // only writers to the app store.
+  registerInboundHandler(reduceResult, reduceEvent)
 
   app.mount('#app')
 }).catch((err) => {
