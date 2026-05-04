@@ -786,7 +786,7 @@ export interface IntegrationsHealth {
   services: IntegrationServiceHealth[]
 }
 export function getIntegrationsHealth(): Promise<IntegrationsHealth | null> {
-  return simGet('/integrations/health')
+  return uib('integrations.health')
 }
 
 export interface SchemaTable {
