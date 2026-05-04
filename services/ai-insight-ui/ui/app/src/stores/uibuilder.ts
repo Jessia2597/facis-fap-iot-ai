@@ -71,17 +71,16 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
       const win = window as any
       if (win.uibuilder) {
         uib = win.uibuilder
-        // CRITICAL: override ioPath BEFORE start(). UIBUILDER's client lib
-        // derives httpNodeRoot from the page URL — when the SPA loads at
-        // /orce/aiInsight/, it incorrectly infers httpNodeRoot='/orce' and
-        // computes ioPath='/orce/uibuilder/vendor/socket.io'. nginx-ingress
-        // regex rewrites can forward the Socket.IO polling handshake but
-        // mangle the WS upgrade headers, leaving the client stuck (sends
-        // queue up, msgsReceived stays at 0). Forcing the absolute path
-        // routes through the simple /uibuilder Prefix rule which forwards
-        // WS upgrades cleanly.
-        uib.set('ioPath', '/uibuilder/vendor/socket.io')
-        uib.start()
+        // CRITICAL: pass ioPath option to start(). UIBUILDER's client lib
+        // auto-derives httpNodeRoot from the page URL — when the SPA loads
+        // at /orce/aiInsight/, it incorrectly infers httpNodeRoot='/orce'
+        // and computes ioPath='/orce/uibuilder/vendor/socket.io'. The
+        // nginx-ingress rewrite forwards the Socket.IO polling handshake
+        // but mangles the WS upgrade headers, leaving the client stuck
+        // (sends queue up, msgsReceived stays at 0). Forcing the absolute
+        // path routes through the simple /uibuilder Prefix rule which
+        // forwards WS upgrades cleanly.
+        uib.start({ ioPath: '/uibuilder/vendor/socket.io' })
 
         uib.onChange('connected', (val: boolean) => {
           connected.value = val
