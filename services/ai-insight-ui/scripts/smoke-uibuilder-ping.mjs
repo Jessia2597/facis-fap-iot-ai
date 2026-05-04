@@ -17,7 +17,12 @@
 import { randomUUID } from 'node:crypto'
 
 const HOST = process.argv[2] || process.env.FACIS_HOST || 'https://fap-iotai.facis.cloud'
-const PATH = '/orce/aiInsight/socket.io/'  // UIBUILDER serves Socket.IO under the SPA's URL
+// UIBUILDER's actual socket.io mount is at <httpNodeRoot>/uibuilder/vendor/socket.io
+// (default httpNodeRoot is '/'). The /orce/ prefix is added by the rewrite ingress
+// (facis-ingress-aiinsight-rewrite.yaml) which maps /orce/uibuilder/* → /uibuilder/*.
+// The Socket.IO namespace matches the UIBUILDER instance URL ('aiInsight').
+const SOCKET_PATH = '/uibuilder/vendor/socket.io'
+const NAMESPACE  = '/aiInsight'
 const TIMEOUT_MS = 5000
 
 async function main() {
@@ -30,14 +35,18 @@ async function main() {
     process.exit(2)
   }
 
-  const url = HOST.replace(/^http/, 'ws') // ws(s)://
-  console.error(`[smoke-ping] connecting to ${url}${PATH}`)
+  const url = HOST.replace(/^http/, 'ws') + NAMESPACE
+  console.error(`[smoke-ping] connecting to ${url} (path=${SOCKET_PATH})`)
 
   const socket = io(url, {
-    path: PATH,
-    transports: ['websocket'],
+    path: SOCKET_PATH,
+    // transports: default (polling + upgrade)
     reconnection: false,
     timeout: TIMEOUT_MS,
+    // Node.js v24 ships a CA bundle missing some intermediates the FACIS
+    // wildcard cert chains through; browsers don't have this issue. This
+    // is a deploy gate, not a security check.
+    rejectUnauthorized: false,
   })
 
   const requestId = randomUUID()
@@ -45,9 +54,12 @@ async function main() {
 
   const result = await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`timeout after ${TIMEOUT_MS}ms`)), TIMEOUT_MS)
+    // UIBUILDER's Socket.IO channel names (uibGlobalConfig.cjs):
+    //   client (browser → server) = 'uiBuilderClient'
+    //   server (server → browser) = 'uiBuilder'
     socket.on('connect', () => {
       console.error(`[smoke-ping] connected; sending command requestId=${requestId}`)
-      socket.emit('msg', {
+      socket.emit('uiBuilderClient', {
         type: 'command',
         action: 'ping',
         requestId,
@@ -58,11 +70,17 @@ async function main() {
     socket.on('connect_error', (err) => {
       clearTimeout(timer); reject(new Error(`connect_error: ${err.message}`))
     })
-    socket.on('msg', (msg) => {
-      if (msg && msg.type === 'result' && msg.requestId === requestId) {
-        clearTimeout(timer); resolve(msg)
+    // UIBUILDER server's sendToFe defaults to ioChannels.client ('uiBuilderClient'),
+    // so the same channel carries both directions. Some configs use 'uiBuilder'
+    // (ioChannels.server) for outbound — listen on both to cover both cases.
+    const handleResp = (msg) => {
+      const env = (msg && msg.payload && typeof msg.payload === 'object') ? msg.payload : msg
+      if (env && env.type === 'result' && env.requestId === requestId) {
+        clearTimeout(timer); resolve(env)
       }
-    })
+    }
+    socket.on('uiBuilderClient', handleResp)
+    socket.on('uiBuilder', handleResp)
   }).catch((err) => {
     socket.close()
     console.error(`[smoke-ping] FAIL: ${err.message}`)

@@ -17,7 +17,8 @@
 import { randomUUID } from 'node:crypto'
 
 const HOST = process.argv[2] || process.env.FACIS_HOST || 'https://fap-iotai.facis.cloud'
-const PATH = '/orce/aiInsight/socket.io/'
+const SOCKET_PATH = '/uibuilder/vendor/socket.io'  // UIBUILDER's actual mount
+const NAMESPACE   = '/aiInsight'                   // UIBUILDER instance namespace
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 8000)
 
 const ADMIN_TOKEN = process.env.FACIS_ADMIN_TOKEN || ''  // optional; admin actions skipped if absent
@@ -85,14 +86,14 @@ async function main() {
     process.exit(2)
   }
 
-  const url = HOST.replace(/^http/, 'ws')
-  console.error(`[smoke-actions] connecting ${url}${PATH}`)
+  const url = HOST.replace(/^http/, 'ws') + NAMESPACE
+  console.error(`[smoke-actions] connecting ${url} (path=${SOCKET_PATH})`)
 
   const socket = io(url, {
-    path: PATH,
-    transports: ['websocket'],
+    path: SOCKET_PATH,
     reconnection: false,
     timeout: TIMEOUT_MS,
+    rejectUnauthorized: false,  // Node.js v24 CA bundle is missing some intermediates
   })
 
   await new Promise((resolve, reject) => {
@@ -105,19 +106,24 @@ async function main() {
   })
 
   const pending = new Map()
-  socket.on('msg', (msg) => {
-    if (msg && msg.type === 'result' && msg.requestId) {
-      const entry = pending.get(msg.requestId)
-      if (entry) { pending.delete(msg.requestId); clearTimeout(entry.timer); entry.resolve(msg) }
+  // UIBUILDER channels: 'uiBuilderClient' carries both directions; some configs
+  // also broadcast on 'uiBuilder'. Listen on both to cover either case.
+  const handleResp = (msg) => {
+    const env = (msg && msg.payload && typeof msg.payload === 'object') ? msg.payload : msg
+    if (env && env.type === 'result' && env.requestId) {
+      const entry = pending.get(env.requestId)
+      if (entry) { pending.delete(env.requestId); clearTimeout(entry.timer); entry.resolve(env) }
     }
-  })
+  }
+  socket.on('uiBuilderClient', handleResp)
+  socket.on('uiBuilder', handleResp)
 
   function submit(action, payload) {
     const requestId = randomUUID()
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('timeout')) }, TIMEOUT_MS)
       pending.set(requestId, { resolve, reject, timer })
-      socket.emit('msg', {
+      socket.emit('uiBuilderClient', {
         type: 'command', action, requestId, payload,
         meta: { clientTs: Date.now(), source: 'smoke-actions' },
       })
