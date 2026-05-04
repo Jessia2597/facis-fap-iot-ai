@@ -1,36 +1,7 @@
-:root {
-  --facis-primary: #005fff;
-  --facis-primary-dark: #0047cc;
-  --facis-primary-light: #e8f0fe;
-  --facis-bg: #f8fafc;
-  --facis-surface: #ffffff;
-  --facis-surface-2: #f1f5f9;
-  --facis-text: #1e293b;
-  --facis-text-secondary: #64748b;
-  --facis-text-muted: #94a3b8;
-  --facis-border: #e2e8f0;
-  --facis-border-strong: #cbd5e1;
-  --facis-success: #22c55e;
-  --facis-success-light: #dcfce7;
-  --facis-warning: #f59e0b;
-  --facis-warning-light: #fef3c7;
-  --facis-error: #ef4444;
-  --facis-error-light: #fee2e2;
-  --facis-info: #3b82f6;
-  --facis-info-light: #dbeafe;
-  --facis-purple: #8b5cf6;
-  --facis-radius: 8px;
-  --facis-radius-sm: 6px;
-  --facis-radius-lg: 12px;
-  --facis-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --facis-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --facis-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10);
-  --facis-sidebar-width: 260px;
-  --facis-sidebar-collapsed: 64px;
-  --facis-topbar-height: 64px;
-  --facis-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --facis-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-}
+/* The canonical FAP §14 token block now lives in tokens.css. The legacy
+ * --facis-* aliases are defined there as forwarders to the canonical
+ * --color-* / --radius-* / --space-* primitives. This file keeps only the
+ * page-level resets (box-sizing, body font, scrollbar, utility classes). */
 
 *,
 *::before,

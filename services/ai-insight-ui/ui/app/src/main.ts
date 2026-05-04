@@ -6,8 +6,9 @@ import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
-import './styles/variables.css'
-import './styles/overrides.css'
+import './styles/tokens.css'      // FAP §14 design tokens (canonical)
+import './styles/variables.css'   // legacy alias forwarders
+import './styles/overrides.css'   // PrimeVue Aura → FAP token bridges
 import App from './App.vue'
 import router from './router'
 import { initAuth } from './auth'
