@@ -11,6 +11,7 @@ operators and CI.
 | `build-and-package.sh` | Builds the Vue bundle and copies it into the Helm chart's `files/ui/` directory (legacy bootstrap pipeline). | `npm`, the Vue toolchain inside `ui/app/`. |
 | `deploy.sh` | Builds the Vue bundle, zips it, POSTs to the orce pod's `/orce/backendtest/aiInsight` deploy endpoint (standard FAP pattern). Live updates without redeploying the orce pod. | `npm`, `zip`, `curl`, `FACIS_DEPLOY_TOKEN` env var. |
 | `check-flows-drift.sh` | Diffs committed `flows.full.json` tab list against the deployed pod's `/data/flows.json`. Surfaces "Recovered Nodes" / "Configuration" / similar drift. | `kubectl`, `jq`. |
+| `check-flows-sync.sh` | Verifies `flows/flows.full.json` is the exact merge of `flows/tabs/*.json`. Run with `--fix` to rewrite from tabs. Recommended as a pre-commit hook. | `jq`. |
 | `smoke-uibuilder-ping.mjs` | Connects via Socket.IO, sends a FAP §9 `ping` command, asserts the matching `result` envelope arrives. Post-deploy CI gate. | Node 18+, `socket.io-client@4`. |
 | `smoke-browser-console.mjs` | Opens the SPA in a headless browser, asserts no `console.error`, asserts `window.uibuilder` is defined, asserts no 4xx/5xx asset responses. Post-deploy CI gate. | Node 18+, `@playwright/test`, `chromium` runtime. |
 
