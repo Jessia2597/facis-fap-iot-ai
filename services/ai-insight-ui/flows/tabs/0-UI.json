@@ -101,7 +101,7 @@
         "type": "link in",
         "z": "tab-ui",
         "name": "← Response to UI",
-        "links": ["link-response-insight", "link-response-llm", "link-response-error"],
+        "links": ["link-response-insight", "link-response-llm", "link-response-trino"],
         "x": 115,
         "y": 380,
         "wires": [["merge-session-send"]]

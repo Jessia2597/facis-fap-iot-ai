@@ -122,7 +122,7 @@
     "links": [
       "link-response-insight",
       "link-response-llm",
-      "link-response-error"
+      "link-response-trino"
     ],
     "x": 115,
     "y": 380,
