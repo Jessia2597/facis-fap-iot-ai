@@ -8,6 +8,23 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!--
+    UIBUILDER client library — injected at runtime so Vite's HTML build pass
+    doesn't try to resolve the path against the source tree. The script is
+    served by UIBUILDER's httpNode middleware at <orce-base>/uibuilder/vendor/...
+    Resolving via `document.baseURI` makes this portable across base-path
+    changes. Loading explicitly here guarantees window.uibuilder is defined
+    regardless of whether UIBUILDER auto-injects the script tag for
+    non-template-served HTML.
+  -->
+  <script>
+    (function () {
+      var s = document.createElement('script');
+      s.type = 'module';
+      s.src = new URL('../uibuilder/vendor/uibuilder.module.js', document.baseURI).href;
+      document.head.appendChild(s);
+    })();
+  </script>
 </head>
 <body>
   <div id="app">

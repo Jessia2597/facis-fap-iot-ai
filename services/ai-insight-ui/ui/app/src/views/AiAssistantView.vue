@@ -45,11 +45,9 @@ const liveMeterCount = ref(0)
 const livePvRecords = ref<{ timestamp: string; pvPower_kW: number; irradiance_w_m2: number }[]>([])
 const livePriceRecords = ref<{ timestamp: string; priceEurPerKwh: number }[]>([])
 
-// Try to connect UIBUILDER on mount; gracefully falls back to demo mode
+// UIBUILDER is initialised once at app boot in main.ts. Here we only wire up
+// the per-view subscriptions when the connection is live.
 onMounted(async () => {
-  await uib.init()
-
-  // If connected, watch for live KPI pushes from Node-RED
   if (uib.connected) {
     const unsubscribe = uib.onMessage((msg) => {
       if (msg.topic === 'kpi.update' && uib.lastKpi) {
