@@ -153,52 +153,37 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
-  /** Send a smart-prompt insight request. Returns a promise that resolves when
-   *  the backend responds with `insight.response`, or rejects after timeout. */
-  function requestInsight(
+  /** Send a smart-prompt insight request. Returns a promise that resolves with
+   *  the formatted insight text, or rejects after timeout. Internally routed
+   *  through the FAP §9 transport so the dispatcher's FAP-aware path handles
+   *  it (the legacy `{topic, payload}` shape this store originally sent never
+   *  matched the server-side adapter's `msg.data.recordDetails` reads). */
+  async function requestInsight(
     action: string,
     params: Record<string, unknown>,
     promptText: string,
     timeoutMs = 30_000
   ): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-      if (!uib || !connected.value) {
-        reject(new Error('UIBuilder not connected'))
-        return
-      }
-
-      const timeoutId = setTimeout(() => {
-        pending.delete('insight.request')
-        reject(new Error('insight.request timed out'))
-      }, timeoutMs)
-
-      pending.set('insight.request', { resolve, reject, timeoutId })
-
-      uib.send({
-        topic: 'insight.request',
-        payload: { action, params, promptText }
-      })
-    })
+    const { submit } = await import('@/services/transport')
+    const r = await submit<{ action: string; params: Record<string, unknown>; promptText: string }, {
+      insight?: InsightResponsePayload
+      latest?: unknown
+      action?: string
+    }>('insight.request', { action, params, promptText }, { timeoutMs })
+    if (!r.ok) throw new Error(r.errors?.action || r.errors?.system || 'insight.request failed')
+    if (r.data?.insight) return _formatInsightResponse(r.data.insight)
+    if (r.data?.latest) return JSON.stringify(r.data.latest, null, 2)
+    return ''
   }
 
-  /** Send a free-form LLM query. Returns a promise that resolves when the
-   *  backend responds with `llm.response`, or rejects after timeout. */
-  function requestLlm(query: string, timeoutMs = 60_000): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-      if (!uib || !connected.value) {
-        reject(new Error('UIBuilder not connected'))
-        return
-      }
-
-      const timeoutId = setTimeout(() => {
-        pending.delete('llm.freeform')
-        reject(new Error('llm.freeform timed out'))
-      }, timeoutMs)
-
-      pending.set('llm.freeform', { resolve, reject, timeoutId })
-
-      uib.send({ topic: 'llm.freeform', payload: { query } })
-    })
+  /** Send a free-form LLM query. Returns a promise that resolves with the
+   *  LLM's response text, or rejects after timeout. Internally routed through
+   *  the FAP §9 transport for the same reason as requestInsight above. */
+  async function requestLlm(query: string, timeoutMs = 60_000): Promise<string> {
+    const { submit } = await import('@/services/transport')
+    const r = await submit<{ query: string }, { response?: LlmResponsePayload }>('llm.freeform', { query }, { timeoutMs })
+    if (!r.ok) throw new Error(r.errors?.action || r.errors?.system || 'llm.freeform failed')
+    return r.data?.response?.text ?? ''
   }
 
   /** Low-level send — bypasses request/response tracking */
