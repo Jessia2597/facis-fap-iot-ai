@@ -438,20 +438,101 @@
     "wires": []
   },
   {
-    "id": "tab-session",
+    "id": "tab-insight-proxy",
     "type": "tab",
-    "label": "Session Context",
+    "label": "AI Insight Proxy",
     "disabled": false,
-    "info": "Manages per-client conversation history and session state"
+    "info": "Proxies requests to the AI Insight Service (FastAPI)"
   },
   {
-    "id": "comment-session",
-    "type": "comment",
-    "z": "tab-session",
-    "name": "Session Management",
-    "info": "This tab manages conversation history stored in flow context.\nSession data is keyed by _socketId and includes:\n- Connection timestamp\n- Conversation history (last 20 messages)\n- User preferences (selected LLM, time range)\n\nSession cleanup runs when client disconnects.",
-    "x": 200,
-    "y": 80,
+    "id": "link-from-ui-insight",
+    "type": "link in",
+    "z": "tab-insight-proxy",
+    "name": "← From UI (Insight)",
+    "links": [
+      "link-to-insight-proxy"
+    ],
+    "x": 115,
+    "y": 160,
+    "wires": [
+      [
+        "build-insight-request"
+      ]
+    ]
+  },
+  {
+    "id": "build-insight-request",
+    "type": "function",
+    "z": "tab-insight-proxy",
+    "name": "Build HTTP Request",
+    "func": "const baseUrl = env.get('AI_INSIGHT_BASE_URL') || 'http://ai-insight-service:8080';\n\n// Adapter: accept either FAP §9 (msg._req.payload) or legacy (msg.data.recordDetails).\n// The dispatcher routes both shapes here; we normalise to a single internal\n// reading of action/params so the middle of the flow stays unchanged.\nlet action, params;\nif (msg._req && msg._req.payload) {\n    action = msg._req.payload.action;\n    params = msg._req.payload.params || {};\n    msg._fap = true;\n} else {\n    action = msg.data && msg.data.recordDetails && msg.data.recordDetails.action;\n    params = (msg.data && msg.data.recordDetails && msg.data.recordDetails.params) || {};\n    msg._fap = false;\n}\n\n// Store original data for response routing\nmsg.originalData = msg.data;\nmsg.originalAction = action;\n\nif (action === 'load-latest') {\n    msg.url = baseUrl + '/api/v1/insights/latest';\n    msg.method = 'GET';\n    msg.payload = '';\n} else if (action === 'energy-summary') {\n    msg.url = baseUrl + '/api/v1/insights/energy-summary';\n    msg.method = 'POST';\n    msg.payload = {\n        start_ts: params.start_ts,\n        end_ts: params.end_ts,\n        timezone: params.timezone || 'UTC',\n        forecast_alpha: 0.6,\n        trend_epsilon: 0.02,\n        daily_overview_strategy: 'fallback_hourly',\n        include_data: true\n    };\n} else if (action === 'anomaly-report') {\n    msg.url = baseUrl + '/api/v1/insights/anomaly-report';\n    msg.method = 'POST';\n    msg.payload = {\n        start_ts: params.start_ts,\n        end_ts: params.end_ts,\n        timezone: params.timezone || 'UTC',\n        robust_z_threshold: 3.5,\n        include_data: true\n    };\n} else if (action === 'city-status') {\n    msg.url = baseUrl + '/api/v1/insights/city-status';\n    msg.method = 'POST';\n    msg.payload = {\n        start_ts: params.start_ts,\n        end_ts: params.end_ts,\n        timezone: params.timezone || 'UTC',\n        include_data: true\n    };\n} else {\n    node.warn('Unknown action: ' + action);\n    return null;\n}\n\nmsg.headers = {\n    'Content-Type': 'application/json',\n    'x-agreement-id': 'agreement-ui',\n    'x-asset-id': 'asset-ui',\n    'x-user-roles': 'ai_insight_consumer'\n};\n\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 370,
+    "y": 160,
+    "wires": [
+      [
+        "http-insight-request"
+      ]
+    ]
+  },
+  {
+    "id": "http-insight-request",
+    "type": "http request",
+    "z": "tab-insight-proxy",
+    "name": "AI Insight Service",
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": true,
+    "headers": [],
+    "x": 610,
+    "y": 160,
+    "wires": [
+      [
+        "format-insight-response"
+      ]
+    ]
+  },
+  {
+    "id": "format-insight-response",
+    "type": "function",
+    "z": "tab-insight-proxy",
+    "name": "Format Response for UI",
+    "func": "const statusCode = msg.statusCode;\nconst originalAction = msg.originalAction || (msg.originalData && msg.originalData.recordDetails && msg.originalData.recordDetails.action);\n\n// Build the response payload once; both legacy msg.data.recordDetails and\n// FAP msg._result.data point at it so either Vue caller sees the same shape.\nlet body;\nif (statusCode >= 400 || !msg.payload) {\n    body = {\n        error: msg.payload?.detail || 'AI Insight Service returned error ' + statusCode,\n        action: originalAction\n    };\n    msg._isError = true;\n} else if (originalAction === 'load-latest') {\n    body = { latest: msg.payload.latest || msg.payload };\n} else {\n    const response = msg.payload;\n    body = {\n        action: originalAction,\n        insight: {\n            type: response.insight_type,\n            summary: response.summary,\n            keyFindings: response.key_findings,\n            recommendations: response.recommendations,\n            metadata: response.metadata,\n            data: response.data || null\n        }\n    };\n}\n\n// Legacy shape — preserved so existing useUiBuilderStore.requestInsight callers continue to resolve.\nmsg.data = {\n    topic: msg._isError ? 'error' : (originalAction === 'load-latest' ? 'latest.response' : 'insight.response'),\n    recordDetails: msg._isError ? { message: body.error, action: originalAction } : body\n};\nmsg._socketId = msg.originalData?.session?._socketId;\n\n// FAP §9 shape — set msg._result so the dispatcher's fn_build_response wraps it.\nif (msg._fap) {\n    msg._result = {\n        ok: !msg._isError,\n        data: body,\n        errors: msg._isError ? { integration: { service: 'ai-insight-service', message: body.error } } : null\n    };\n}\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 840,
+    "y": 160,
+    "wires": [
+      [
+        "link-response-insight"
+      ]
+    ]
+  },
+  {
+    "id": "link-response-insight",
+    "type": "link out",
+    "z": "tab-insight-proxy",
+    "name": "→ Response to UI",
+    "mode": "link",
+    "links": [
+      "link-from-response"
+    ],
+    "x": 1055,
+    "y": 160,
     "wires": []
   },
   {
@@ -484,9 +565,22 @@
         "fn_dispatcher_normalize"
       ],
       [
-        "session-init"
+        "link-to-session-control"
       ]
     ]
+  },
+  {
+    "id": "link-to-session-control",
+    "type": "link out",
+    "z": "tab_aiui_dispatcher",
+    "name": "→ Session Control",
+    "mode": "link",
+    "links": [
+      "link-from-uib-control"
+    ],
+    "x": 380,
+    "y": 280,
+    "wires": []
   },
   {
     "id": "fn_dispatcher_normalize",
@@ -588,23 +682,6 @@
       [
         "fn_build_response"
       ]
-    ]
-  },
-  {
-    "id": "session-init",
-    "type": "function",
-    "z": "tab_aiui_dispatcher",
-    "name": "Session Init",
-    "func": "// Handle client connect/disconnect from UIBUILDER control output.\n// Phase 4 moves this into a dedicated Session Context subflow with proper\n// disconnect cleanup, conversation history persistence, and the internal\n// /api/v1/_internal/connections operator endpoint.\nconst action = msg && msg.uibuilderCtrl;\nif (action === 'client connect') {\n    node.log('Client connected: ' + msg._socketId);\n    const sessions = flow.get('sessions') || {};\n    sessions[msg._socketId] = {\n        connected: new Date().toISOString(),\n        conversationHistory: []\n    };\n    flow.set('sessions', sessions);\n}\nreturn null;\n",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 380,
-    "y": 280,
-    "wires": [
-      []
     ]
   },
   {
@@ -873,101 +950,179 @@
     ]
   },
   {
-    "id": "tab-insight-proxy",
+    "id": "tab-session",
     "type": "tab",
-    "label": "AI Insight Proxy",
+    "label": "Session Context",
     "disabled": false,
-    "info": "Proxies requests to the AI Insight Service (FastAPI)"
+    "info": "Per-client session lifecycle implemented per FAP §11 (refresh recovery rule). Receives UIBUILDER control events ('client connect' / 'client disconnect' / 'ready') via link-from-uib-control and maintains flow.context().get('sessions') keyed by _socketId. Each entry tracks connectedAt, conversationHistory (last 20 messages), and preferences.\n\nAlso implements:\n  - bootstrap.session FAP action — returns initial view-model on first command after connect.\n  - GET /api/v1/_internal/connections — operator endpoint reporting live connection count + per-session metadata. Used by smoke-browser-console.mjs and surfaced as the reviewer's 'real connection count' gate.\n  - 5-minute watchdog interval — prunes any session entry older than 1h (failsafe against missed disconnect events).\n\nFAP Guideline reference: §8 (sessionId state block), §11 (refresh and recovery), §19 (Refresh recovery works)."
   },
   {
-    "id": "link-from-ui-insight",
+    "id": "link-from-uib-control",
     "type": "link in",
-    "z": "tab-insight-proxy",
-    "name": "← From UI (Insight)",
+    "z": "tab-session",
+    "name": "← UIBUILDER control",
     "links": [
-      "link-to-insight-proxy"
+      "link-to-session-control"
     ],
-    "x": 115,
-    "y": 160,
+    "x": 130,
+    "y": 100,
     "wires": [
       [
-        "build-insight-request"
+        "fn_session_lifecycle"
       ]
     ]
   },
   {
-    "id": "build-insight-request",
+    "id": "fn_session_lifecycle",
     "type": "function",
-    "z": "tab-insight-proxy",
-    "name": "Build HTTP Request",
-    "func": "const baseUrl = env.get('AI_INSIGHT_BASE_URL') || 'http://ai-insight-service:8080';\n\n// Adapter: accept either FAP §9 (msg._req.payload) or legacy (msg.data.recordDetails).\n// The dispatcher routes both shapes here; we normalise to a single internal\n// reading of action/params so the middle of the flow stays unchanged.\nlet action, params;\nif (msg._req && msg._req.payload) {\n    action = msg._req.payload.action;\n    params = msg._req.payload.params || {};\n    msg._fap = true;\n} else {\n    action = msg.data && msg.data.recordDetails && msg.data.recordDetails.action;\n    params = (msg.data && msg.data.recordDetails && msg.data.recordDetails.params) || {};\n    msg._fap = false;\n}\n\n// Store original data for response routing\nmsg.originalData = msg.data;\nmsg.originalAction = action;\n\nif (action === 'load-latest') {\n    msg.url = baseUrl + '/api/v1/insights/latest';\n    msg.method = 'GET';\n    msg.payload = '';\n} else if (action === 'energy-summary') {\n    msg.url = baseUrl + '/api/v1/insights/energy-summary';\n    msg.method = 'POST';\n    msg.payload = {\n        start_ts: params.start_ts,\n        end_ts: params.end_ts,\n        timezone: params.timezone || 'UTC',\n        forecast_alpha: 0.6,\n        trend_epsilon: 0.02,\n        daily_overview_strategy: 'fallback_hourly',\n        include_data: true\n    };\n} else if (action === 'anomaly-report') {\n    msg.url = baseUrl + '/api/v1/insights/anomaly-report';\n    msg.method = 'POST';\n    msg.payload = {\n        start_ts: params.start_ts,\n        end_ts: params.end_ts,\n        timezone: params.timezone || 'UTC',\n        robust_z_threshold: 3.5,\n        include_data: true\n    };\n} else if (action === 'city-status') {\n    msg.url = baseUrl + '/api/v1/insights/city-status';\n    msg.method = 'POST';\n    msg.payload = {\n        start_ts: params.start_ts,\n        end_ts: params.end_ts,\n        timezone: params.timezone || 'UTC',\n        include_data: true\n    };\n} else {\n    node.warn('Unknown action: ' + action);\n    return null;\n}\n\nmsg.headers = {\n    'Content-Type': 'application/json',\n    'x-agreement-id': 'agreement-ui',\n    'x-asset-id': 'asset-ui',\n    'x-user-roles': 'ai_insight_consumer'\n};\n\nreturn msg;\n",
+    "z": "tab-session",
+    "name": "session lifecycle",
+    "func": "// Cap on concurrent sessions — failsafe against missed disconnect events.\nconst MAX_SESSIONS = 1000;\nconst sessions = flow.get('sessions') || {};\n\nconst evt = msg && msg.uibuilderCtrl;\nconst sid = msg && msg._socketId;\nif (!sid) return null;\n\nif (evt === 'client connect') {\n    if (Object.keys(sessions).length >= MAX_SESSIONS) {\n        // Prune oldest 10% to make room.\n        const entries = Object.entries(sessions).sort((a, b) => (a[1].connectedAt || 0) - (b[1].connectedAt || 0));\n        const drop = entries.slice(0, Math.ceil(MAX_SESSIONS * 0.1));\n        for (const [k] of drop) delete sessions[k];\n        node.warn('sessions cap hit; pruned oldest ' + drop.length);\n    }\n    sessions[sid] = {\n        connectedAt: Date.now(),\n        conversationHistory: [],\n        messageCount: 0,\n        preferences: {}\n    };\n    flow.set('sessions', sessions);\n    node.log('session connect: ' + sid + ' (n=' + Object.keys(sessions).length + ')');\n} else if (evt === 'client disconnect') {\n    if (sessions[sid]) {\n        delete sessions[sid];\n        flow.set('sessions', sessions);\n        node.log('session disconnect: ' + sid);\n    }\n}\n// 'ready' and other control events are no-ops here.\nreturn null;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "if (!flow.get('sessions')) flow.set('sessions', {});\n",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 100,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "link-from-ui-bootstrap",
+    "type": "link in",
+    "z": "tab-session",
+    "name": "← from UI (bootstrap)",
+    "links": [
+      "link-to-bootstrap"
+    ],
+    "x": 140,
+    "y": 200,
+    "wires": [
+      [
+        "fn_session_bootstrap"
+      ]
+    ]
+  },
+  {
+    "id": "fn_session_bootstrap",
+    "type": "function",
+    "z": "tab-session",
+    "name": "bootstrap.session",
+    "func": "const action = msg._req && msg._req.action;\nif (action !== 'bootstrap.session') {\n    msg._result = { ok: false, errors: { action: 'bootstrap: unknown action: ' + action } };\n    return msg;\n}\n\nconst sid = msg._socketId;\nconst sessions = flow.get('sessions') || {};\nconst entry = sid && sessions[sid];\n\n// Build initial view-model. Pulls latest known KPI snapshot, recent alerts,\n// and conversation history. Phase 5 expands this with smart-city / data-products\n// initial summaries. Returns a sessionId so the client persists it (FAP §11).\nconst alerts = (global.get('alerts') || []).slice(-20).reverse();\nconst engine = global.get('engine') || {};\n\nmsg._sessionId = sid;\nmsg._result = {\n    ok: true,\n    next: { step: 'dashboard' },\n    data: {\n        sessionId: sid,\n        connectedAt: entry ? entry.connectedAt : Date.now(),\n        engine_state: engine.state || 'unknown',\n        recent_alerts: alerts,\n        conversation_history: entry ? entry.conversationHistory : []\n    }\n};\nreturn msg;\n",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 370,
-    "y": 160,
+    "x": 380,
+    "y": 200,
     "wires": [
       [
-        "http-insight-request"
+        "link-response-bootstrap"
       ]
     ]
   },
   {
-    "id": "http-insight-request",
-    "type": "http request",
-    "z": "tab-insight-proxy",
-    "name": "AI Insight Service",
-    "method": "use",
-    "ret": "obj",
-    "paytoqs": "ignore",
-    "url": "",
-    "tls": "",
-    "persist": false,
-    "proxy": "",
-    "insecureHTTPParser": false,
-    "authType": "",
-    "senderr": true,
-    "headers": [],
-    "x": 610,
-    "y": 160,
-    "wires": [
-      [
-        "format-insight-response"
-      ]
-    ]
-  },
-  {
-    "id": "format-insight-response",
-    "type": "function",
-    "z": "tab-insight-proxy",
-    "name": "Format Response for UI",
-    "func": "const statusCode = msg.statusCode;\nconst originalAction = msg.originalAction || (msg.originalData && msg.originalData.recordDetails && msg.originalData.recordDetails.action);\n\n// Build the response payload once; both legacy msg.data.recordDetails and\n// FAP msg._result.data point at it so either Vue caller sees the same shape.\nlet body;\nif (statusCode >= 400 || !msg.payload) {\n    body = {\n        error: msg.payload?.detail || 'AI Insight Service returned error ' + statusCode,\n        action: originalAction\n    };\n    msg._isError = true;\n} else if (originalAction === 'load-latest') {\n    body = { latest: msg.payload.latest || msg.payload };\n} else {\n    const response = msg.payload;\n    body = {\n        action: originalAction,\n        insight: {\n            type: response.insight_type,\n            summary: response.summary,\n            keyFindings: response.key_findings,\n            recommendations: response.recommendations,\n            metadata: response.metadata,\n            data: response.data || null\n        }\n    };\n}\n\n// Legacy shape — preserved so existing useUiBuilderStore.requestInsight callers continue to resolve.\nmsg.data = {\n    topic: msg._isError ? 'error' : (originalAction === 'load-latest' ? 'latest.response' : 'insight.response'),\n    recordDetails: msg._isError ? { message: body.error, action: originalAction } : body\n};\nmsg._socketId = msg.originalData?.session?._socketId;\n\n// FAP §9 shape — set msg._result so the dispatcher's fn_build_response wraps it.\nif (msg._fap) {\n    msg._result = {\n        ok: !msg._isError,\n        data: body,\n        errors: msg._isError ? { integration: { service: 'ai-insight-service', message: body.error } } : null\n    };\n}\nreturn msg;\n",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 840,
-    "y": 160,
-    "wires": [
-      [
-        "link-response-insight"
-      ]
-    ]
-  },
-  {
-    "id": "link-response-insight",
+    "id": "link-response-bootstrap",
     "type": "link out",
-    "z": "tab-insight-proxy",
-    "name": "→ Response to UI",
+    "z": "tab-session",
+    "name": "→ Response (bootstrap)",
     "mode": "link",
     "links": [
       "link-from-response"
     ],
-    "x": 1055,
-    "y": 160,
+    "x": 660,
+    "y": 200,
     "wires": []
+  },
+  {
+    "id": "node_internal_connections_get",
+    "type": "http in",
+    "z": "tab-session",
+    "name": "GET /api/v1/_internal/connections",
+    "url": "/api/v1/_internal/connections",
+    "method": "get",
+    "upload": false,
+    "x": 200,
+    "y": 320,
+    "wires": [
+      [
+        "fn_internal_connections"
+      ]
+    ]
+  },
+  {
+    "id": "fn_internal_connections",
+    "type": "function",
+    "z": "tab-session",
+    "name": "build connections snapshot",
+    "func": "const sessions = flow.get('sessions') || {};\nconst rows = Object.entries(sessions).map(([socketId, s]) => ({\n    socketId,\n    connectedAt: s.connectedAt,\n    messageCount: s.messageCount || 0\n}));\nmsg.statusCode = 200;\nmsg.headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };\nmsg.payload = { count: rows.length, sessions: rows };\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 540,
+    "y": 320,
+    "wires": [
+      [
+        "node_internal_connections_resp"
+      ]
+    ]
+  },
+  {
+    "id": "node_internal_connections_resp",
+    "type": "http response",
+    "z": "tab-session",
+    "name": "200 JSON",
+    "statusCode": "",
+    "headers": {},
+    "x": 850,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "inject_session_watchdog",
+    "type": "inject",
+    "z": "tab-session",
+    "name": "every 5 min",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "300",
+    "crontab": "",
+    "once": false,
+    "onceDelay": "",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 160,
+    "y": 420,
+    "wires": [
+      [
+        "fn_session_watchdog"
+      ]
+    ]
+  },
+  {
+    "id": "fn_session_watchdog",
+    "type": "function",
+    "z": "tab-session",
+    "name": "prune stale sessions (>1h)",
+    "func": "const sessions = flow.get('sessions') || {};\nconst cutoff = Date.now() - 60 * 60 * 1000;  // 1h\nconst before = Object.keys(sessions).length;\nfor (const [sid, s] of Object.entries(sessions)) {\n    if (!s.connectedAt || s.connectedAt < cutoff) delete sessions[sid];\n}\nconst after = Object.keys(sessions).length;\nif (after < before) {\n    flow.set('sessions', sessions);\n    node.log('watchdog: pruned ' + (before - after) + ' stale sessions; ' + after + ' remain');\n}\nreturn null;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 470,
+    "y": 420,
+    "wires": [
+      []
+    ]
   }
 ]

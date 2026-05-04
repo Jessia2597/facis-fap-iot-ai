@@ -26,8 +26,19 @@
         "y": 200,
         "wires": [
             ["fn_dispatcher_normalize"],
-            ["session-init"]
+            ["link-to-session-control"]
         ]
+    },
+    {
+        "id": "link-to-session-control",
+        "type": "link out",
+        "z": "tab_aiui_dispatcher",
+        "name": "→ Session Control",
+        "mode": "link",
+        "links": ["link-from-uib-control"],
+        "x": 380,
+        "y": 280,
+        "wires": []
     },
     {
         "id": "fn_dispatcher_normalize",
@@ -92,21 +103,6 @@
             ["link-to-analytics"],
             ["fn_build_response"]
         ]
-    },
-    {
-        "id": "session-init",
-        "type": "function",
-        "z": "tab_aiui_dispatcher",
-        "name": "Session Init",
-        "func": "// Handle client connect/disconnect from UIBUILDER control output.\n// Phase 4 moves this into a dedicated Session Context subflow with proper\n// disconnect cleanup, conversation history persistence, and the internal\n// /api/v1/_internal/connections operator endpoint.\nconst action = msg && msg.uibuilderCtrl;\nif (action === 'client connect') {\n    node.log('Client connected: ' + msg._socketId);\n    const sessions = flow.get('sessions') || {};\n    sessions[msg._socketId] = {\n        connected: new Date().toISOString(),\n        conversationHistory: []\n    };\n    flow.set('sessions', sessions);\n}\nreturn null;\n",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 380,
-        "y": 280,
-        "wires": [[]]
     },
     {
         "id": "link-to-insight-proxy",
