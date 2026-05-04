@@ -4,27 +4,44 @@ import { useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getStreetlights, getTrafficZones, getCityEvents, getSimHealth } from '@/services/api'
+import { submit } from '@/services/transport'
+
+interface RealProduct {
+  id: string; table_name: string; name: string; domain: string;
+  semanticScope: string | null; description: string | null;
+  version: string; apiStatus: string; lastUpdated: string; sourceTable: string
+}
+type DecoratedProduct = RealProduct & {
+  exportStatus: string;
+  zoneScope: string;
+  schema: string[];
+  exportFormats: string[];
+  owner: string;
+}
 
 const router = useRouter()
-const loading       = ref(true)
-const isLive        = ref(false)
-const lightCount    = ref(0)
-const zoneCount     = ref(0)
-const eventZoneCount = ref(0)
-const simHealthy    = ref(false)
+const loading = ref(true)
+const isLive = ref(false)
+const products = ref<DecoratedProduct[]>([])
 
 async function fetchData(): Promise<void> {
   loading.value = true
   try {
-    const [lightsRes, trafficRes, eventsRes, health] = await Promise.all([
-      getStreetlights(), getTrafficZones(), getCityEvents(), getSimHealth()
-    ])
-    lightCount.value     = lightsRes?.count ?? 0
-    zoneCount.value      = trafficRes?.count ?? 0
-    eventZoneCount.value = eventsRes?.count ?? 0
-    simHealthy.value     = health?.status === 'ok' || health?.status === 'healthy'
-    isLive.value = true
+    const r = await submit<unknown, { products: RealProduct[]; count: number }>('data-products.city.list', {})
+    if (r.ok && r.data?.products) {
+      products.value = r.data.products.map(p => ({
+        ...p,
+        exportStatus: p.apiStatus === 'available' ? 'ready' : 'pending',
+        zoneScope: 'City-wide',  // gold tables are city-wide aggregates
+        // Schema (column list) is fetched lazily via data-products.detail. The
+        // list view shows table_name as a single-line marker; the detail view
+        // shows the real columns.
+        schema: [p.table_name],
+        exportFormats: ['JSON', 'CSV', 'Parquet'],
+        owner: 'City Platform Team',
+      }))
+      isLive.value = true
+    }
   } catch {
     // leave defaults
   } finally {
@@ -34,44 +51,9 @@ async function fetchData(): Promise<void> {
 
 onMounted(() => fetchData())
 
-const products = computed(() => {
-  const now = new Date().toISOString()
-  const available = simHealthy.value ? 'available' : 'maintenance'
-  return [
-    {
-      id: 'scdp-001', name: 'Streetlight Telemetry Stream', semanticScope: 'SAREF4CITY / W3C SSN',
-      description: `Real-time dimming levels, power draw, and zone assignment from ${lightCount.value} streetlights — 30s resolution`,
-      apiStatus: available, exportStatus: 'ready', version: 'v1.2.0', zoneScope: `${zoneCount.value} zones`,
-      schema: ['light_id', 'zone_id', 'dimming_level_pct', 'power_w', 'timestamp'],
-      exportFormats: ['JSON', 'Parquet', 'CSV'], owner: 'City Platform Team', lastUpdated: now
-    },
-    {
-      id: 'scdp-002', name: 'Traffic Flow Timeseries', semanticScope: 'ITS / DATEX II',
-      description: `Hourly traffic index from ${zoneCount.value} monitoring zones — suitable for adaptive lighting correlation`,
-      apiStatus: available, exportStatus: 'ready', version: 'v1.0.0', zoneScope: `${zoneCount.value} zones`,
-      schema: ['zone_id', 'traffic_index', 'timestamp'],
-      exportFormats: ['JSON', 'CSV'], owner: 'Traffic Analytics', lastUpdated: now
-    },
-    {
-      id: 'scdp-003', name: 'City Event Feed', semanticScope: 'NGSI-LD / FIWARE',
-      description: `Active event stream from ${eventZoneCount.value} zones — severity-classified incidents with lifecycle tracking`,
-      apiStatus: available, exportStatus: 'pending', version: 'v0.9.0', zoneScope: `${eventZoneCount.value} zones`,
-      schema: ['zone_id', 'event_type', 'severity', 'active', 'timestamp'],
-      exportFormats: ['JSON'], owner: 'Safety & Ops', lastUpdated: now
-    },
-    {
-      id: 'scdp-004', name: 'City Visibility & Fog Index', semanticScope: 'WMO / ISO 19157',
-      description: 'Dawn/dusk transitions, fog index, and visibility metrics for context-aware lighting decisions',
-      apiStatus: available, exportStatus: 'ready', version: 'v1.0.0', zoneScope: 'City-wide',
-      schema: ['fog_index', 'visibility', 'sunrise_time', 'sunset_time', 'timestamp'],
-      exportFormats: ['JSON', 'CSV'], owner: 'City Platform Team', lastUpdated: now
-    }
-  ]
-})
-
 const availableCount = computed(() => products.value.filter(p => p.apiStatus === 'available').length)
 const exportReadyCount = computed(() => products.value.filter(p => p.exportStatus === 'ready').length)
-const totalSchemaFields = computed(() => products.value.reduce((s, p) => s + p.schema.length, 0))
+const totalSchemaFields = computed(() => products.value.length)
 
 function formatDate(ts: string): string {
   try { return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }
@@ -103,8 +85,8 @@ function formatDate(ts: string): string {
           <KpiCard label="API Available"   :value="availableCount"     trend="stable" icon="pi-check-circle" color="#22c55e" />
           <KpiCard label="Export Ready"    :value="exportReadyCount"   trend="stable" icon="pi-download" color="#8b5cf6" />
           <KpiCard label="Schema Fields"   :value="totalSchemaFields"  trend="stable" icon="pi-list" color="#0ea5e9" />
-          <KpiCard label="Light Sources"   :value="lightCount"         trend="stable" icon="pi-lightbulb" color="#f59e0b" />
-          <KpiCard label="Monitored Zones" :value="zoneCount"          trend="stable" icon="pi-map" color="#7c3aed" />
+          <KpiCard label="Catalogued Tables" :value="totalSchemaFields" trend="stable" icon="pi-lightbulb" color="#f59e0b" />
+          <KpiCard label="Available"          :value="availableCount"   trend="stable" icon="pi-map" color="#7c3aed" />
         </div>
 
         <div class="product-cards">

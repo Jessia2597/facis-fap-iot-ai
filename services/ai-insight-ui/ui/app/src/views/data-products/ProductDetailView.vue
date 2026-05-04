@@ -8,75 +8,71 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import DetailTabs from '@/components/common/DetailTabs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getPVSystems, getStreetlights, getTrafficZones, getSimHealth } from '@/services/api'
+import { submit } from '@/services/transport'
 
 const route  = useRoute()
 const router = useRouter()
 const error = ref(false)
 const isLive = ref(false)
-const meterCount = ref(0)
-const pvCount = ref(0)
-const streetlightCount = ref(0)
-const trafficCount = ref(0)
+
+interface RealSchemaCol { column: string; type: string; nullable: boolean; position: number }
+interface RealProduct {
+  id: string; table_name: string; name: string; domain: string;
+  semanticScope: string | null; description: string | null;
+  version: string; apiStatus: string; lastUpdated: string; sourceTable: string;
+  schema?: RealSchemaCol[];
+  sample?: Record<string, unknown>[];
+}
+
+const product = ref<(RealProduct & { category: string; useCase: string; sourceCount: number; exportStatus: string }) | null>(null)
 
 async function fetchData(): Promise<void> {
   error.value = false
-  const [m, pv, lights, traffic, health] = await Promise.all([getMeters(), getPVSystems(), getStreetlights(), getTrafficZones(), getSimHealth()])
-
-  if (!m && !pv && !lights && !traffic) {
-    error.value = true
-    return
-  }
-
-  meterCount.value = m?.count ?? 0
-  pvCount.value = pv?.count ?? 0
-  streetlightCount.value = lights?.count ?? 0
-  trafficCount.value = traffic?.count ?? 0
-  isLive.value = health?.status === 'ok' || health?.status === 'healthy'
+  try {
+    const id = String(route.params['id'] || '')
+    const r = await submit<{ id: string }, { product: RealProduct }>('data-products.detail', { id })
+    if (r.ok && r.data?.product) {
+      const p = r.data.product
+      product.value = {
+        ...p,
+        category: p.domain === 'city' ? 'smart-city' : p.domain,
+        useCase: p.domain === 'energy' ? 'Smart Energy' : p.domain === 'city' ? 'Smart City' : 'Platform',
+        sourceCount: (p.schema || []).length,  // real column count
+        exportStatus: 'ready',
+      }
+      isLive.value = true
+    } else {
+      error.value = true
+    }
+  } catch { error.value = true }
 }
 
 onMounted(fetchData)
 
-const realSourceCount = computed(() => meterCount.value + pvCount.value + streetlightCount.value + trafficCount.value)
+const realSourceCount = computed(() => product.value?.sourceCount ?? 0)
 
-// Derive product catalogue from real API source counts
-const products = computed(() => [
-  { id: 'dp-001', name: 'Energy Consumption Timeseries', category: 'energy', description: 'Harmonised active and reactive energy consumption timeseries at 15-min granularity.', useCase: 'Smart Energy', semanticScope: 'Energy Metering', version: '2.1.0', sourceCount: meterCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-  { id: 'dp-002', name: 'PV Generation Forecast', category: 'energy', description: 'AI-generated probabilistic photovoltaic generation forecast.', useCase: 'Smart Energy', semanticScope: 'PV Systems', version: '1.3.0', sourceCount: pvCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-  { id: 'dp-003', name: 'Smart Lighting Status', category: 'smart-city', description: 'Real-time operational state of all DALI-controlled luminaires by zone.', useCase: 'Smart City', semanticScope: 'Public Lighting', version: '1.0.1', sourceCount: streetlightCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-  { id: 'dp-004', name: 'Urban Traffic Index', category: 'smart-city', description: 'Aggregated pedestrian and vehicle flow metrics from sensor data fusion.', useCase: 'Smart City', semanticScope: 'Urban Mobility', version: '1.1.0', sourceCount: trafficCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-  { id: 'dp-005', name: 'Energy Flexibility Profile', category: 'energy', description: 'Flexibility envelope of deferrable loads for demand response aggregation.', useCase: 'Smart Energy', semanticScope: 'Flexible Loads', version: '0.9.0', sourceCount: meterCount.value, apiStatus: 'available', exportStatus: 'processing', lastUpdated: new Date().toISOString() },
-  { id: 'dp-006', name: 'Cross-Domain Sustainability KPIs', category: 'cross-domain', description: 'Scope 2 carbon intensity and renewable energy share KPIs for ESG reporting.', useCase: 'Platform', semanticScope: 'Sustainability', version: '0.5.0', sourceCount: meterCount.value + streetlightCount.value, apiStatus: 'available', exportStatus: 'processing', lastUpdated: new Date().toISOString() }
-])
-
-const product = computed(() => products.value.find(p => p.id === route.params['id']) ?? products.value[0])
-
-// Contributing sources derived from real counts
+// Contributing sources: the gold table itself is the single source for this
+// data product (matching the data-products subflow's catalogue model).
 const contributingSources = computed(() => {
   if (!product.value) return []
-  const rows: Array<{ id: string; name: string; protocol: string; status: string; qualityIndicator: number }> = []
-  if ((product.value.category === 'energy' || product.value.category === 'cross-domain') && meterCount.value > 0) {
-    rows.push({ id: 'METER-001', name: `Smart Meters (${meterCount.value})`, protocol: 'Simulation REST', status: 'healthy', qualityIndicator: 99.0 })
-  }
-  if ((product.value.category === 'energy' || product.value.id === 'dp-002') && pvCount.value > 0) {
-    rows.push({ id: 'PV-001', name: `PV Systems (${pvCount.value})`, protocol: 'Simulation REST', status: 'healthy', qualityIndicator: 99.0 })
-  }
-  if ((product.value.category === 'smart-city' || product.value.category === 'cross-domain') && streetlightCount.value > 0) {
-    rows.push({ id: 'LIGHT-001', name: `Streetlights (${streetlightCount.value})`, protocol: 'Simulation REST', status: 'healthy', qualityIndicator: 98.5 })
-  }
-  if (product.value.category === 'smart-city' && trafficCount.value > 0) {
-    rows.push({ id: 'TRAFFIC-001', name: `Traffic Zones (${trafficCount.value})`, protocol: 'Simulation REST', status: 'healthy', qualityIndicator: 97.0 })
-  }
-  return rows
+  return [{
+    id: product.value.table_name,
+    name: `Trino: ${product.value.sourceTable}`,
+    protocol: 'Trino REST (gold layer)',
+    status: product.value.apiStatus === 'available' ? 'healthy' : 'degraded',
+    qualityIndicator: product.value.apiStatus === 'available' ? 99.0 : 0.0,
+  }]
 })
 
-// Audit entries from API call log
-const auditEntries = computed(() => [
-  { id: 'AE-001', timestamp: new Date().toISOString(), type: 'API', action: 'GET /api/sim/meters', actor: 'system', result: meterCount.value > 0 ? 'success' : 'warning', severity: 'info', details: `${meterCount.value} meters loaded` },
-  { id: 'AE-002', timestamp: new Date(Date.now() - 2000).toISOString(), type: 'API', action: 'GET /api/sim/pv-systems', actor: 'system', result: pvCount.value > 0 ? 'success' : 'warning', severity: 'info', details: `${pvCount.value} PV systems loaded` },
-  { id: 'AE-003', timestamp: new Date(Date.now() - 4000).toISOString(), type: 'API', action: 'GET /api/sim/streetlights', actor: 'system', result: streetlightCount.value > 0 ? 'success' : 'warning', severity: 'info', details: `${streetlightCount.value} streetlights loaded` },
-  { id: 'AE-004', timestamp: new Date(Date.now() - 6000).toISOString(), type: 'API', action: 'GET /api/sim/traffic/zones', actor: 'system', result: trafficCount.value > 0 ? 'success' : 'warning', severity: 'info', details: `${trafficCount.value} traffic zones loaded` }
-])
+// Audit entries: the actions that just executed to fetch this product.
+const auditEntries = computed(() => {
+  if (!product.value) return []
+  const now = Date.now()
+  return [
+    { id: 'AE-001', timestamp: new Date(now - 1500).toISOString(), type: 'UIBUILDER', action: `submit('data-products.detail', {id:'${product.value.id}'})`, actor: 'dashboard', result: 'success', severity: 'info', details: `${product.value.sourceCount} columns retrieved from ${product.value.sourceTable}` },
+    { id: 'AE-002', timestamp: new Date(now - 1000).toISOString(), type: 'TRINO',     action: `SELECT * FROM ${product.value.sourceTable} LIMIT 5`,                  actor: 'orce',      result: (product.value.sample?.length ?? 0) > 0 ? 'success' : 'warning', severity: 'info', details: `${product.value.sample?.length ?? 0} sample row(s) retrieved` },
+  ]
+})
 
 const tabs = [
   { label: 'Overview',          icon: 'pi-info-circle' },
@@ -92,138 +88,53 @@ const tabs = [
 
 
 
-// Per-product semantic metadata
-const SEMANTICS: Record<string, {
-  businessMeaning: string; objectRefs: string[]; units: string[];
-  intendedUsage: string; outOfScope: string
-}> = {
-  'dp-001': {
-    businessMeaning: 'Represents harmonised active and reactive energy consumption at 15-minute granularity across all metered sites, aligned to the IEC 61968 CIM energy measurement semantic model.',
-    objectRefs: ['EnergyMeter', 'MeteringPoint', 'UsagePoint', 'ReadingType'],
-    units: ['kWh (active energy)', 'kVArh (reactive energy)', 'kW (active power)', 'V (voltage per phase)', 'A (current per phase)'],
-    intendedUsage: 'Billing reconciliation, demand forecasting, anomaly detection, carbon accounting, and regulatory reporting (ERSE PT).',
-    outOfScope: 'Sub-metering at device level, power quality harmonics analysis, or real-time control setpoints.'
-  },
-  'dp-002': {
-    businessMeaning: 'AI-generated probabilistic photovoltaic generation forecast fused with NWP weather data and on-site irradiance telemetry.',
-    objectRefs: ['PVSystem', 'GeneratingUnit', 'WeatherStation'],
-    units: ['kW (instantaneous power)', 'kWh (period energy)', 'W/m² (irradiance)', '%  (forecast uncertainty CI)'],
-    intendedUsage: 'Intraday energy trading, grid injection planning, storage dispatch scheduling, and site energy self-sufficiency optimisation.',
-    outOfScope: 'Long-range (>48h) forecasts, individual inverter MPPT diagnostics, or cell-level health monitoring.'
-  },
-  'dp-003': {
-    businessMeaning: 'Real-time operational state of all DALI-controlled luminaires by zone, aligned to the IES TM-30 lighting quality semantic model.',
-    objectRefs: ['LightingZone', 'Luminaire', 'DALIController'],
-    units: ['% (dimming level)', 'W (power per luminaire)', 'lux (illuminance estimate)', 'hours (burn time)'],
-    intendedUsage: 'Energy reporting for city lighting assets, fault management, context-aware dimming policy evaluation, and EN 13201-2 compliance checking.',
-    outOfScope: 'Individual lamp photometric measurement, adaptive lighting control commands, or emergency lighting test records.'
-  },
-  'dp-004': {
-    businessMeaning: 'Aggregated pedestrian and vehicle flow metrics derived from computer vision and PIR sensor data fusion across city zones.',
-    objectRefs: ['TrafficSensor', 'MotionSensor', 'Zone', 'RoadSegment'],
-    units: ['count/15min (vehicle flow)', 'count/15min (pedestrian flow)', 'km/h (average speed)', 'level (flow category)'],
-    intendedUsage: 'City mobility planning, signal timing optimisation, event impact assessment, and lighting context adaptation.',
-    outOfScope: 'Individual vehicle tracking, licence plate recognition, or real-time traffic signal control.'
-  },
-  'dp-005': {
-    businessMeaning: 'Characterises the flexibility envelope of deferrable loads for demand response aggregation, combining meter data, device registry, and scheduling constraints.',
-    objectRefs: ['FlexibilityAsset', 'EnergyMeter', 'Consumer', 'Schedule'],
-    units: ['kW (available curtailment)', 'kWh (shiftable energy)', 'minutes (lead time)', 'count (activations/month limit)'],
-    intendedUsage: 'DSO demand response programme participation, flexibility market bidding, and grid congestion management.',
-    outOfScope: 'Real-time curtailment commands, individual appliance scheduling, or consumer personal data.'
-  },
-  'dp-006': {
-    businessMeaning: 'Computed Scope 2 market-based carbon intensity and renewable energy share KPIs for ESG reporting, linked to ENTSO-E grid carbon mix data.',
-    objectRefs: ['Site', 'EnergyMeter', 'GridCarbonFactor', 'EmissionRecord'],
-    units: ['gCO₂/kWh (carbon intensity)', '% (renewable share)', 'tonnes CO₂ (periodic total)', 'MWh (green energy)'],
-    intendedUsage: 'Corporate ESG reporting (GHG Protocol Scope 2), EU Taxonomy alignment, CSRD compliance, and sustainability dashboards.',
-    outOfScope: 'Scope 1 (direct combustion) emissions, upstream Scope 3 supply chain emissions, or facility-level lifecycle assessment.'
+// Semantic metadata derived from the real product. The description is the
+// curated overlay (data-products.json's OVERLAY); column names form the units
+// list; objectRefs reduce to the table name.
+const semantics = computed(() => {
+  const p = product.value
+  if (!p) return { businessMeaning: '', objectRefs: [], units: [], intendedUsage: '', outOfScope: '' }
+  return {
+    businessMeaning: p.description ?? `Gold-layer aggregate stored in ${p.sourceTable}.`,
+    objectRefs: [p.table_name],
+    units: (p.schema || []).map(c => `${c.column} (${c.type})`),
+    intendedUsage: p.semanticScope ? `Semantic scope: ${p.semanticScope}.` : 'Semantic scope not declared.',
+    outOfScope: 'Per-row provenance, real-time deltas (the gold layer is hourly/daily aggregated).',
   }
-}
-
-const semantics = computed(() => SEMANTICS[product.value?.id ?? 'dp-001'] ?? SEMANTICS['dp-001'])
-
-// Per-product JSON schema
-const SCHEMAS: Record<string, object> = {
-  'dp-001': {
-    $schema: 'https://json-schema.org/draft/2020-12/schema',
-    $id: 'urn:facis:schema:energy-consumption-timeseries:v2.1.0',
-    title: 'EnergyConsumptionTimeseries',
-    type: 'object',
-    required: ['meteringPointId', 'periodStart', 'periodEnd', 'readings'],
-    properties: {
-      meteringPointId: { type: 'string', description: 'FACIS metering point identifier' },
-      siteId:          { type: 'string', description: 'Site reference' },
-      tariffZone:      { type: 'string', enum: ['peak', 'off-peak', 'super-off-peak'] },
-      periodStart:     { type: 'string', format: 'date-time' },
-      periodEnd:       { type: 'string', format: 'date-time' },
-      resolution:      { type: 'string', enum: ['PT15M', 'PT1H', 'P1D'] },
-      readings: {
-        type: 'array',
-        items: {
-          type: 'object',
-          required: ['timestamp', 'activeEnergy_kWh', 'activePower_kW'],
-          properties: {
-            timestamp:           { type: 'string', format: 'date-time' },
-            activeEnergy_kWh:    { type: 'number', minimum: 0 },
-            reactiveEnergy_kVArh:{ type: 'number' },
-            activePower_kW:      { type: 'number', minimum: 0 },
-            powerFactor:         { type: 'number', minimum: 0, maximum: 1 },
-            voltage_L1:          { type: 'number' },
-            voltage_L2:          { type: 'number' },
-            voltage_L3:          { type: 'number' },
-            dataQuality:         { type: 'number', minimum: 0, maximum: 100 }
-          }
-        }
-      },
-      carbonIntensity_gCO2_kWh: { type: 'number', description: 'Grid carbon intensity at time of consumption' }
-    }
-  }
-}
-
-const schema = computed(() => {
-  const s = SCHEMAS[product.value?.id ?? '']
-  return JSON.stringify(s ?? SCHEMAS['dp-001'], null, 2)
 })
 
-// Sample records
-function generateSampleRecord(productId: string): object[] {
-  if (productId === 'dp-001') {
-    return [
-      {
-        meteringPointId: 'MP-SITE-A-001',
-        siteId: 'SITE-A',
-        tariffZone: 'peak',
-        periodStart: '2026-04-05T08:00:00Z',
-        periodEnd: '2026-04-05T08:15:00Z',
-        resolution: 'PT15M',
-        readings: [
-          { timestamp: '2026-04-05T08:00:00Z', activeEnergy_kWh: 45.1, activePower_kW: 180.4, powerFactor: 0.943, voltage_L1: 229.8, dataQuality: 99.2 }
-        ],
-        carbonIntensity_gCO2_kWh: 312.4
-      },
-      {
-        meteringPointId: 'MP-SITE-B-001',
-        siteId: 'SITE-B',
-        tariffZone: 'off-peak',
-        periodStart: '2026-04-05T02:00:00Z',
-        periodEnd: '2026-04-05T02:15:00Z',
-        resolution: 'PT15M',
-        readings: [
-          { timestamp: '2026-04-05T02:00:00Z', activeEnergy_kWh: 11.3, activePower_kW: 45.2, powerFactor: 0.881, voltage_L1: 230.1, dataQuality: 97.4 }
-        ],
-        carbonIntensity_gCO2_kWh: 204.1
-      }
-    ]
+// JSON Schema derived from the real Trino column list (product.schema).
+const schema = computed(() => {
+  const p = product.value
+  if (!p) return '{}'
+  const properties: Record<string, { type: string; description: string }> = {}
+  const required: string[] = []
+  for (const col of p.schema || []) {
+    const jsonType = /int|bigint|smallint|tinyint|decimal|double|real|float|number/i.test(col.type) ? 'number'
+                  : /bool/i.test(col.type) ? 'boolean'
+                  : /timestamp|date|time/i.test(col.type) ? 'string'
+                  : 'string'
+    properties[col.column] = { type: jsonType, description: `Trino type: ${col.type}` }
+    if (!col.nullable) required.push(col.column)
   }
-  return [{ id: 'sample-001', timestamp: new Date().toISOString(), placeholder: 'Sample record for ' + productId }]
-}
+  return JSON.stringify({
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: `urn:facis:gold:${p.table_name}:${p.version}`,
+    title: p.name,
+    type: 'object',
+    required,
+    properties,
+  }, null, 2)
+})
 
-const sampleRecords = computed(() => generateSampleRecord(product.value?.id ?? 'dp-001'))
+// Sample records straight from Trino's LIMIT 5 (product.sample). No fallback.
+const sampleRecords = computed<Record<string, unknown>[]>(() => product.value?.sample ?? [])
 const formattedSamples = computed(() => JSON.stringify(sampleRecords.value, null, 2))
 
-// API endpoint
-const apiEndpoint = computed(() => `https://api.facis.local/v2/data-products/${product.value?.id}/timeseries`)
+// API endpoint: real path that the deploy-time UIBUILDER routes through.
+const apiEndpoint = computed(() => product.value
+  ? `submit('data-products.detail', { id: '${product.value.id}' })  // backed by ${product.value.sourceTable}`
+  : '')
 
 const copied = ref(false)
 async function copyEndpoint(): Promise<void> {
@@ -256,7 +167,7 @@ function categoryColor(cat: string): string {
     </div>
     <PageHeader
       :title="product?.name ?? 'Data Product'"
-      :subtitle="product?.description"
+      :subtitle="product?.description ?? undefined"
       :breadcrumbs="[{ label: 'Data Products', to: '/data-products/all' }, { label: product?.name ?? '' }]"
     >
       <template #actions>
