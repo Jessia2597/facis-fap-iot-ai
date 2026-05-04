@@ -54,21 +54,20 @@ async function simGet<T>(path: string): Promise<T | null> {
 }
 
 // Routes whose ORCE flows enforce caller authorization via Keycloak userinfo
-// (admin proxy, schemas, etc.). Forwards the user's current access token.
-async function authedGet<T>(path: string): Promise<T | null> {
+// (admin proxy). Wraps uib() with the user's current access token attached
+// to msg._req.payload.authToken — the FAP §9 way to carry credentials over
+// UIBUILDER (no HTTP headers available on a WebSocket frame).
+async function uibAuthed<T>(action: string, payload: Record<string, unknown> = {}): Promise<T | null> {
   try {
     const { getAccessToken } = await import('@/auth')
     const token = getAccessToken()
-    const res = await fetch(`${SIM_BASE}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    })
-    if (!res.ok) {
-      console.warn(`[api] AUTHED ${path} → HTTP ${res.status}`)
+    if (!token) {
+      console.warn(`[api] UIB-AUTHED ${action} skipped: no access token`)
       return null
     }
-    return (await res.json()) as T
+    return uib<T>(action, { ...payload, authToken: token })
   } catch (err) {
-    console.warn(`[api] AUTHED ${path} failed:`, err)
+    console.warn(`[api] UIB-AUTHED ${action} failed:`, err)
     return null
   }
 }
@@ -820,7 +819,7 @@ export interface AdminUser {
   federationLink: string | null
 }
 export function getAdminUsers(): Promise<{ users: AdminUser[]; count: number } | null> {
-  return authedGet('/admin/users')
+  return uibAuthed('admin.users')
 }
 
 export interface AdminRole {
@@ -830,7 +829,7 @@ export interface AdminRole {
   member_count: number | null
 }
 export function getAdminRoles(): Promise<{ roles: AdminRole[]; count: number } | null> {
-  return authedGet('/admin/roles')
+  return uibAuthed('admin.roles')
 }
 
 export interface AdminAccessEvent {
@@ -843,5 +842,5 @@ export interface AdminAccessEvent {
   details: Record<string, unknown> | null
 }
 export function getAdminAccess(): Promise<{ events: AdminAccessEvent[]; count: number } | null> {
-  return authedGet('/admin/access')
+  return uibAuthed('admin.access')
 }
