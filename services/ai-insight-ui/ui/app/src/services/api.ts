@@ -795,7 +795,7 @@ export interface SchemaTable {
   table: string
 }
 export function getSchemas(): Promise<{ tables: SchemaTable[]; count: number } | null> {
-  return simGet('/schemas')
+  return uib('schemas.list')
 }
 
 export interface SchemaColumn {
@@ -805,7 +805,7 @@ export interface SchemaColumn {
   position: number
 }
 export function describeSchemaTable(catalog: string, schema: string, table: string): Promise<{ columns: SchemaColumn[]; count: number } | null> {
-  return simGet(`/schemas/${encodeURIComponent(catalog)}/${encodeURIComponent(schema)}/${encodeURIComponent(table)}`)
+  return uib('schemas.describe', { catalog, schema, table })
 }
 
 export interface AdminUser {
