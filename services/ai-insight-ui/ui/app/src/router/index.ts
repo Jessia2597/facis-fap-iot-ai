@@ -121,10 +121,15 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Analytics', requiresAuth: true, roles: ['viewer', 'analyst', 'operator', 'admin'] },
     children: [
       { path: '', redirect: 'overview' },
-      { path: 'overview', name: 'AnalyticsOverview', component: () => import('@/views/analytics/AnalyticsOverviewView.vue'), meta: { title: 'Analytics Overview' } },
-      // Trends / Correlations / Anomalies / Recommendations sub-tabs removed:
-      // they all required /history endpoints that don't exist. The Overview
-      // already shows the LLM-narrated energy/anomaly/city insight cards.
+      { path: 'overview',         name: 'AnalyticsOverview',        component: () => import('@/views/analytics/AnalyticsOverviewView.vue'),  meta: { title: 'Analytics Overview' } },
+      // Trends / Correlations / Anomalies / Recommendations restored Phase 5.3.
+      // Backed by the /api/v1/{meters,pv,weather}/:id/history synthesisers in
+      // services/ai-insight-ui/orce/flows/analytics.json plus FAP analytics.*
+      // actions for aggregated views.
+      { path: 'trends',          name: 'AnalyticsTrends',          component: () => import('@/views/analytics/TrendsView.vue'),          meta: { title: 'Trends' } },
+      { path: 'correlations',    name: 'AnalyticsCorrelations',    component: () => import('@/views/analytics/CorrelationsView.vue'),    meta: { title: 'Correlations' } },
+      { path: 'anomalies',       name: 'AnalyticsAnomalies',       component: () => import('@/views/analytics/AnomaliesView.vue'),       meta: { title: 'Anomalies' } },
+      { path: 'recommendations', name: 'AnalyticsRecommendations', component: () => import('@/views/analytics/RecommendationsView.vue'), meta: { title: 'Recommendations' } }
     ]
   },
 

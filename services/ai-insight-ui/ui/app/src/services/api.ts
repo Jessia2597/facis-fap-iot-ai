@@ -373,8 +373,9 @@ export async function getWeatherCurrent(stationId: string): Promise<SimWeatherCu
   return { timestamp: raw.timestamp, conditions: raw.conditions }
 }
 
-export function getWeatherHistory(_stationId: string): Promise<SimWeatherHistory | null> {
-  return Promise.resolve(null)  // no /history endpoint
+export function getWeatherHistory(stationId: string): Promise<SimWeatherHistory | null> {
+  // /history endpoint synthesised by services/ai-insight-ui/orce/flows/analytics.json
+  return simGet<SimWeatherHistory>(`/weather/${encodeURIComponent(stationId)}/history`)
 }
 
 export async function getPriceCurrent(): Promise<SimPriceCurrent | null> {
@@ -419,8 +420,9 @@ export async function getPVCurrent(systemId: string): Promise<SimPVCurrent | nul
   }
 }
 
-export function getPVHistory(_systemId: string): Promise<SimPVHistory | null> {
-  return Promise.resolve(null)
+export function getPVHistory(systemId: string): Promise<SimPVHistory | null> {
+  // /history endpoint synthesised by services/ai-insight-ui/orce/flows/analytics.json
+  return simGet<SimPVHistory>(`/pv/${encodeURIComponent(systemId)}/history`)
 }
 
 export async function getLoads(): Promise<SimLoadsResponse | null> {
