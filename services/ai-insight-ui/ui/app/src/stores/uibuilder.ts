@@ -94,11 +94,22 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
           connected.value = val
         })
 
-        // Listen to all incoming messages and dispatch to handlers + pending
-        // resolvers. We use onChange('msg', …) rather than onTopic('*', …)
-        // because FAP §9 envelopes carry no `topic` field and onTopic filters
-        // can fail to match topic-less messages on some UIBUILDER versions.
-        // onChange('msg') fires for every inbound frame regardless of shape.
+        // We've observed in practice (UIBUILDER v7.5.0 against this Node-RED
+        // setup) that `_socket.on('uiBuilder', _stdMsgFromServer)` is
+        // registered correctly but does NOT fire when standard messages
+        // arrive — even though the server demonstrably emits them, onAny()
+        // sees them, and the control listener on 'uiBuilderControl' does
+        // fire. The result is `uibuilder.msgsReceived` stays at 0 forever
+        // and `uib.onChange('msg', …)` never triggers.
+        //
+        // Workaround: attach our own direct listener on the socket for the
+        // 'uiBuilder' channel and route to `_dispatch`. This bypasses the
+        // lib's broken std-msg path entirely. The lib's onChange('msg', …)
+        // wiring is left as a redundant secondary path in case it ever
+        // recovers, but we no longer rely on it for delivery.
+        if (uib._socket) {
+          uib._socket.on('uiBuilder', (msg: UibMessage) => _dispatch(msg))
+        }
         uib.onChange('msg', (msg: UibMessage) => {
           _dispatch(msg)
         })
