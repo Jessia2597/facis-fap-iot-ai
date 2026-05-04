@@ -1,0 +1,41 @@
+[
+  {
+    "id": "tab_aiui_data_products",
+    "type": "tab",
+    "label": "AI Insight UI — Data Products",
+    "disabled": false,
+    "info": "Data Products subflow per FAP §10. Exposes the data-product catalogue over UIBUILDER for future consumers. The restored Vue views currently derive products from simulation feeds (meters, PV, streetlights, traffic zones) directly via simGet helpers — this subflow provides a parallel FAP-aligned API for migrations.\n\nActions:\n  data-products.list             — full catalogue\n  data-products.detail (id)      — single product manifest\n  data-products.energy.list      — energy domain only\n  data-products.city.list        — city domain only\n\nProducts are synthesised from globally known feed presence. When the gold-layer\n`data_products` table is available in Trino, replace the synthesizer below with\na Trino query."
+  },
+  {
+    "id": "link-from-ui-data-products",
+    "type": "link in",
+    "z": "tab_aiui_data_products",
+    "name": "← from UI (data-products)",
+    "links": ["link-to-data-products"],
+    "x": 160,
+    "y": 100,
+    "wires": [["fn_data_products_route"]]
+  },
+  {
+    "id": "fn_data_products_route",
+    "type": "function",
+    "z": "tab_aiui_data_products",
+    "name": "data-products.* router",
+    "func": "// Synthesised catalogue — flat list of canonical FACIS data products.\n// Each entry mirrors the columns the gold-layer `data_products` table is\n// expected to expose. Replace with a Trino query once the table exists.\nconst now = new Date().toISOString();\nconst CATALOGUE = [\n    { id: 'dp-energy-meter-readings',  domain: 'energy', name: 'Smart Meter Readings',     version: '2.1.0', semanticScope: 'energy.metering.harmonised.v2', sourceFeed: 'latest_meters',    apiStatus: 'available', lastUpdated: now, description: 'Harmonised AMR meter readings across all managed sites.' },\n    { id: 'dp-energy-pv-output',       domain: 'energy', name: 'PV System Output',         version: '1.4.0', semanticScope: 'energy.generation.pv.v1',     sourceFeed: 'latest_pv',        apiStatus: 'available', lastUpdated: now, description: 'Per-system PV generation, irradiance, and inverter status.' },\n    { id: 'dp-energy-loads',           domain: 'energy', name: 'Consumer Loads',           version: '1.2.0', semanticScope: 'energy.loads.v1',             sourceFeed: 'latest_consumers', apiStatus: 'available', lastUpdated: now, description: 'Aggregated consumer device load profiles.' },\n    { id: 'dp-city-lighting',          domain: 'city',   name: 'Smart Lighting Status',    version: '1.0.1', semanticScope: 'city.lighting.dali.v1',       sourceFeed: 'streetlights',     apiStatus: 'available', lastUpdated: now, description: 'Per-zone aggregated streetlight dimming + power telemetry.' },\n    { id: 'dp-city-traffic',           domain: 'city',   name: 'Traffic Zone Index',       version: '1.0.0', semanticScope: 'city.traffic.zone-index.v1',  sourceFeed: 'traffic',          apiStatus: 'available', lastUpdated: now, description: 'Per-zone traffic index normalised 0..1.' },\n    { id: 'dp-city-events',            domain: 'city',   name: 'City Events Stream',       version: '1.0.0', semanticScope: 'city.events.v1',              sourceFeed: 'events',           apiStatus: 'available', lastUpdated: now, description: 'Active and recent city-level events keyed by zone.' },\n    { id: 'dp-city-weather',           domain: 'city',   name: 'City Weather Snapshot',    version: '1.0.0', semanticScope: 'city.weather.fog-visibility.v1','sourceFeed': 'city-weather',  apiStatus: 'available', lastUpdated: now, description: 'Fog index, visibility, sunrise/sunset for the operational area.' }\n];\n\nconst action = msg._req && msg._req.action;\nconst payload = (msg._req && msg._req.payload) || {};\n\nif (action === 'data-products.list') {\n    msg._result = { ok: true, data: { products: CATALOGUE, count: CATALOGUE.length } };\n    return msg;\n}\nif (action === 'data-products.energy.list') {\n    const products = CATALOGUE.filter(p => p.domain === 'energy');\n    msg._result = { ok: true, data: { products, count: products.length } };\n    return msg;\n}\nif (action === 'data-products.city.list') {\n    const products = CATALOGUE.filter(p => p.domain === 'city');\n    msg._result = { ok: true, data: { products, count: products.length } };\n    return msg;\n}\nif (action === 'data-products.detail') {\n    const id = payload.id;\n    if (!id) {\n        msg._result = { ok: false, errors: { fields: { id: 'required' } } };\n        return msg;\n    }\n    const found = CATALOGUE.find(p => p.id === id);\n    if (!found) {\n        msg._result = { ok: false, errors: { action: 'product not found' } };\n        return msg;\n    }\n    msg._result = { ok: true, data: { product: found } };\n    return msg;\n}\n\nmsg._result = { ok: false, errors: { action: 'data-products: unknown action: ' + action } };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 460,
+    "y": 100,
+    "wires": [["link-response-data-products"]]
+  },
+  {
+    "id": "link-response-data-products",
+    "type": "link out",
+    "z": "tab_aiui_data_products",
+    "name": "→ Response (data-products)",
+    "mode": "link",
+    "links": ["link-from-response"],
+    "x": 760,
+    "y": 100,
+    "wires": []
+  }
+]

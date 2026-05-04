@@ -94,10 +94,24 @@ const routes: RouteRecordRaw[] = [
     ]
   },
 
-  // ─── Data Products section removed: no /api/v1/data-products backend exists.
-  //     Smart-energy and smart-city use cases keep their own per-domain views.
-  //     If the DSP catalogue is ever exposed as /api/v1/data-products, restore
-  //     this block and wire the view to that endpoint.
+  // ─── Data Products — restored Phase 5.2 (PR-5). The views derive data
+  //     products from existing simulation feeds (meters, PV, streetlights,
+  //     traffic zones); a FAP-aligned data-products.* subflow at
+  //     services/ai-insight-ui/orce/flows/data-products.json exposes the
+  //     same catalogue over UIBUILDER for future consumers.
+  {
+    path: '/data-products',
+    name: 'DataProducts',
+    component: () => import('@/views/DataProductsView.vue'),
+    meta: { title: 'Data Products', requiresAuth: true, roles: ['viewer', 'analyst', 'operator', 'admin'] },
+    children: [
+      { path: '',         redirect: 'all' },
+      { path: 'all',      name: 'AllProducts',    component: () => import('@/views/data-products/AllProductsView.vue'),    meta: { title: 'All Data Products' } },
+      { path: 'energy',   name: 'EnergyProducts', component: () => import('@/views/data-products/EnergyProductsView.vue'), meta: { title: 'Energy Data Products' } },
+      { path: 'city',     name: 'CityProducts',   component: () => import('@/views/data-products/CityProductsView.vue'),   meta: { title: 'City Data Products' } },
+      { path: ':id',      name: 'ProductDetail',  component: () => import('@/views/data-products/ProductDetailView.vue'),  meta: { title: 'Product Detail' } }
+    ]
+  },
 
   // ─── Analytics ─────────────────────────────────────────────────────────────
   {
