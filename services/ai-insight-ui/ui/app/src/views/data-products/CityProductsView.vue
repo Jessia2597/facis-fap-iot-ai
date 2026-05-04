@@ -5,41 +5,35 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getStreetlights, getTrafficZones } from '@/services/api'
+import { submit } from '@/services/transport'
+
+interface RealProduct {
+  id: string; table_name: string; name: string; domain: string;
+  semanticScope: string | null; description: string | null;
+  version: string; apiStatus: string; lastUpdated: string; sourceTable: string
+}
 
 const router = useRouter()
 const loading = ref(true)
 const error = ref(false)
-const streetlightCount = ref(0)
-const trafficCount = ref(0)
+const products = ref<Array<RealProduct & { useCase: string; sourceCount: number; exportStatus: string }>>([])
 
 async function fetchData(): Promise<void> {
-  loading.value = true
-  error.value = false
-  const [lights, traffic] = await Promise.all([getStreetlights(), getTrafficZones()])
-
-  if (!lights && !traffic) {
-    error.value = true
-    loading.value = false
-    return
-  }
-
-  streetlightCount.value = lights?.count ?? 0
-  trafficCount.value = traffic?.count ?? 0
-  loading.value = false
+  loading.value = true; error.value = false
+  try {
+    const r = await submit<unknown, { products: RealProduct[]; count: number }>('data-products.city.list', {})
+    if (r.ok && r.data?.products) {
+      products.value = r.data.products.map(p => ({ ...p, useCase: 'Smart City', sourceCount: 1, exportStatus: 'ready' }))
+    } else { error.value = true }
+  } catch { error.value = true } finally { loading.value = false }
 }
 
 onMounted(fetchData)
 
-const products = computed(() => [
-  { id: 'dp-003', name: 'Smart Lighting Status', useCase: 'Smart City', semanticScope: 'Public Lighting', version: '1.0.1', sourceCount: streetlightCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-  { id: 'dp-004', name: 'Urban Traffic Index', useCase: 'Smart City', semanticScope: 'Urban Mobility', version: '1.1.0', sourceCount: trafficCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() }
-].filter(p => p.sourceCount > 0))
-
 const stats = computed(() => ({
   total: products.value.length,
   available: products.value.filter(p => p.apiStatus === 'available').length,
-  totalSources: products.value.reduce((a, p) => a + p.sourceCount, 0)
+  totalSources: products.value.length
 }))
 
 const columns = [
