@@ -1,0 +1,319 @@
+[
+  {
+    "id": "tab_aiui_smart_city",
+    "type": "tab",
+    "label": "AI Insight UI — Smart City",
+    "disabled": false,
+    "info": "Smart City data backend for the restored Smart City views.\n\nExposes both:\n  - Simulation-snapshot HTTP endpoints (/api/v1/streetlights, /traffic, /events,\n    /city-weather and per-id /current and /history variants) consumed via\n    api.ts's simGet helpers.\n  - FAP §9 actions (smart-city.zones.list, smart-city.streetlights.list, etc.)\n    routed by the dispatcher's link-to-smart-city for FAP-aligned consumers.\n\nIMPORTANT: data is SYNTHESIZED at the orce layer (deterministic from time-of-day\nand entity id). The simulation engine does not yet emit streetlight/traffic/\ncity-event/city-weather feeds — adding those is a follow-up for the simulation\nteam at services/simulation/. When real feeds land, the synthesizer here can be\nreplaced with `global.get('latest_streetlights')` etc.\n\nBase entities (deterministic):\n  3 zones: zone-center, zone-north, zone-south\n  6 streetlights: 2 per zone\n  Hour-of-day governs dimming (night → 100%, day → 0%, dusk/dawn → 50%) and\n  traffic index (rush hour peaks), and selects events deterministically."
+  },
+
+  {
+    "id": "fn_smart_city_helpers",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "synthesizer (template)",
+    "func": "// Reference synthesizer kept here so other function nodes can copy the helpers.\n// Node-RED function nodes can't call each other directly, so each endpoint\n// inlines the small helpers below. This node is documentation only.\nreturn null;\n",
+    "outputs": 1,
+    "x": 200,
+    "y": 60,
+    "wires": [[]]
+  },
+
+  {
+    "id": "node_streetlights_list_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /api/v1/streetlights",
+    "url": "/api/v1/streetlights",
+    "method": "get",
+    "x": 200,
+    "y": 140,
+    "wires": [["fn_streetlights_list"]]
+  },
+  {
+    "id": "fn_streetlights_list",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "streetlights list",
+    "func": "const ZONES = ['zone-center', 'zone-north', 'zone-south'];\nconst lights = [];\nfor (let z = 0; z < ZONES.length; z++) {\n    for (let i = 0; i < 2; i++) {\n        lights.push({\n            light_id: `sl-${ZONES[z].split('-')[1]}-${i+1}`,\n            zone_id: ZONES[z],\n            rated_power_w: 75\n        });\n    }\n}\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = { streetlights: lights, count: lights.length };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 460,
+    "y": 140,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_streetlight_current_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /streetlights/:id/current",
+    "url": "/api/v1/streetlights/:light_id/current",
+    "method": "get",
+    "x": 220,
+    "y": 200,
+    "wires": [["fn_streetlight_current"]]
+  },
+  {
+    "id": "fn_streetlight_current",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "streetlight current",
+    "func": "function dimAt(date) {\n    const h = date.getHours() + date.getMinutes() / 60;\n    if (h < 5.5 || h > 19.5) return 100;\n    if (h < 7.0 || h > 18.0) return 50;\n    return 0;\n}\nconst lightId = (msg.req && msg.req.params && msg.req.params.light_id) || 'sl-unknown';\n// Derive zone from id (sl-<zonename>-<n>)\nconst parts = lightId.split('-');\nconst zone_id = parts.length >= 2 ? `zone-${parts[1]}` : 'zone-unknown';\nconst now = new Date();\nconst dim = dimAt(now);\nconst rated = 75;\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = {\n    timestamp: now.toISOString(),\n    light_id: lightId,\n    zone_id,\n    dimming_level_pct: dim,\n    power_w: Math.round(rated * (dim / 100))\n};\nreturn msg;\n",
+    "outputs": 1,
+    "x": 480,
+    "y": 200,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_streetlight_history_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /streetlights/:id/history",
+    "url": "/api/v1/streetlights/:light_id/history",
+    "method": "get",
+    "x": 220,
+    "y": 260,
+    "wires": [["fn_streetlight_history"]]
+  },
+  {
+    "id": "fn_streetlight_history",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "streetlight history (24h)",
+    "func": "function dimAt(date) {\n    const h = date.getHours() + date.getMinutes() / 60;\n    if (h < 5.5 || h > 19.5) return 100;\n    if (h < 7.0 || h > 18.0) return 50;\n    return 0;\n}\nconst lightId = (msg.req && msg.req.params && msg.req.params.light_id) || 'sl-unknown';\nconst parts = lightId.split('-');\nconst zone_id = parts.length >= 2 ? `zone-${parts[1]}` : 'zone-unknown';\nconst rated = 75;\nconst readings = [];\nconst now = Date.now();\nfor (let i = 23; i >= 0; i--) {\n    const t = new Date(now - i * 3600_000);\n    const dim = dimAt(t);\n    readings.push({\n        timestamp: t.toISOString(),\n        zone_id,\n        dimming_level_pct: dim,\n        power_w: Math.round(rated * (dim / 100))\n    });\n}\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = { light_id: lightId, readings };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 500,
+    "y": 260,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_traffic_list_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /api/v1/traffic",
+    "url": "/api/v1/traffic",
+    "method": "get",
+    "x": 200,
+    "y": 340,
+    "wires": [["fn_traffic_list"]]
+  },
+  {
+    "id": "fn_traffic_list",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "traffic zones list",
+    "func": "const ZONES = ['zone-center', 'zone-north', 'zone-south'];\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = { zones: ZONES.map(zone_id => ({ zone_id })), count: ZONES.length };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 440,
+    "y": 340,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_traffic_current_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /traffic/:id/current",
+    "url": "/api/v1/traffic/:zone_id/current",
+    "method": "get",
+    "x": 200,
+    "y": 400,
+    "wires": [["fn_traffic_current"]]
+  },
+  {
+    "id": "fn_traffic_current",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "traffic current",
+    "func": "function trafficAt(date) {\n    const h = date.getHours() + date.getMinutes() / 60;\n    // Morning rush 7-9, evening rush 16-19, midday plateau, night low.\n    if ((h >= 7 && h <= 9) || (h >= 16 && h <= 19)) return 0.85 + (Math.sin(h) * 0.05);\n    if (h >= 10 && h <= 15) return 0.45;\n    if (h >= 22 || h <= 5) return 0.10;\n    return 0.30;\n}\nconst zone_id = (msg.req && msg.req.params && msg.req.params.zone_id) || 'zone-unknown';\nconst now = new Date();\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = {\n    timestamp: now.toISOString(),\n    zone_id,\n    traffic_index: Math.round(trafficAt(now) * 100) / 100\n};\nreturn msg;\n",
+    "outputs": 1,
+    "x": 460,
+    "y": 400,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_traffic_history_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /traffic/:id/history",
+    "url": "/api/v1/traffic/:zone_id/history",
+    "method": "get",
+    "x": 200,
+    "y": 460,
+    "wires": [["fn_traffic_history"]]
+  },
+  {
+    "id": "fn_traffic_history",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "traffic history (24h)",
+    "func": "function trafficAt(date) {\n    const h = date.getHours() + date.getMinutes() / 60;\n    if ((h >= 7 && h <= 9) || (h >= 16 && h <= 19)) return 0.85 + (Math.sin(h) * 0.05);\n    if (h >= 10 && h <= 15) return 0.45;\n    if (h >= 22 || h <= 5) return 0.10;\n    return 0.30;\n}\nconst zone_id = (msg.req && msg.req.params && msg.req.params.zone_id) || 'zone-unknown';\nconst readings = [];\nconst now = Date.now();\nfor (let i = 23; i >= 0; i--) {\n    const t = new Date(now - i * 3600_000);\n    readings.push({ timestamp: t.toISOString(), traffic_index: Math.round(trafficAt(t) * 100) / 100 });\n}\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = { zone_id, readings };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 460,
+    "y": 460,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_events_list_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /api/v1/events",
+    "url": "/api/v1/events",
+    "method": "get",
+    "x": 200,
+    "y": 540,
+    "wires": [["fn_events_list"]]
+  },
+  {
+    "id": "fn_events_list",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "city events zones list",
+    "func": "const ZONES = ['zone-center', 'zone-north', 'zone-south'];\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = { zones: ZONES.map(zone_id => ({ zone_id })), count: ZONES.length };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 460,
+    "y": 540,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_event_current_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /events/:id/current",
+    "url": "/api/v1/events/:zone_id/current",
+    "method": "get",
+    "x": 200,
+    "y": 600,
+    "wires": [["fn_event_current"]]
+  },
+  {
+    "id": "fn_event_current",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "event current (rush-hour congestion)",
+    "func": "function eventAt(date) {\n    const h = date.getHours();\n    if (h >= 7 && h <= 9)  return { event_type: 'congestion',  severity: 'medium', active: true };\n    if (h >= 16 && h <= 19) return { event_type: 'congestion', severity: 'high',   active: true };\n    if (h >= 22 || h <= 5)  return { event_type: 'quiet',      severity: 'low',    active: false };\n    return { event_type: 'normal', severity: 'low', active: false };\n}\nconst zone_id = (msg.req && msg.req.params && msg.req.params.zone_id) || 'zone-unknown';\nconst now = new Date();\nconst e = eventAt(now);\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = { timestamp: now.toISOString(), zone_id, ...e };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 480,
+    "y": 600,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_event_history_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /events/:id/history",
+    "url": "/api/v1/events/:zone_id/history",
+    "method": "get",
+    "x": 200,
+    "y": 660,
+    "wires": [["fn_event_history"]]
+  },
+  {
+    "id": "fn_event_history",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "event history (24h)",
+    "func": "function eventAt(date) {\n    const h = date.getHours();\n    if (h >= 7 && h <= 9)  return { event_type: 'congestion',  severity: 'medium', active: true };\n    if (h >= 16 && h <= 19) return { event_type: 'congestion', severity: 'high',   active: true };\n    if (h >= 22 || h <= 5)  return { event_type: 'quiet',      severity: 'low',    active: false };\n    return { event_type: 'normal', severity: 'low', active: false };\n}\nconst zone_id = (msg.req && msg.req.params && msg.req.params.zone_id) || 'zone-unknown';\nconst readings = [];\nconst now = Date.now();\nfor (let i = 23; i >= 0; i--) {\n    const t = new Date(now - i * 3600_000);\n    readings.push({ timestamp: t.toISOString(), ...eventAt(t) });\n}\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = { zone_id, readings };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 460,
+    "y": 660,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_city_weather_current_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /city-weather/current",
+    "url": "/api/v1/city-weather/current",
+    "method": "get",
+    "x": 220,
+    "y": 740,
+    "wires": [["fn_city_weather_current"]]
+  },
+  {
+    "id": "fn_city_weather_current",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "city weather current",
+    "func": "function fogAt(date) {\n    const h = date.getHours();\n    if (h >= 4 && h <= 7) return 0.6;\n    if (h >= 18 && h <= 21) return 0.3;\n    return 0.1;\n}\nfunction visibilityFromFog(fog) { return Math.round(10000 * (1 - fog * 0.8)); }\nconst now = new Date();\nconst fog = fogAt(now);\n// Approximate sunrise/sunset for a mid-latitude city.\nconst d = new Date(now); d.setHours(6, 30, 0, 0);\nconst sunrise = d.toISOString();\nd.setHours(19, 30, 0, 0);\nconst sunset = d.toISOString();\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = {\n    timestamp: now.toISOString(),\n    fog_index: Math.round(fog * 100) / 100,\n    visibility: visibilityFromFog(fog),\n    sunrise_time: sunrise,\n    sunset_time: sunset\n};\nreturn msg;\n",
+    "outputs": 1,
+    "x": 480,
+    "y": 740,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_city_weather_history_in",
+    "type": "http in",
+    "z": "tab_aiui_smart_city",
+    "name": "GET /city-weather/history",
+    "url": "/api/v1/city-weather/history",
+    "method": "get",
+    "x": 220,
+    "y": 800,
+    "wires": [["fn_city_weather_history"]]
+  },
+  {
+    "id": "fn_city_weather_history",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "city weather history (24h)",
+    "func": "function fogAt(date) {\n    const h = date.getHours();\n    if (h >= 4 && h <= 7) return 0.6;\n    if (h >= 18 && h <= 21) return 0.3;\n    return 0.1;\n}\nfunction visibilityFromFog(fog) { return Math.round(10000 * (1 - fog * 0.8)); }\nconst readings = [];\nconst now = Date.now();\nfor (let i = 23; i >= 0; i--) {\n    const t = new Date(now - i * 3600_000);\n    const fog = fogAt(t);\n    const sr = new Date(t); sr.setHours(6, 30, 0, 0);\n    const ss = new Date(t); ss.setHours(19, 30, 0, 0);\n    readings.push({\n        timestamp: t.toISOString(),\n        fog_index: Math.round(fog * 100) / 100,\n        visibility: visibilityFromFog(fog),\n        sunrise_time: sr.toISOString(),\n        sunset_time: ss.toISOString()\n    });\n}\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.statusCode = 200;\nmsg.payload = { readings };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 480,
+    "y": 800,
+    "wires": [["node_smart_city_resp"]]
+  },
+
+  {
+    "id": "node_smart_city_resp",
+    "type": "http response",
+    "z": "tab_aiui_smart_city",
+    "name": "200 JSON",
+    "statusCode": "",
+    "headers": {},
+    "x": 800,
+    "y": 460,
+    "wires": []
+  },
+
+  {
+    "id": "link-from-ui-smart-city",
+    "type": "link in",
+    "z": "tab_aiui_smart_city",
+    "name": "← from UI (smart-city FAP)",
+    "links": ["link-to-smart-city"],
+    "x": 160,
+    "y": 880,
+    "wires": [["fn_smart_city_fap_route"]]
+  },
+  {
+    "id": "fn_smart_city_fap_route",
+    "type": "function",
+    "z": "tab_aiui_smart_city",
+    "name": "smart-city.* FAP router",
+    "func": "// FAP §9 aggregate actions for the Smart City module. Reuses the same\n// synthesizers as the HTTP handlers above, returning aggregated views.\nfunction dimAt(date) {\n    const h = date.getHours() + date.getMinutes() / 60;\n    if (h < 5.5 || h > 19.5) return 100;\n    if (h < 7.0 || h > 18.0) return 50;\n    return 0;\n}\nfunction trafficAt(date) {\n    const h = date.getHours() + date.getMinutes() / 60;\n    if ((h >= 7 && h <= 9) || (h >= 16 && h <= 19)) return 0.85 + (Math.sin(h) * 0.05);\n    if (h >= 10 && h <= 15) return 0.45;\n    if (h >= 22 || h <= 5) return 0.10;\n    return 0.30;\n}\nfunction eventAt(date) {\n    const h = date.getHours();\n    if (h >= 7 && h <= 9)  return { event_type: 'congestion', severity: 'medium', active: true };\n    if (h >= 16 && h <= 19) return { event_type: 'congestion', severity: 'high', active: true };\n    if (h >= 22 || h <= 5)  return { event_type: 'quiet', severity: 'low', active: false };\n    return { event_type: 'normal', severity: 'low', active: false };\n}\n\nconst ZONES = ['zone-center', 'zone-north', 'zone-south'];\nconst action = msg._req && msg._req.action;\nconst now = new Date();\n\nif (action === 'smart-city.zones.list') {\n    const zones = ZONES.map(zone_id => {\n        const e = eventAt(now);\n        return {\n            zone_id,\n            traffic_index: Math.round(trafficAt(now) * 100) / 100,\n            event: e,\n            streetlight_count: 2,\n            updated_at: now.toISOString()\n        };\n    });\n    msg._result = { ok: true, data: { zones, count: zones.length, generated_at: now.toISOString() } };\n    return msg;\n}\n\nif (action === 'smart-city.streetlights.list') {\n    const lights = [];\n    const dim = dimAt(now);\n    for (let z = 0; z < ZONES.length; z++) {\n        for (let i = 0; i < 2; i++) {\n            lights.push({\n                light_id: `sl-${ZONES[z].split('-')[1]}-${i+1}`,\n                zone_id: ZONES[z],\n                rated_power_w: 75,\n                dimming_level_pct: dim,\n                power_w: Math.round(75 * dim / 100)\n            });\n        }\n    }\n    msg._result = { ok: true, data: { streetlights: lights, count: lights.length } };\n    return msg;\n}\n\nif (action === 'smart-city.traffic.summary') {\n    const ti = trafficAt(now);\n    msg._result = { ok: true, data: { generated_at: now.toISOString(), avg_traffic_index: Math.round(ti * 100) / 100, peak_zone: 'zone-center' } };\n    return msg;\n}\n\nif (action === 'smart-city.events.recent') {\n    const events = ZONES.map(zone_id => ({ zone_id, timestamp: now.toISOString(), ...eventAt(now) })).filter(e => e.active);\n    msg._result = { ok: true, data: { events, count: events.length } };\n    return msg;\n}\n\nmsg._result = { ok: false, errors: { action: 'smart-city: unknown action: ' + action } };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 460,
+    "y": 880,
+    "wires": [["link-response-smart-city"]]
+  },
+  {
+    "id": "link-response-smart-city",
+    "type": "link out",
+    "z": "tab_aiui_smart_city",
+    "name": "→ Response (smart-city)",
+    "mode": "link",
+    "links": ["link-from-response"],
+    "x": 760,
+    "y": 880,
+    "wires": []
+  }
+]

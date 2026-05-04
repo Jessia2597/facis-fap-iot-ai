@@ -55,12 +55,27 @@ const routes: RouteRecordRaw[] = [
           { path: 'data-products/:id', name: 'EnergyDataProductDetail', component: () => import('@/views/smart-energy/EnergyDataProductDetailView.vue'), meta: { title: 'Data Product Detail' } }
         ]
       },
-      // Smart City use case removed: the simulation engine emits no
-      // streetlight / traffic / event / city-weather feeds. All seven views
-      // depended on /api/v1/{streetlights,traffic,events,city-weather/*}
-      // which 404. AI Insight city-status remains accessible via the AI
-      // Assistant chat and as one of the three cards in Analytics Overview.
-      // Restore from git history once those simulation feeds exist.
+      // Smart City — restored Phase 5.1 (PR-5). Backend served by the
+      // ai-insight-ui ORCE flow at services/ai-insight-ui/orce/flows/smart-city.json
+      // which synthesises streetlight/traffic/event/city-weather data
+      // deterministically from time-of-day. Replace the synthesizer with real
+      // simulation feeds when services/simulation/ adds them.
+      {
+        path: 'smart-city',
+        name: 'SmartCity',
+        component: () => import('@/views/smart-city/SmartCityView.vue'),
+        meta: { title: 'Smart City', requiresAuth: true, roles: ['viewer', 'analyst', 'operator', 'admin'] },
+        children: [
+          { path: '', redirect: 'overview' },
+          { path: 'overview',          name: 'CityOverview',          component: () => import('@/views/smart-city/CityOverviewView.vue'),          meta: { title: 'City Overview' } },
+          { path: 'analytics',         name: 'CityAnalytics',         component: () => import('@/views/smart-city/CityAnalyticsView.vue'),         meta: { title: 'City Analytics' } },
+          { path: 'context',           name: 'CityContext',           component: () => import('@/views/smart-city/CityContextView.vue'),           meta: { title: 'Context Data' } },
+          { path: 'zones',             name: 'CityZones',             component: () => import('@/views/smart-city/CityZonesView.vue'),             meta: { title: 'City Zones' } },
+          { path: 'zones/:id',         name: 'CityZoneDetail',        component: () => import('@/views/smart-city/CityZoneDetailView.vue'),        meta: { title: 'Zone Detail' } },
+          { path: 'data-products',     name: 'CityDataProducts',      component: () => import('@/views/smart-city/CityDataProductsView.vue'),      meta: { title: 'City Data Products' } },
+          { path: 'data-products/:id', name: 'CityDataProductDetail', component: () => import('@/views/smart-city/CityDataProductDetailView.vue'), meta: { title: 'Data Product Detail' } }
+        ]
+      }
     ]
   },
 
