@@ -5,20 +5,20 @@ metadata:
   namespace: orce
   annotations:
     # Reverse-proxy /orce/aiInsight/<rest> → /aiInsight/<rest>
-    # AND        /orce/uibuilder/<rest> → /uibuilder/<rest>
     # at the Node-RED Express layer.
     #
-    # Why two rewrites in one ingress: UIBUILDER mounts under httpNodeRoot
-    # (default '/'), so the SPA serves at /aiInsight/ and the shared UIBUILDER
-    # client lib + Socket.IO endpoint serve at /uibuilder/vendor/. We expose
-    # both at /orce/aiInsight/ + /orce/uibuilder/ to match the standard FACIS
-    # URL scheme. httpNodeRoot itself cannot be set to /orce because that
-    # would break /api/v1/, /ai/, /dsp/ endpoints.
+    # UIBUILDER mounts the SPA under httpNodeRoot (default '/'), so the SPA
+    # serves at /aiInsight/. We expose it at /orce/aiInsight/ to match the
+    # standard FACIS URL scheme. httpNodeRoot itself cannot be set to /orce
+    # because that would break /api/v1/, /ai/, /dsp/ endpoints.
     #
-    # The capture groups are: $1 = "aiInsight" or "uibuilder", $2 = / or
-    # empty, $3 = rest of path. Rewrite preserves $1 and $3, dropping the
-    # /orce/ prefix.
-    nginx.ingress.kubernetes.io/rewrite-target: /$1/$3
+    # The shared UIBUILDER client lib + Socket.IO endpoint at
+    # /uibuilder/vendor/* are routed by the plain Prefix rule on
+    # facis-ingress.yaml (no rewrite needed; the client lib uses absolute
+    # paths). DO NOT rewrite /orce/uibuilder/* here — it would mask the
+    # admin endpoints (/orce/uibuilder/uibindex, .../instance/<url>) which
+    # the editor uses for URL-conflict validation, breaking node config.
+    nginx.ingress.kubernetes.io/rewrite-target: /aiInsight/$2
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
@@ -26,7 +26,7 @@ spec:
     - host: fap-iotai.facis.cloud
       http:
         paths:
-          - path: /orce/(aiInsight|uibuilder)(/|$)(.*)
+          - path: /orce/aiInsight(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
