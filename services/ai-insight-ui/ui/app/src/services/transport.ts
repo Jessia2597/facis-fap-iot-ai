@@ -54,7 +54,18 @@ export function registerInboundHandler(
 ): () => void {
   const uib = useUiBuilderStore()
   return uib.onMessage((raw) => {
-    const msg = raw as unknown as InboundMessage
+    if (!raw || typeof raw !== 'object') return
+    // UIBUILDER's _stdMsgFromServer stores the full wire object as
+    // `uibuilder.msg` — shape `{ _socketId, topic, payload }` where payload
+    // is our FAP §9 envelope (the server's fn_build_response constructs it
+    // that way). Unwrap payload first; fall back to raw for any code path
+    // that ever sets the envelope directly at the top level (legacy/event).
+    const wrapper = raw as unknown as { payload?: unknown; type?: string }
+    const candidate =
+      wrapper.payload && typeof wrapper.payload === 'object'
+        ? wrapper.payload
+        : raw
+    const msg = candidate as InboundMessage
     if (!msg || typeof msg !== 'object') return
     if (msg.type === 'result') {
       const entry = pending.get(msg.requestId)
