@@ -16,12 +16,25 @@
     changes. Loading explicitly here guarantees window.uibuilder is defined
     regardless of whether UIBUILDER auto-injects the script tag for
     non-template-served HTML.
+
+    If the script 404s the SPA still mounts (the Pinia store falls back to
+    mock mode). The console.error below makes that failure mode visible to
+    operators rather than silently degrading.
   -->
   <script>
     (function () {
       var s = document.createElement('script');
       s.type = 'module';
       s.src = new URL('../uibuilder/vendor/uibuilder.module.js', document.baseURI).href;
+      s.onerror = function () {
+        console.error(
+          '[FACIS] Failed to load UIBUILDER client library at ' + s.src + '. ' +
+          'window.uibuilder will be undefined and the SPA will run in mock mode. ' +
+          'Verify ORCE serves /uibuilder/vendor/uibuilder.module.js (the standard ' +
+          'UIBUILDER httpNode mount) and that the served path resolves under the ' +
+          'SPA\'s base URL.'
+        );
+      };
       document.head.appendChild(s);
     })();
   </script>
