@@ -25,7 +25,7 @@
     "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst id = msg.req && msg.req.params && msg.req.params.meter_id;\nif (!id || !IDENT.test(id)) { msg.statusCode = 400; msg.payload = { error: 'invalid meter_id' }; return [null, msg]; }\nmsg._sql = `SELECT hour, avg_consumption_kw, avg_generation_kw, net_grid_kw, avg_price_eur_per_kwh, estimated_hourly_cost_eur FROM \"gold\".\"net_grid_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR ORDER BY hour ASC`;\nmsg._shape = 'meter_history';\nmsg._meter_id = id;\nreturn [msg, null];\n",
     "outputs": 2,
     "x": 540, "y": 80,
-    "wires": [["fn_trino_run"], ["node_analytics_resp"]]
+    "wires": [["fn_analytics_trino_run"], ["node_analytics_resp"]]
   },
 
   {
@@ -46,7 +46,7 @@
     "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst id = msg.req && msg.req.params && msg.req.params.system_id;\nif (!id || !IDENT.test(id)) { msg.statusCode = 400; msg.payload = { error: 'invalid system_id' }; return [null, msg]; }\nconst safe = id.replace(/'/g, \"''\");\n// Try per-system filter first; if the gold table doesn't carry system_id, the\n// fallback in fn_trino_run executes the column-agnostic shape and returns the\n// fleet aggregate with metadata.note explaining the lack of per-system data.\nmsg._sql = `SELECT * FROM \"gold\".\"pv_performance_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR AND (system_id = '${safe}' OR system_id IS NULL) ORDER BY hour ASC`;\nmsg._shape = 'pv_history';\nmsg._system_id = id;\nreturn [msg, null];\n",
     "outputs": 2,
     "x": 540, "y": 140,
-    "wires": [["fn_trino_run"], ["node_analytics_resp"]]
+    "wires": [["fn_analytics_trino_run"], ["node_analytics_resp"]]
   },
 
   {
@@ -57,28 +57,28 @@
     "url": "/api/v1/weather/:station_id/history",
     "method": "get",
     "x": 220, "y": 200,
-    "wires": [["fn_prep_weather_history"]]
+    "wires": [["fn_analytics_prep_weather_history"]]
   },
   {
-    "id": "fn_prep_weather_history",
+    "id": "fn_analytics_prep_weather_history",
     "type": "function",
     "z": "tab_aiui_analytics",
     "name": "prepare weather history",
     "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst id = msg.req && msg.req.params && msg.req.params.station_id;\nif (!id || !IDENT.test(id)) { msg.statusCode = 400; msg.payload = { error: 'invalid station_id' }; return [null, msg]; }\n// gold.weather_hourly is fleet-aggregated; preserve station_id on response\n// for the client but don't synthesise per-station rows.\nmsg._sql = `SELECT hour, avg_temperature_c, avg_irradiance_w_m2, avg_humidity_pct, avg_wind_speed_ms, avg_cloud_cover_pct FROM \"gold\".\"weather_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR ORDER BY hour ASC`;\nmsg._shape = 'weather_history';\nmsg._station_id = id;\nreturn [msg, null];\n",
     "outputs": 2,
     "x": 540, "y": 200,
-    "wires": [["fn_trino_run"], ["node_analytics_resp"]]
+    "wires": [["fn_analytics_trino_run"], ["node_analytics_resp"]]
   },
 
   {
-    "id": "fn_trino_run",
+    "id": "fn_analytics_trino_run",
     "type": "function",
     "z": "tab_aiui_analytics",
     "name": "execute Trino SQL (HTTP shared)",
     "func": "function httpsFetch(urlStr, opts = {}) { return new Promise((resolve, reject) => { let parsed; try { parsed = new urlmod.URL(urlStr); } catch (e) { return reject(new Error('bad URL')); } const lib = parsed.protocol === 'https:' ? https : http; const headers = Object.assign({}, opts.headers || {}); if (opts.body && !headers['Content-Length']) headers['Content-Length'] = Buffer.byteLength(opts.body); const req = lib.request({ method: opts.method || 'GET', hostname: parsed.hostname, port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80), path: parsed.pathname + (parsed.search || ''), headers, timeout: opts.timeoutMs || 8000, rejectUnauthorized: opts.rejectUnauthorized !== false }, (res) => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, json: () => { try { return Promise.resolve(JSON.parse(d)); } catch (e) { return Promise.reject(e); } } })); }); req.on('error', reject); req.on('timeout', () => req.destroy(new Error('timeout'))); if (opts.body) req.write(opts.body); req.end(); }); }\nconst formEncode = (o) => Object.entries(o).filter(([,v]) => v !== undefined && v !== null && v !== '').map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');\nasync function runSql(sql) { const tres = await httpsFetch(env.get('AI_INSIGHT_TRINO__OIDC_TOKEN_URL'), { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formEncode({ grant_type: 'password', client_id: env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_ID'), client_secret: env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_SECRET'), username: env.get('AI_INSIGHT_TRINO__OIDC_USERNAME'), password: env.get('AI_INSIGHT_TRINO__OIDC_PASSWORD'), scope: env.get('AI_INSIGHT_TRINO__OIDC_SCOPE') || 'openid' }), rejectUnauthorized: false }); if (!tres.ok) throw new Error('token grant failed: ' + tres.status); const token = (await tres.json()).access_token; const base = `${env.get('AI_INSIGHT_TRINO__HTTP_SCHEME') || 'https'}://${env.get('AI_INSIGHT_TRINO__HOST')}:${env.get('AI_INSIGHT_TRINO__PORT') || 8443}`; const headers = { 'Authorization': 'Bearer ' + token, 'X-Trino-User': env.get('AI_INSIGHT_TRINO__USER') || 'trino', 'X-Trino-Catalog': env.get('AI_INSIGHT_TRINO__CATALOG') || 'fap-iotai-stackable', 'Content-Type': 'text/plain' }; let res = await httpsFetch(`${base}/v1/statement`, { method: 'POST', headers, body: sql, rejectUnauthorized: false }); if (!res.ok) throw new Error('POST /v1/statement failed: ' + res.status); let body = await res.json(); let columns = body.columns || null; const rows = body.data ? [...body.data] : []; while (body.nextUri) { res = await httpsFetch(body.nextUri, { headers, rejectUnauthorized: false }); if (!res.ok) throw new Error('nextUri failed: ' + res.status); body = await res.json(); if (body.columns) columns = body.columns; if (body.data) rows.push(...body.data); } return { columns, rows }; }\ntry {\n    if (!msg._sql) { msg.statusCode = 500; msg.payload = { error: 'no SQL prepared' }; return msg; }\n    const { columns, rows } = await runSql(msg._sql);\n    msg._rows = rows;\n    msg._columns = (columns || []).map(c => c.name);\n} catch (e) {\n    node.warn('Trino query failed: ' + String(e.message || e));\n    msg.statusCode = 502;\n    msg.headers = { 'Content-Type': 'application/json' };\n    msg.payload = { error: 'gold layer query failed', detail: String(e.message || e), source: 'trino' };\n    msg._trinoError = true;\n}\nreturn msg;\n",
     "outputs": 1,
     "x": 820, "y": 140,
-    "wires": [["fn_trino_format"]],
+    "wires": [["fn_analytics_trino_format"]],
     "libs": [
       { "var": "https", "module": "https" },
       { "var": "http",  "module": "http" },
@@ -87,7 +87,7 @@
   },
 
   {
-    "id": "fn_trino_format",
+    "id": "fn_analytics_trino_format",
     "type": "function",
     "z": "tab_aiui_analytics",
     "name": "format response by shape",
