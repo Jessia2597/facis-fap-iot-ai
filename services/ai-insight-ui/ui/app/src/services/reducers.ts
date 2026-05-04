@@ -34,13 +34,13 @@ export function reduceResult(msg: ResultResponse<unknown>): void {
       case 'bootstrap.session':       state.model.bootstrap   = data ?? null; break
       case 'alerts.list':              state.model.alerts      = data?.alerts ?? []; break
       case 'data-sources.list':        state.model.dataSources = data?.sources ?? []; break
-      case 'schemas.list':             state.model.schemas     = data?.schemas ?? []; break
+      case 'schemas.list':             state.model.schemas     = data?.tables ?? []; break
       case 'provenance.transfers':    (state.model.provenance.transfers as unknown[]) = data?.transfers ?? []; break
       case 'provenance.insights':     (state.model.provenance.insights as unknown[])  = data?.insights ?? []; break
       case 'integrations.health':      state.model.integrations = data ?? {}; break
       case 'admin.users':              state.model.admin.users  = data?.users ?? []; break
       case 'admin.roles':              state.model.admin.roles  = data?.roles ?? []; break
-      case 'admin.access':             state.model.admin.access = data?.access ?? []; break
+      case 'admin.access':             state.model.admin.access = data?.events ?? []; break
       case 'data-products.list':       state.model.dataProducts.all    = data?.products ?? []; break
       case 'data-products.energy.list':state.model.dataProducts.energy = data?.products ?? []; break
       case 'data-products.city.list':  state.model.dataProducts.city   = data?.products ?? []; break
