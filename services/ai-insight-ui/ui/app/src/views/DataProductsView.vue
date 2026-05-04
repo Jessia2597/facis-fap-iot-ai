@@ -7,7 +7,7 @@ const route = useRoute()
 const tabs = [
   { label: 'All Products', to: '/data-products/all', icon: 'pi-list' },
   { label: 'Energy', to: '/data-products/energy', icon: 'pi-bolt' },
-  { label: 'Smart City', to: '/data-products/smart-city', icon: 'pi-map' }
+  { label: 'Smart City', to: '/data-products/city', icon: 'pi-map' }
 ]
 </script>
 
