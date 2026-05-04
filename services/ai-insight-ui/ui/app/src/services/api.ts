@@ -747,7 +747,7 @@ export interface ProvenanceTransfer {
   updated_at?: string
 }
 export function getProvenanceTransfers(): Promise<{ transfers: ProvenanceTransfer[]; count: number } | null> {
-  return simGet('/provenance/transfers')
+  return uib('provenance.transfers')
 }
 
 export interface ProvenanceInsight {
@@ -761,7 +761,7 @@ export interface ProvenanceInsight {
   bytes: number | null
 }
 export function getProvenanceInsights(): Promise<{ insights: ProvenanceInsight[]; count: number } | null> {
-  return simGet('/provenance/insights')
+  return uib('provenance.insights')
 }
 
 export interface IntegrationServiceHealth {
