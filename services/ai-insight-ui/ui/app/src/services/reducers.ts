@@ -31,7 +31,13 @@ export function reduceResult(msg: ResultResponse<unknown>): void {
   if (msg.ok) {
     const data = msg.data as any
     switch (msg.action) {
-      case 'bootstrap.session':       state.model.bootstrap   = data ?? null; break
+      case 'bootstrap.session':
+        state.model.bootstrap = data ?? null
+        // §11 refresh recovery: seed downstream state buckets from the
+        // bootstrap response so views see initial data without separate loads.
+        if (data?.recent_alerts) state.model.alerts = data.recent_alerts
+        if (data?.conversation_history) state.model.conversation = data.conversation_history
+        break
       case 'alerts.list':              state.model.alerts      = data?.alerts ?? []; break
       case 'data-sources.list':        state.model.dataSources = data?.sources ?? []; break
       case 'schemas.list':             state.model.schemas     = data?.tables ?? []; break
