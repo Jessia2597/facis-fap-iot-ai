@@ -129,7 +129,7 @@ export function submit<P, D = unknown>(
       }
       app.state.ui.loading = false
       reject({ system: `timeout: ${action}` } as ContractErrors)
-    }, opts.timeoutMs ?? 30_000)  // Trino-backed actions (data-products.list, schemas.list) need 25-30s on cold information_schema scans
+    }, opts.timeoutMs ?? 60_000)  // Trino information_schema scans take 35-50s on cold catalog cache (e.g. data-products.list, schemas.list). 60s gives headroom; subsequent calls are sub-second once the orce flow cache warms.
     pending.set(requestId, {
       resolve: resolve as (m: ResultResponse<unknown>) => void,
       reject,
