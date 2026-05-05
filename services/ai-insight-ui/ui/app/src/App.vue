@@ -85,6 +85,12 @@ const mobileOpen = ref(false)
 const expandedGroups = ref<Set<string>>(new Set(['Use Cases']))
 const notificationPanel = ref<InstanceType<typeof OverlayPanel> | null>(null)
 const userMenu = ref<InstanceType<typeof Menu> | null>(null)
+// Flyout for sidebar group items when the sidebar is in icon-only mode
+// (768–1279px). The group <button> is otherwise inert because its inline
+// expansion is gated on `!sidebarCollapsed`. Re-uses the same PrimeVue Menu
+// pattern as the user-menu popup.
+const collapsedFlyoutMenu = ref<InstanceType<typeof Menu> | null>(null)
+const collapsedFlyoutItems = ref<Array<{ label: string; icon: string; command: () => void }>>([])
 
 // ─── Search state ────────────────────────────────────────────────────────────
 const searchQuery = ref('')
@@ -134,15 +140,22 @@ router.beforeEach(() => { routeLoading.value = true })
 router.afterEach(() => { routeLoading.value = false })
 
 // Auto-collapse on small screens
-// < 1280px → icon-only mode (collapsed sidebar stays in layout)
-// < 768px  → overlay mode (sidebar slides over content, toggled by hamburger)
+// ≥ 1280px       → full sidebar (collapsed=false)
+// 768–1279px     → icon-only mode (collapsed sidebar stays in layout)
+// < 768px        → overlay mode: sidebar slides over content with FULL content
+//                  (collapsed=false), so submenus + labels remain accessible.
+//                  At this width, the slide-over CSS hides it off-canvas
+//                  (left: -280px) — visibility is governed by mobileOpen.
 const handleResize = () => {
-  if (window.innerWidth < 1280) {
+  const w = window.innerWidth
+  if (w < 768) {
+    sidebarCollapsed.value = false
+  } else if (w < 1280) {
     sidebarCollapsed.value = true
   } else {
     sidebarCollapsed.value = false
   }
-  if (window.innerWidth >= 768) {
+  if (w >= 768) {
     mobileOpen.value = false
   }
 }
@@ -209,6 +222,16 @@ function toggleGroup(label: string): void {
   } else {
     expandedGroups.value.add(label)
   }
+}
+
+function openCollapsedFlyout(item: NavItem, event: Event): void {
+  if (!item.children) return
+  collapsedFlyoutItems.value = item.children.map(c => ({
+    label: c.label,
+    icon: `pi ${c.icon}`,
+    command: () => { if (c.to) router.push(c.to) }
+  }))
+  collapsedFlyoutMenu.value?.toggle(event)
 }
 
 function navigate(to: string): void {
@@ -294,7 +317,7 @@ const breadcrumbs = computed(() =>
               class="sidebar-item sidebar-item--group"
               :class="{ 'sidebar-item--active': isActive(item) }"
               :title="sidebarCollapsed ? item.label : undefined"
-              @click="!sidebarCollapsed && toggleGroup(item.label)"
+              @click="sidebarCollapsed ? openCollapsedFlyout(item, $event) : toggleGroup(item.label)"
             >
               <i :class="`pi ${item.icon} sidebar-item__icon`"></i>
               <span v-if="!sidebarCollapsed" class="sidebar-item__label">{{ item.label }}</span>
@@ -493,6 +516,9 @@ const breadcrumbs = computed(() =>
 
     <!-- User menu -->
     <Menu ref="userMenu" :model="userMenuItems" popup />
+
+    <!-- Sidebar group flyout (collapsed icon-only mode) -->
+    <Menu ref="collapsedFlyoutMenu" :model="collapsedFlyoutItems" popup />
   </div>
 </template>
 
@@ -603,6 +629,23 @@ const breadcrumbs = computed(() =>
   height: 28px;
   width: auto;
   flex-shrink: 0;
+}
+
+/* Logo SVG is wide (~2.65:1). At full width 260px it fits comfortably; at
+ * collapsed 64px the natural ~74px width overflows the 32px content area
+ * (1rem horizontal padding) and gets clipped. Centre + scale-to-fit when
+ * the sidebar is in icon-only mode. */
+.app-sidebar--collapsed .sidebar-logo {
+  padding: 0.75rem 0.5rem;
+  justify-content: center;
+}
+
+.app-sidebar--collapsed .sidebar-logo__img {
+  height: auto;
+  max-height: 28px;
+  max-width: 100%;
+  width: auto;
+  flex-shrink: 1;
 }
 
 .sidebar-logo__text {
