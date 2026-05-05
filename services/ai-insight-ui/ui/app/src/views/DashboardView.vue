@@ -7,6 +7,7 @@ import PipelineFlow from '@/components/common/PipelineFlow.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useKpiStore } from '@/stores/kpi'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useAppStore } from '@/services/state'
 import { useRouter } from 'vue-router'
 import {
   getSimulationStatus,
@@ -23,6 +24,7 @@ import {
 
 const kpi = useKpiStore()
 const notifications = useNotificationsStore()
+const app = useAppStore()
 const router = useRouter()
 
 // Live data from API
@@ -129,8 +131,46 @@ onMounted(() => {
   fetchLiveData()
 })
 
-// 8 platform KPI cards — all values from real API
-const platformKpis = computed(() => [
+// Platform KPI cards. The first three rows are gold-layer Trino aggregates
+// pushed live via the FAP §9 `kpi.update` event broadcast (see
+// flows/tabs/5-KPI-Broadcast.json) — `state.model.kpi` is reactive and the
+// reducer in services/reducers.ts writes to it on every event. The remaining
+// eight come from sim-runtime REST and are unchanged.
+const platformKpis = computed(() => {
+  const live = app.state.model.kpi
+  const liveTag = live ? 'Trino' : ''
+  const liveNetGrid = live?.netGrid != null ? live.netGrid.toFixed(1) : '—'
+  const livePvGen = live?.pvGeneration != null ? live.pvGeneration.toFixed(1) : '—'
+  const liveCost = live?.dailyCost != null ? `€${live.dailyCost.toFixed(0)}` : '—'
+
+  return [
+  {
+    label: 'Net Grid (24h avg)',
+    value: liveNetGrid,
+    unit: 'kW',
+    trend: 'stable' as const,
+    trendValue: liveTag,
+    icon: 'pi-arrow-down-left',
+    color: 'var(--color-secondary)'
+  },
+  {
+    label: 'PV Generation (24h avg)',
+    value: livePvGen,
+    unit: 'kW',
+    trend: 'up' as const,
+    trendValue: liveTag,
+    icon: 'pi-sun',
+    color: 'var(--color-warning)'
+  },
+  {
+    label: 'Daily Cost (24h)',
+    value: liveCost,
+    unit: '',
+    trend: 'down' as const,
+    trendValue: liveTag,
+    icon: 'pi-euro',
+    color: 'var(--color-success)'
+  },
   {
     label: 'Energy Meters',
     value: meterCount.value !== null ? meterCount.value : '—',
@@ -188,7 +228,8 @@ const platformKpis = computed(() => [
     icon: 'pi-microchip-ai',
     color: aiHealth.value?.status === 'ok' ? 'var(--color-success)' : 'var(--color-warning)'
   }
-])
+  ]
+})
 
 // Use-case summary cards — all from real API
 const energyCard = computed(() => ({
