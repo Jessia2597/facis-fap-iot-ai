@@ -12,3 +12,8 @@ src/**/*.d.ts
 # next to the .ts shadows source-of-truth changes silently.
 vite.config.js
 bundle.zip
+
+# Playwright run artefacts (test/e2e/results/* is committed evidence,
+# test-results/ is per-run output)
+test-results/
+playwright-report/
