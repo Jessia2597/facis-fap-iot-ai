@@ -70,9 +70,9 @@ const summary = computed(() => ({
 }))
 
 function priorityColor(p: string): string {
-  if (p === 'high') return '#ef4444'
-  if (p === 'medium') return '#f59e0b'
-  return '#94a3b8'
+  if (p === 'high') return 'var(--color-danger)'
+  if (p === 'medium') return 'var(--color-warning)'
+  return 'var(--color-text-soft)'
 }
 
 function categoryIcon(c: string): string {
@@ -90,9 +90,9 @@ function categoryLabel(c: string): string {
 }
 
 function useCaseColor(uc: string): string {
-  if (uc === 'Smart Energy') return '#f59e0b'
-  if (uc === 'Smart City')   return '#8b5cf6'
-  return '#06b6d4'
+  if (uc === 'Smart Energy') return 'var(--color-warning)'
+  if (uc === 'Smart City')   return 'var(--chart-series-6)'
+  return 'var(--color-secondary)'
 }
 
 function formatDate(ts: string): string {
@@ -130,11 +130,11 @@ function formatDate(ts: string): string {
 
       <template v-else>
         <div class="grid-kpi">
-          <KpiCard label="Total Recommendations" :value="summary.total" trend="stable" icon="pi-lightbulb" color="#22c55e" />
-          <KpiCard label="High Priority" :value="summary.high" trend="stable" icon="pi-flag" color="#ef4444" />
-          <KpiCard label="Medium Priority" :value="summary.medium" trend="stable" icon="pi-minus" color="#f59e0b" />
-          <KpiCard label="Energy" :value="summary.energy" trend="stable" icon="pi-bolt" color="#f59e0b" />
-          <KpiCard label="Smart City" :value="summary.city" trend="stable" icon="pi-map" color="#8b5cf6" />
+          <KpiCard label="Total Recommendations" :value="summary.total" trend="stable" icon="pi-lightbulb" color="var(--color-success)" />
+          <KpiCard label="High Priority" :value="summary.high" trend="stable" icon="pi-flag" color="var(--color-danger)" />
+          <KpiCard label="Medium Priority" :value="summary.medium" trend="stable" icon="pi-minus" color="var(--color-warning)" />
+          <KpiCard label="Energy" :value="summary.energy" trend="stable" icon="pi-bolt" color="var(--color-warning)" />
+          <KpiCard label="Smart City" :value="summary.city" trend="stable" icon="pi-map" color="var(--chart-series-6)" />
         </div>
 
         <div class="filter-bar">
@@ -215,16 +215,16 @@ function formatDate(ts: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .empty-state { display: flex; align-items: center; gap: 0.75rem; padding: 2rem; }
 
 .view-page { display: flex; flex-direction: column; }
 .view-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
-.advisory-banner { display: flex; align-items: flex-start; gap: 0.875rem; padding: 1rem 1.25rem; background: #fef3c7; border: 1px solid #fde68a; border-radius: var(--facis-radius); font-size: 0.875rem; color: #78350f; line-height: 1.5; }
-.advisory-banner__icon { font-size: 1rem; color: #92400e; flex-shrink: 0; padding-top: 0.1rem; }
+.advisory-banner { display: flex; align-items: flex-start; gap: 0.875rem; padding: 1rem 1.25rem; background: var(--color-warning-light); border: 1px solid var(--color-warning-light); border-radius: var(--facis-radius); font-size: 0.875rem; color: var(--color-warning-dark); line-height: 1.5; }
+.advisory-banner__icon { font-size: 1rem; color: var(--color-warning-dark); flex-shrink: 0; padding-top: 0.1rem; }
 .filter-bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; background: var(--facis-surface); border: 1px solid var(--facis-border); border-radius: var(--facis-radius); padding: 0.75rem 1.25rem; box-shadow: var(--facis-shadow); }
 .filter-group { display: flex; align-items: center; gap: 0.375rem; }
 .filter-group__label { font-size: 0.75rem; font-weight: 500; color: var(--facis-text-secondary); }
@@ -254,7 +254,7 @@ function formatDate(ts: string): string {
 .confidence-bar-bg { flex: 1; height: 6px; background: var(--facis-surface-2); border-radius: 3px; overflow: hidden; }
 .confidence-bar-fill { height: 100%; border-radius: 3px; }
 .confidence-pct { font-size: 0.8rem; font-weight: 700; color: var(--facis-text); min-width: 36px; text-align: right; }
-.advisory-note { display: flex; align-items: center; gap: 0.5rem; font-size: 0.72rem; color: #92400e; background: #fef3c7; padding: 0.4rem 0.625rem; border-radius: var(--facis-radius-sm); }
+.advisory-note { display: flex; align-items: center; gap: 0.5rem; font-size: 0.72rem; color: var(--color-warning-dark); background: var(--color-warning-light); padding: 0.4rem 0.625rem; border-radius: var(--facis-radius-sm); }
 .advisory-note__icon { font-size: 0.8rem; flex-shrink: 0; }
 .table-meta { display: flex; align-items: center; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--facis-border); }
 .table-title { font-size: 0.875rem; font-weight: 600; color: var(--facis-text); }

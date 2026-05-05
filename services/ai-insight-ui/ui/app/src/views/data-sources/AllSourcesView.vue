@@ -228,17 +228,17 @@ function qualityColor(q: number): string {
   padding: 0.4rem 1.5rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--color-success-dark);
   background: rgba(34, 197, 94, 0.08);
   border-bottom: 1px solid rgba(34, 197, 94, 0.2);
 }
-.live-banner__dot { font-size: 0.5rem; color: #22c55e; }
+.live-banner__dot { font-size: 0.5rem; color: var(--color-success); }
 
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 
 .detail-body { display: flex; flex-direction: column; gap: 1rem; }

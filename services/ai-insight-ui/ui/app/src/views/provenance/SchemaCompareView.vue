@@ -257,8 +257,8 @@ function formatDate(iso: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 
@@ -331,10 +331,10 @@ function formatDate(iso: string): string {
   gap: 0.625rem;
   padding: 0.875rem 1.25rem;
   background: var(--facis-primary-light);
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--color-info-light);
   border-radius: var(--facis-radius);
   font-size: 0.875rem;
-  color: #1d4ed8;
+  color: var(--color-info-dark);
 }
 
 .changelogs-row {

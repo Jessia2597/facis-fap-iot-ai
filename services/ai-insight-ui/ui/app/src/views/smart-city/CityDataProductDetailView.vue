@@ -148,10 +148,10 @@ function formatJson(obj: unknown): string {
     <div class="view-body">
       <!-- Product KPIs -->
       <div class="grid-kpi" style="grid-template-columns: repeat(auto-fill, minmax(170px, 1fr))">
-        <KpiCard label="Version" :value="product?.version ?? '—'" unit="" trend="stable" icon="pi-tag" color="#3b82f6" />
-        <KpiCard label="Schema Fields" :value="product?.schemaRows.length ?? 0" unit="" trend="stable" icon="pi-list" color="#8b5cf6" />
-        <KpiCard label="Provenance Steps" :value="product?.provenanceChain.length ?? 0" unit="" trend="stable" icon="pi-sitemap" color="#0ea5e9" />
-        <KpiCard label="Export Formats" :value="product?.exportFormats.length ?? 0" unit="" trend="stable" icon="pi-download" color="#22c55e" />
+        <KpiCard label="Version" :value="product?.version ?? '—'" unit="" trend="stable" icon="pi-tag" color="var(--color-secondary)" />
+        <KpiCard label="Schema Fields" :value="product?.schemaRows.length ?? 0" unit="" trend="stable" icon="pi-list" color="var(--chart-series-6)" />
+        <KpiCard label="Provenance Steps" :value="product?.provenanceChain.length ?? 0" unit="" trend="stable" icon="pi-sitemap" color="var(--color-secondary)" />
+        <KpiCard label="Export Formats" :value="product?.exportFormats.length ?? 0" unit="" trend="stable" icon="pi-download" color="var(--color-success)" />
       </div>
 
       <DetailTabs :tabs="tabs">
@@ -422,15 +422,15 @@ Accept: application/json</pre>
 .tag-chip--blue { background: var(--facis-primary-light); border-color: transparent; color: var(--facis-primary); }
 
 /* Endpoint */
-.endpoint-box { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; background: #0f172a; color: #94a3b8; padding: 0.625rem 0.875rem; border-radius: var(--facis-radius-sm); }
+.endpoint-box { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; background: var(--color-text); color: var(--color-text-soft); padding: 0.625rem 0.875rem; border-radius: var(--facis-radius-sm); }
 
 /* Schema badge */
-.schema-badge { font-size: 0.7rem; font-weight: 600; padding: 0.18rem 0.5rem; border-radius: 4px; background: #f1f5f9; color: #475569; border: 1px solid var(--facis-border); }
+.schema-badge { font-size: 0.7rem; font-weight: 600; padding: 0.18rem 0.5rem; border-radius: 4px; background: var(--color-neutral-bg); color: var(--color-neutral-fg); border: 1px solid var(--facis-border); }
 .json-badge { font-size: 0.7rem; color: var(--facis-text-secondary); }
 
 /* JSON view */
 .json-view {
-  background: #0f172a; color: #94a3b8;
+  background: var(--color-text); color: var(--color-text-soft);
   border-radius: var(--facis-radius-sm); padding: 1rem;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.78rem; line-height: 1.7; overflow: auto;
@@ -439,7 +439,7 @@ Accept: application/json</pre>
 
 /* Code block */
 .code-block {
-  background: #0f172a; color: #7dd3fc;
+  background: var(--color-text); color: var(--color-info-light);
   border-radius: var(--facis-radius-sm); padding: 0.875rem 1rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.78rem; line-height: 1.7; overflow: auto; white-space: pre;
@@ -481,10 +481,10 @@ Accept: application/json</pre>
 .export-card__endpoint { font-size: 0.68rem; color: var(--facis-text-muted); padding-top: 0.4rem; border-top: 1px solid var(--facis-border); }
 
 /* Usage notes */
-.usage-note-card { display: flex; gap: 0.875rem; padding: 1rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--facis-radius-sm); }
-.usage-note-card__icon { color: #1d4ed8; font-size: 1.1rem; flex-shrink: 0; margin-top: 0.1rem; }
-.usage-note-card__title { font-size: 0.82rem; font-weight: 700; color: #1d4ed8; margin-bottom: 0.375rem; }
-.usage-note-card__body p { font-size: 0.82rem; color: #1e3a8a; line-height: 1.6; margin: 0; }
+.usage-note-card { display: flex; gap: 0.875rem; padding: 1rem; background: var(--color-primary-soft); border: 1px solid var(--color-info-light); border-radius: var(--facis-radius-sm); }
+.usage-note-card__icon { color: var(--color-info-dark); font-size: 1.1rem; flex-shrink: 0; margin-top: 0.1rem; }
+.usage-note-card__title { font-size: 0.82rem; font-weight: 700; color: var(--color-info-dark); margin-bottom: 0.375rem; }
+.usage-note-card__body p { font-size: 0.82rem; color: var(--color-info-dark); line-height: 1.6; margin: 0; }
 
 /* Standards */
 .standard-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -503,8 +503,8 @@ Accept: application/json</pre>
 
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

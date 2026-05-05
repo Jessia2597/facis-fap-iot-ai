@@ -28,10 +28,10 @@ const references: DataReference[] = [
 ]
 
 const RELATIONSHIP_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  'derives-from':       { label: 'Derives From',       color: '#1d4ed8', bg: '#dbeafe' },
-  'validates-against':  { label: 'Validates Against',  color: '#15803d', bg: '#dcfce7' },
-  'composed-of':        { label: 'Composed Of',        color: '#7c3aed', bg: '#ede9fe' },
-  'mapped-to':          { label: 'Mapped To',          color: '#0f766e', bg: '#ccfbf1' }
+  'derives-from':       { label: 'Derives From',       color: 'var(--color-info-dark)', bg: 'var(--color-info-light)' },
+  'validates-against':  { label: 'Validates Against',  color: 'var(--color-success-dark)', bg: 'var(--color-success-soft)' },
+  'composed-of':        { label: 'Composed Of',        color: 'var(--chart-series-6)', bg: 'var(--color-info-light)' },
+  'mapped-to':          { label: 'Mapped To',          color: 'var(--color-success-dark)', bg: 'var(--color-success-light)' }
 }
 
 const TYPE_ICONS: Record<string, string> = {
@@ -337,7 +337,7 @@ function formatDate(iso: string): string {
 }
 
 .rt-icon--source { background: var(--facis-primary-light); color: var(--facis-primary); }
-.rt-icon--target { background: #dcfce7; color: #15803d; }
+.rt-icon--target { background: var(--color-success-soft); color: var(--color-success-dark); }
 
 .rt-name-group { display: flex; flex-direction: column; gap: 0.1rem; }
 .rt-name { font-weight: 500; color: var(--facis-text); font-size: 0.8rem; }
@@ -382,8 +382,8 @@ function formatDate(iso: string): string {
 .pb-icon {
   width: 28px;
   height: 28px;
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--color-success-soft);
+  color: var(--color-success-dark);
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -466,7 +466,7 @@ function formatDate(iso: string): string {
 }
 
 .srr-node--a { background: var(--facis-primary-light); color: var(--facis-primary); }
-.srr-node--b { background: #dcfce7; color: #15803d; }
+.srr-node--b { background: var(--color-success-soft); color: var(--color-success-dark); }
 
 .srr-connector {
   display: flex;

@@ -37,7 +37,7 @@ const chartData = computed(() => ({
   datasets: props.datasets.map(d => ({
     label: d.label,
     data: d.data,
-    borderColor: d.borderColor ?? '#005fff',
+    borderColor: d.borderColor ?? 'var(--color-primary)',
     backgroundColor: d.backgroundColor ?? 'transparent',
     yAxisID: d.yAxisID ?? 'y',
     fill: d.fill ?? false,
@@ -85,7 +85,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
       grid: { color: 'rgba(226,232,240,0.6)' },
       ticks: {
         font: { family: 'Inter', size: 11 },
-        color: '#94a3b8',
+        color: 'var(--color-text-soft)',
         maxTicksLimit: 12
       }
     },
@@ -94,13 +94,13 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
       grid: { color: 'rgba(226,232,240,0.6)' },
       ticks: {
         font: { family: 'Inter', size: 11 },
-        color: '#94a3b8'
+        color: 'var(--color-text-soft)'
       },
       title: props.yAxisLabel ? {
         display: true,
         text: props.yAxisLabel,
         font: { family: 'Inter', size: 11 },
-        color: '#64748b'
+        color: 'var(--color-neutral-fg)'
       } : { display: false }
     },
     ...(hasSecondAxis.value ? {
@@ -109,13 +109,13 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
         grid: { drawOnChartArea: false },
         ticks: {
           font: { family: 'Inter', size: 11 },
-          color: '#94a3b8'
+          color: 'var(--color-text-soft)'
         },
         title: props.y2AxisLabel ? {
           display: true,
           text: props.y2AxisLabel,
           font: { family: 'Inter', size: 11 },
-          color: '#64748b'
+          color: 'var(--color-neutral-fg)'
         } : { display: false }
       }
     } : {})

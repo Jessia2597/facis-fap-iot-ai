@@ -138,13 +138,13 @@ function formatDate(ts: string): string {
       </div>
 
       <div v-else-if="lastError" class="empty-state">
-        <i class="pi pi-exclamation-triangle" style="font-size:2rem;color:#ef4444"></i>
+        <i class="pi pi-exclamation-triangle" style="font-size:2rem;color:var(--color-danger)"></i>
         <p class="empty-title">Could not reach the AI Insight backend</p>
         <p class="empty-sub">{{ lastError }}</p>
       </div>
 
       <div v-else-if="insights.length === 0" class="empty-state">
-        <i class="pi pi-info-circle" style="font-size:2rem;color:#64748b"></i>
+        <i class="pi pi-info-circle" style="font-size:2rem;color:var(--color-neutral-fg)"></i>
         <p class="empty-title">No insights available for the current window</p>
         <p class="empty-sub">The AI Insight flow returned no results — check that today's gold-layer rows exist.</p>
       </div>
@@ -152,12 +152,12 @@ function formatDate(ts: string): string {
       <template v-else>
         <!-- KPI strip — counts derived from the live insight responses -->
         <div class="grid-kpi">
-          <KpiCard label="Insights Generated" :value="insights.length"        trend="stable" icon="pi-sparkles"      color="#005fff" />
-          <KpiCard label="Key Findings"       :value="totalFindings"          trend="stable" icon="pi-search"        color="#f59e0b" />
-          <KpiCard label="Recommendations"    :value="totalRecommendations"   trend="stable" icon="pi-lightbulb"     color="#22c55e" />
-          <KpiCard label="Open Alerts"        :value="notifications.openAlerts.length" trend="stable" icon="pi-bell"  color="#ef4444" />
-          <KpiCard label="LLM Fallbacks"      :value="fallbackCount"          trend="stable" icon="pi-flag"          color="#8b5cf6" />
-          <KpiCard label="Data Source"        value="Trino Gold"              trend="stable" icon="pi-database"      color="#005fff" />
+          <KpiCard label="Insights Generated" :value="insights.length"        trend="stable" icon="pi-sparkles"      color="var(--color-primary)" />
+          <KpiCard label="Key Findings"       :value="totalFindings"          trend="stable" icon="pi-search"        color="var(--color-warning)" />
+          <KpiCard label="Recommendations"    :value="totalRecommendations"   trend="stable" icon="pi-lightbulb"     color="var(--color-success)" />
+          <KpiCard label="Open Alerts"        :value="notifications.openAlerts.length" trend="stable" icon="pi-bell"  color="var(--color-danger)" />
+          <KpiCard label="LLM Fallbacks"      :value="fallbackCount"          trend="stable" icon="pi-flag"          color="var(--chart-series-6)" />
+          <KpiCard label="Data Source"        value="Trino Gold"              trend="stable" icon="pi-database"      color="var(--color-primary)" />
         </div>
 
         <!-- Three-column: one card per insight type -->
@@ -233,10 +233,10 @@ function formatDate(ts: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s ease-in-out infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-.fallback-tag { font-weight: 500; color: #78716c; margin-left: 0.5rem; }
+.fallback-tag { font-weight: 500; color: var(--color-neutral-fg); margin-left: 0.5rem; }
 
 .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem 1rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .empty-title { font-size: 1rem; font-weight: 600; color: var(--facis-text); margin: 0; }
@@ -257,20 +257,20 @@ function formatDate(ts: string): string {
 .card-summary { margin: 0; font-size: 0.85rem; line-height: 1.55; color: var(--facis-text); }
 
 .domain-header { display: flex; align-items: center; gap: 0.875rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--facis-border); position: relative; }
-.domain-header--energy  .domain-icon { background: #fef3c7; color: #92400e; }
-.domain-header--anomaly .domain-icon { background: #fee2e2; color: #b91c1c; }
-.domain-header--city    .domain-icon { background: #f3e8ff; color: #7c3aed; }
+.domain-header--energy  .domain-icon { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.domain-header--anomaly .domain-icon { background: var(--color-danger-light); color: var(--color-danger-dark); }
+.domain-header--city    .domain-icon { background: var(--color-info-light); color: var(--chart-series-6); }
 .domain-icon { width: 36px; height: 36px; border-radius: var(--facis-radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
 .domain-title { font-size: 0.9rem; font-weight: 600; color: var(--facis-text); text-transform: capitalize; }
 .domain-subtitle { font-size: 0.72rem; color: var(--facis-text-secondary); }
 
-.badge-fallback { position: absolute; right: 1.25rem; top: 1rem; font-size: 0.65rem; font-weight: 700; background: #fef3c7; color: #92400e; padding: 0.15rem 0.5rem; border-radius: 4px; }
+.badge-fallback { position: absolute; right: 1.25rem; top: 1rem; font-size: 0.65rem; font-weight: 700; background: var(--color-warning-light); color: var(--color-warning-dark); padding: 0.15rem 0.5rem; border-radius: 4px; }
 
 .findings-header, .recs-header { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--facis-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.4rem; }
 .findings-header i, .recs-header i { color: var(--facis-primary); }
 .findings-list, .recs-list { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; }
 .findings-list li, .recs-list li { font-size: 0.82rem; line-height: 1.5; color: var(--facis-text-secondary); }
-.findings-block, .recs-block { background: var(--facis-surface-2, #f8fafc); border-radius: 6px; padding: 0.75rem 0.875rem; }
+.findings-block, .recs-block { background: var(--facis-surface-2, var(--color-neutral-bg)); border-radius: 6px; padding: 0.75rem 0.875rem; }
 
 .recent-list { display: flex; flex-direction: column; }
 .recent-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 1.25rem; border-bottom: 1px solid var(--facis-border); }

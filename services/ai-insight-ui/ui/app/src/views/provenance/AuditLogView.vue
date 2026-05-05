@@ -202,8 +202,8 @@ function getExpandedEntry(row: Record<string, unknown>): AuditEntry | undefined 
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 
@@ -232,8 +232,8 @@ function getExpandedEntry(row: Record<string, unknown>): AuditEntry | undefined 
   color: var(--facis-text-secondary);
 }
 
-.as-pill--error   { background: var(--facis-error-light); border-color: #fca5a5; color: #991b1b; }
-.as-pill--failure { background: var(--facis-error-light); border-color: #fca5a5; color: #991b1b; }
+.as-pill--error   { background: var(--facis-error-light); border-color: var(--color-danger-light); color: var(--color-danger-dark); }
+.as-pill--failure { background: var(--facis-error-light); border-color: var(--color-danger-light); color: var(--color-danger-dark); }
 
 .as-pill .pi { font-size: 0.75rem; }
 

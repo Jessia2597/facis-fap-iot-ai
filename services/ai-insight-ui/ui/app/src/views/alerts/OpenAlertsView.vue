@@ -75,10 +75,10 @@ function timeSince(ts: string): string {
 
       <!-- KPIs -->
       <div class="grid-kpi">
-        <KpiCard label="Open Alerts" :value="openAlerts.length" trend="stable" icon="pi-bell" color="#005fff" />
-        <KpiCard label="Critical" :value="criticalOpen" trend="stable" icon="pi-times-circle" color="#ef4444" />
-        <KpiCard label="Error" :value="errorOpen" trend="stable" icon="pi-exclamation-circle" color="#ef4444" />
-        <KpiCard label="Warning" :value="warningOpen" trend="stable" icon="pi-exclamation-triangle" color="#f59e0b" />
+        <KpiCard label="Open Alerts" :value="openAlerts.length" trend="stable" icon="pi-bell" color="var(--color-primary)" />
+        <KpiCard label="Critical" :value="criticalOpen" trend="stable" icon="pi-times-circle" color="var(--color-danger)" />
+        <KpiCard label="Error" :value="errorOpen" trend="stable" icon="pi-exclamation-circle" color="var(--color-danger)" />
+        <KpiCard label="Warning" :value="warningOpen" trend="stable" icon="pi-exclamation-triangle" color="var(--color-warning)" />
       </div>
 
       <!-- Empty state -->
@@ -174,16 +174,16 @@ function timeSince(ts: string): string {
 .view-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 
 .count-header { display: flex; align-items: center; }
-.count-badge-large { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 700; padding: 0.5rem 1.25rem; border-radius: var(--facis-radius-sm); background: var(--facis-error-light); color: #991b1b; }
-.count-badge-large--empty { background: var(--facis-success-light); color: #15803d; }
+.count-badge-large { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 700; padding: 0.5rem 1.25rem; border-radius: var(--facis-radius-sm); background: var(--facis-error-light); color: var(--color-danger-dark); }
+.count-badge-large--empty { background: var(--facis-success-light); color: var(--color-success-dark); }
 
 .table-meta { display: flex; align-items: center; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--facis-border); }
 .table-title { font-size: 0.875rem; font-weight: 600; color: var(--facis-text); }
 
 .id-code { font-family: var(--facis-font-mono); font-size: 0.75rem; background: var(--facis-surface-2); padding: 0.1rem 0.35rem; border-radius: 3px; }
 .uc-badge { font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; white-space: nowrap; }
-.uc-badge--energy   { background: #fef3c7; color: #92400e; }
-.uc-badge--city     { background: #f3e8ff; color: #7c3aed; }
+.uc-badge--energy   { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.uc-badge--city     { background: var(--color-info-light); color: var(--chart-series-6); }
 .uc-badge--platform { background: var(--facis-surface-2); color: var(--facis-text-secondary); }
 .msg-text { font-size: 0.8rem; color: var(--facis-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .time-col { display: flex; flex-direction: column; gap: 0.1rem; }

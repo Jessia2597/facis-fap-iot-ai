@@ -51,10 +51,10 @@ const cityDetails: PipelineStepDetail[] = [
 ]
 
 const STATUS_COLORS: Record<string, string> = {
-  healthy: '#22c55e',
-  warning: '#f59e0b',
-  error:   '#ef4444',
-  inactive: '#94a3b8'
+  healthy: 'var(--color-success)',
+  warning: 'var(--color-warning)',
+  error:   'var(--color-danger)',
+  inactive: 'var(--color-text-soft)'
 }
 
 const PIPELINE_STATS = {
@@ -198,12 +198,12 @@ const PIPELINE_STATS = {
 
 .pipeline-badge--healthy {
   background: var(--facis-success-light);
-  color: #15803d;
+  color: var(--color-success-dark);
 }
 
 .pipeline-badge--warning {
   background: var(--facis-warning-light);
-  color: #92400e;
+  color: var(--color-warning-dark);
 }
 
 .pipeline-stats {
@@ -256,7 +256,7 @@ const PIPELINE_STATS = {
 
 .step-detail-card--warning {
   border-color: var(--facis-warning);
-  background: #fffbeb;
+  background: var(--color-warning-soft);
 }
 
 .sdc-name {
@@ -289,7 +289,7 @@ const PIPELINE_STATS = {
 
 .sdc-warnings {
   font-size: 0.714rem;
-  color: #92400e;
+  color: var(--color-warning-dark);
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -301,11 +301,11 @@ const PIPELINE_STATS = {
   align-items: flex-start;
   gap: 0.625rem;
   background: var(--facis-warning-light);
-  border: 1px solid #fde68a;
+  border: 1px solid var(--color-warning-light);
   border-radius: var(--facis-radius-sm);
   padding: 0.75rem 1rem;
   font-size: 0.8rem;
-  color: #92400e;
+  color: var(--color-warning-dark);
   line-height: 1.5;
 }
 

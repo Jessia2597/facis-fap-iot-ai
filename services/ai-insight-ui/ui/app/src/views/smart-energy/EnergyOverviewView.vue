@@ -108,7 +108,7 @@ const mainDatasets = computed(() => {
     {
       label: 'Consumption (kW)',
       data: meterHistory.value.map(totalPowerKw),
-      borderColor: '#005fff',
+      borderColor: 'var(--color-primary)',
       backgroundColor: 'rgba(0,95,255,0.07)',
       fill: true,
       tension: 0.4,
@@ -117,7 +117,7 @@ const mainDatasets = computed(() => {
     {
       label: 'PV Generation (kW)',
       data: meterHistory.value.map(() => pvCurrent.value?.readings.power_kw ?? 0),
-      borderColor: '#22c55e',
+      borderColor: 'var(--color-success)',
       backgroundColor: 'rgba(34,197,94,0.05)',
       fill: false,
       tension: 0.4,
@@ -126,7 +126,7 @@ const mainDatasets = computed(() => {
     {
       label: 'Grid Import (kW)',
       data: meterHistory.value.map(r => Math.max(0, totalPowerKw(r) - (pvCurrent.value?.readings.power_kw ?? 0))),
-      borderColor: '#f59e0b',
+      borderColor: 'var(--color-warning)',
       fill: false,
       tension: 0.4,
       yAxisID: 'y'
@@ -137,7 +137,7 @@ const mainDatasets = computed(() => {
     ds.push({
       label: 'Spot Price (€/kWh)',
       data: priceHistory.value.map(p => p.price_eur_per_kwh),
-      borderColor: '#8b5cf6',
+      borderColor: 'var(--chart-series-6)',
       fill: false,
       tension: 0.4,
       yAxisID: 'y2'
@@ -185,7 +185,7 @@ const kpis = computed(() => [
     unit: 'kW',
     trend: 'stable' as const,
     icon: 'pi-bolt',
-    color: '#005fff'
+    color: 'var(--color-primary)'
   },
   {
     label: 'PV Generation',
@@ -193,7 +193,7 @@ const kpis = computed(() => [
     unit: 'kW',
     trend: 'stable' as const,
     icon: 'pi-sun',
-    color: '#22c55e'
+    color: 'var(--color-success)'
   },
   {
     label: 'Grid Import',
@@ -201,7 +201,7 @@ const kpis = computed(() => [
     unit: 'kW',
     trend: 'stable' as const,
     icon: 'pi-arrow-right-arrow-left',
-    color: '#f59e0b'
+    color: 'var(--color-warning)'
   },
   {
     label: 'Self-Consumption',
@@ -209,7 +209,7 @@ const kpis = computed(() => [
     unit: liveSelfConsumption.value !== '—' ? '%' : '',
     trend: 'stable' as const,
     icon: 'pi-sync',
-    color: '#22c55e'
+    color: 'var(--color-success)'
   },
   {
     label: 'Current Price',
@@ -217,7 +217,7 @@ const kpis = computed(() => [
     unit: livePrice.value !== null ? '€/kWh' : '',
     trend: 'stable' as const,
     icon: 'pi-euro',
-    color: '#8b5cf6'
+    color: 'var(--chart-series-6)'
   },
   {
     label: 'Temperature',
@@ -225,7 +225,7 @@ const kpis = computed(() => [
     unit: liveTemp.value !== '—' ? '°C' : '',
     trend: 'stable' as const,
     icon: 'pi-sun',
-    color: '#f59e0b'
+    color: 'var(--color-warning)'
   },
   {
     label: 'Data Points',
@@ -233,7 +233,7 @@ const kpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-database',
-    color: '#ef4444'
+    color: 'var(--color-danger)'
   }
 ])
 
@@ -316,9 +316,9 @@ function fmtTs(iso: string): string {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1.5rem;
-  background: #fff5f5;
-  border-bottom: 1px solid #fee2e2;
-  color: #991b1b;
+  background: var(--color-danger-soft);
+  border-bottom: 1px solid var(--color-danger-light);
+  color: var(--color-danger-dark);
   font-size: 0.875rem;
 }
 
@@ -333,11 +333,11 @@ function fmtTs(iso: string): string {
   padding: 0.4rem 1.5rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--color-success-dark);
   background: rgba(34, 197, 94, 0.08);
   border-bottom: 1px solid rgba(34, 197, 94, 0.2);
 }
-.live-banner__dot { font-size: 0.5rem; color: #22c55e; }
+.live-banner__dot { font-size: 0.5rem; color: var(--color-success); }
 
 .demo-banner {
   display: flex;
@@ -505,7 +505,7 @@ function fmtTs(iso: string): string {
   padding: 0.15rem 0.5rem;
   border-radius: 20px;
   background: rgba(139, 92, 246, 0.12);
-  color: #7c3aed;
+  color: var(--chart-series-6);
 }
 
 .confidence-pill {
@@ -514,7 +514,7 @@ function fmtTs(iso: string): string {
   padding: 0.15rem 0.5rem;
   border-radius: 20px;
   background: rgba(34, 197, 94, 0.1);
-  color: #15803d;
+  color: var(--color-success-dark);
 }
 
 .no-items {

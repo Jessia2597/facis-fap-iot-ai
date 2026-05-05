@@ -55,14 +55,14 @@ const filters = [
 ]
 
 const VALIDATION_COLORS: Record<string, string> = {
-  full: '#15803d',
-  partial: '#92400e',
-  none: '#94a3b8'
+  full: 'var(--color-success-dark)',
+  partial: 'var(--color-warning-dark)',
+  none: 'var(--color-text-soft)'
 }
 
 function validationBg(level: string): string {
-  const map: Record<string, string> = { full: '#dcfce7', partial: '#fef3c7', none: '#f1f5f9' }
-  return map[level] ?? '#f1f5f9'
+  const map: Record<string, string> = { full: 'var(--color-success-soft)', partial: 'var(--color-warning-light)', none: 'var(--color-neutral-bg)' }
+  return map[level] ?? 'var(--color-neutral-bg)'
 }
 
 function formatBadge(format: string): string {
@@ -70,9 +70,9 @@ function formatBadge(format: string): string {
 }
 
 const FORMAT_COLORS: Record<string, string> = {
-  json: '#3b82f6',
-  avro: '#8b5cf6',
-  protobuf: '#f97316'
+  json: 'var(--color-secondary)',
+  avro: 'var(--chart-series-6)',
+  protobuf: 'var(--color-warning)'
 }
 
 const stats = computed(() => ({
@@ -135,8 +135,8 @@ const stats = computed(() => ({
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 
@@ -163,13 +163,13 @@ const stats = computed(() => ({
   border-radius: 20px;
 }
 
-.ss-pill--active     { background: var(--facis-success-light); color: #15803d; }
-.ss-pill--draft      { background: var(--facis-warning-light); color: #92400e; }
+.ss-pill--active     { background: var(--facis-success-light); color: var(--color-success-dark); }
+.ss-pill--draft      { background: var(--facis-warning-light); color: var(--color-warning-dark); }
 .ss-pill--deprecated { background: var(--facis-surface-2); color: var(--facis-text-secondary); border: 1px solid var(--facis-border); }
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

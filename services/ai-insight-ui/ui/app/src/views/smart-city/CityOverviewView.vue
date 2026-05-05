@@ -138,11 +138,11 @@ const weatherVisibility = computed(() => {
 })
 
 const kpis = computed(() => [
-  { label: 'Active Zones', value: activeZones.value, unit: '', trend: 'stable' as const, icon: 'pi-map', color: '#22c55e' },
-  { label: 'Active Luminaires', value: activeLuminaires.value.toLocaleString(), unit: '', trend: 'stable' as const, icon: 'pi-lightbulb', color: '#f59e0b' },
-  { label: 'Avg Dimming Level', value: avgDimming.value !== 0 ? avgDimming.value : '—', unit: avgDimming.value !== 0 ? '%' : '', trend: 'stable' as const, icon: 'pi-sliders-v', color: '#3b82f6' },
-  { label: 'Active Events', value: activeEventsCount.value, unit: '', trend: 'stable' as const, icon: 'pi-bell', color: '#8b5cf6' },
-  { label: 'Energy Efficiency', value: energyEfficiency.value ?? '—', unit: energyEfficiency.value !== null ? '%' : '', trend: 'stable' as const, icon: 'pi-leaf', color: '#22c55e' }
+  { label: 'Active Zones', value: activeZones.value, unit: '', trend: 'stable' as const, icon: 'pi-map', color: 'var(--color-success)' },
+  { label: 'Active Luminaires', value: activeLuminaires.value.toLocaleString(), unit: '', trend: 'stable' as const, icon: 'pi-lightbulb', color: 'var(--color-warning)' },
+  { label: 'Avg Dimming Level', value: avgDimming.value !== 0 ? avgDimming.value : '—', unit: avgDimming.value !== 0 ? '%' : '', trend: 'stable' as const, icon: 'pi-sliders-v', color: 'var(--color-secondary)' },
+  { label: 'Active Events', value: activeEventsCount.value, unit: '', trend: 'stable' as const, icon: 'pi-bell', color: 'var(--chart-series-6)' },
+  { label: 'Energy Efficiency', value: energyEfficiency.value ?? '—', unit: energyEfficiency.value !== null ? '%' : '', trend: 'stable' as const, icon: 'pi-leaf', color: 'var(--color-success)' }
 ])
 
 // ─── Lighting activity chart — derived from zone dimming levels ────────────────
@@ -150,7 +150,7 @@ const chartLabels = computed(() => zones.value.map(z => z.zoneId))
 const chartDatasets = computed(() => [{
   label: 'Avg Dimming Level (%)',
   data: zones.value.map(z => z.avgDimmingLevel),
-  borderColor: '#3b82f6',
+  borderColor: 'var(--color-secondary)',
   backgroundColor: 'rgba(59,130,246,0.10)',
   fill: true
 }])
@@ -184,7 +184,7 @@ function toggleOverlay(key: keyof typeof overlays.value): void {
 }
 
 function activityColor(level: string): string {
-  return level === 'high' ? '#22c55e' : level === 'medium' ? '#f59e0b' : '#94a3b8'
+  return level === 'high' ? 'var(--color-success)' : level === 'medium' ? 'var(--color-warning)' : 'var(--color-text-soft)'
 }
 
 function eventTypeIcon(type: string): string {
@@ -192,7 +192,7 @@ function eventTypeIcon(type: string): string {
 }
 
 function eventTypeColor(type: string): string {
-  return type === 'festival' ? '#8b5cf6' : type === 'incident' ? '#ef4444' : type === 'construction' ? '#f59e0b' : '#ef4444'
+  return type === 'festival' ? 'var(--chart-series-6)' : type === 'incident' ? 'var(--color-danger)' : type === 'construction' ? 'var(--color-warning)' : 'var(--color-danger)'
 }
 
 function formatTime(iso: string): string {
@@ -305,7 +305,7 @@ function formatTime(iso: string): string {
                   class="zone-card__dimming-fill"
                   :style="{
                     width: `${zone.avgDimmingLevel}%`,
-                    background: zone.status === 'fault' ? '#ef4444' : zone.avgDimmingLevel > 70 ? '#f59e0b' : '#3b82f6'
+                    background: zone.status === 'fault' ? 'var(--color-danger)' : zone.avgDimmingLevel > 70 ? 'var(--color-warning)' : 'var(--color-secondary)'
                   }"
                 ></div>
               </div>
@@ -342,7 +342,7 @@ function formatTime(iso: string): string {
               </div>
             </div>
             <div class="event-row__severity">
-              <span class="severity-dot" :style="{ background: event.severity === 'high' ? '#ef4444' : event.severity === 'medium' ? '#f59e0b' : '#94a3b8' }"></span>
+              <span class="severity-dot" :style="{ background: event.severity === 'high' ? 'var(--color-danger)' : event.severity === 'medium' ? 'var(--color-warning)' : 'var(--color-text-soft)' }"></span>
               {{ event.severity }}
             </div>
           </div>
@@ -362,8 +362,8 @@ function formatTime(iso: string): string {
   font-size: 0.8rem; font-weight: 500; padding: 0.5rem 1rem;
   border-radius: var(--facis-radius-sm); border: 1px solid;
 }
-.data-banner--loading { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; }
-.data-banner--live { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.data-banner--loading { background: var(--color-primary-soft); border-color: var(--color-info-light); color: var(--color-info-dark); }
+.data-banner--live { background: var(--color-success-soft); border-color: var(--color-success-light); color: var(--color-success-dark); }
 .banner-extra { opacity: 0.8; font-weight: 400; }
 
 .section-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
@@ -413,8 +413,8 @@ function formatTime(iso: string): string {
 .advisory-badge {
   display: inline-flex; align-items: center;
   font-size: 0.68rem; font-weight: 600; padding: 0.2rem 0.5rem;
-  border-radius: 20px; border: 1px solid #dbeafe;
-  background: #eff6ff; color: #1d4ed8;
+  border-radius: 20px; border: 1px solid var(--color-info-light);
+  background: var(--color-primary-soft); color: var(--color-info-dark);
 }
 
 /* Recommendations */
@@ -463,9 +463,9 @@ function formatTime(iso: string): string {
 
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 .no-data-msg {
   display: flex; align-items: center; gap: 0.5rem;

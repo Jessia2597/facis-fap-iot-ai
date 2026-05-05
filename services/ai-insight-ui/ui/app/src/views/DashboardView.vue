@@ -137,7 +137,7 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-database',
-    color: '#3b82f6'
+    color: 'var(--color-secondary)'
   },
   {
     label: 'Streetlights',
@@ -145,16 +145,16 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-map',
-    color: '#8b5cf6'
+    color: 'var(--chart-series-6)'
   },
-  { label: 'Open Alerts', value: notifications.openAlerts.length, unit: '', trend: 'down' as const, icon: 'pi-bell', color: '#f59e0b' },
+  { label: 'Open Alerts', value: notifications.openAlerts.length, unit: '', trend: 'down' as const, icon: 'pi-bell', color: 'var(--color-warning)' },
   {
     label: 'Data Sources',
     value: (meterCount.value ?? 0) + (streetlightCount.value ?? 0),
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-check-circle',
-    color: '#22c55e'
+    color: 'var(--color-success)'
   },
   {
     label: 'Simulation Speed',
@@ -162,7 +162,7 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-bolt',
-    color: '#f59e0b'
+    color: 'var(--color-warning)'
   },
   {
     label: 'Simulation State',
@@ -170,7 +170,7 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-cog',
-    color: '#ef4444'
+    color: 'var(--color-danger)'
   },
   {
     label: 'Sim Service',
@@ -178,7 +178,7 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-server',
-    color: simHealth.value?.status === 'ok' ? '#22c55e' : '#f59e0b'
+    color: simHealth.value?.status === 'ok' ? 'var(--color-success)' : 'var(--color-warning)'
   },
   {
     label: 'AI Service',
@@ -186,7 +186,7 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-microchip-ai',
-    color: aiHealth.value?.status === 'ok' ? '#22c55e' : '#f59e0b'
+    color: aiHealth.value?.status === 'ok' ? 'var(--color-success)' : 'var(--color-warning)'
   }
 ])
 
@@ -240,10 +240,10 @@ const platformHealth = computed(() => [
 ])
 
 const STATUS_COLOR: Record<string, string> = {
-  healthy: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  inactive: '#94a3b8'
+  healthy: 'var(--color-success)',
+  warning: 'var(--color-warning)',
+  error: 'var(--color-danger)',
+  inactive: 'var(--color-text-soft)'
 }
 
 // Recent alerts (last 5 from the notifications store)
@@ -491,11 +491,11 @@ function fmtRelative(iso: string): string {
               class="alert-row"
               @click="router.push(`/alerts/${alert.id}`)"
             >
-              <div class="alert-row__severity" :style="{ background: alert.severity === 'critical' ? '#fee2e2' : alert.severity === 'error' ? '#fee2e2' : alert.severity === 'warning' ? '#fef3c7' : '#dbeafe' }">
+              <div class="alert-row__severity" :style="{ background: alert.severity === 'critical' ? 'var(--color-danger-light)' : alert.severity === 'error' ? 'var(--color-danger-light)' : alert.severity === 'warning' ? 'var(--color-warning-light)' : 'var(--color-info-light)' }">
                 <i
                   class="pi"
                   :class="alert.severity === 'critical' || alert.severity === 'error' ? 'pi-times-circle' : alert.severity === 'warning' ? 'pi-exclamation-triangle' : 'pi-info-circle'"
-                  :style="{ color: alert.severity === 'critical' || alert.severity === 'error' ? '#ef4444' : alert.severity === 'warning' ? '#f59e0b' : '#3b82f6' }"
+                  :style="{ color: alert.severity === 'critical' || alert.severity === 'error' ? 'var(--color-danger)' : alert.severity === 'warning' ? 'var(--color-warning)' : 'var(--color-secondary)' }"
                 ></i>
               </div>
               <div class="alert-row__content">
@@ -549,12 +549,12 @@ function fmtRelative(iso: string): string {
   border-radius: 20px;
 }
 .sim-control__status--running {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--color-success-soft);
+  color: var(--color-success-dark);
 }
 .sim-control__status--stopped {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
 }
 .sim-control__dot {
   width: 8px;
@@ -592,10 +592,10 @@ function fmtRelative(iso: string): string {
   gap: 0.75rem;
   padding: 2rem;
   margin: 1.5rem;
-  border: 1px solid #fee2e2;
+  border: 1px solid var(--color-danger-light);
   border-radius: var(--facis-radius);
-  background: #fff5f5;
-  color: #991b1b;
+  background: var(--color-danger-soft);
+  color: var(--color-danger-dark);
   font-size: 0.875rem;
   text-align: center;
 }
@@ -657,14 +657,13 @@ function fmtRelative(iso: string): string {
 }
 
 .uc-card__icon--energy {
-  background: #fef3c718;
-  color: #f59e0b;
+  color: var(--color-warning);
   background-color: rgba(245, 158, 11, 0.12);
 }
 
 .uc-card__icon--city {
   background-color: rgba(59, 130, 246, 0.12);
-  color: #3b82f6;
+  color: var(--color-secondary);
 }
 
 .uc-card__info {

@@ -23,9 +23,9 @@ async function fetchData(): Promise<void> {
 onMounted(fetchData)
 
 const STRATEGY_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-  deterministic: { color: '#1d4ed8', bg: '#dbeafe', label: 'Deterministic' },
-  'ai-driven':   { color: '#7c3aed', bg: '#ede9fe', label: 'AI-Driven' },
-  hybrid:        { color: '#0f766e', bg: '#ccfbf1', label: 'Hybrid' }
+  deterministic: { color: 'var(--color-info-dark)', bg: 'var(--color-info-light)', label: 'Deterministic' },
+  'ai-driven':   { color: 'var(--chart-series-6)', bg: 'var(--color-info-light)', label: 'AI-Driven' },
+  hybrid:        { color: 'var(--color-success-dark)', bg: 'var(--color-success-light)', label: 'Hybrid' }
 }
 
 const columns = [
@@ -149,8 +149,8 @@ function navigateToDetail(row: Record<string, unknown>): void {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 
@@ -197,7 +197,7 @@ function navigateToDetail(row: Record<string, unknown>): void {
 
 .msr-value--green  { color: var(--facis-success); }
 .msr-value--orange { color: var(--facis-warning); }
-.msr-value--purple { color: #7c3aed; }
+.msr-value--purple { color: var(--chart-series-6); }
 
 .msr-label {
   font-size: 0.714rem;
@@ -227,8 +227,8 @@ function navigateToDetail(row: Record<string, unknown>): void {
 }
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

@@ -145,16 +145,16 @@ const peakPrice = computed((): number | null => {
 })
 
 const priceKpis = computed(() => [
-  { label: 'Current Price', value: fmt(currentPrice.value, 4), unit: currentPrice.value != null ? '€/kWh' : '', trend: 'stable' as const, icon: 'pi-euro', color: '#8b5cf6' },
-  { label: 'Avg Price (24h)', value: fmt(avgPrice.value, 4), unit: avgPrice.value != null ? '€/kWh' : '', trend: 'stable' as const, icon: 'pi-chart-line', color: '#3b82f6' },
-  { label: 'Peak Price', value: fmt(peakPrice.value, 4), unit: peakPrice.value != null ? '€/kWh' : '', trend: 'stable' as const, icon: 'pi-arrow-up', color: '#ef4444' }
+  { label: 'Current Price', value: fmt(currentPrice.value, 4), unit: currentPrice.value != null ? '€/kWh' : '', trend: 'stable' as const, icon: 'pi-euro', color: 'var(--chart-series-6)' },
+  { label: 'Avg Price (24h)', value: fmt(avgPrice.value, 4), unit: avgPrice.value != null ? '€/kWh' : '', trend: 'stable' as const, icon: 'pi-chart-line', color: 'var(--color-secondary)' },
+  { label: 'Peak Price', value: fmt(peakPrice.value, 4), unit: peakPrice.value != null ? '€/kWh' : '', trend: 'stable' as const, icon: 'pi-arrow-up', color: 'var(--color-danger)' }
 ])
 
 const priceDatasets = computed(() => [
   {
     label: 'Spot Price (€/kWh)',
     data: livePriceHistory.value.map(p => p.price_eur_per_kwh),
-    borderColor: '#8b5cf6',
+    borderColor: 'var(--chart-series-6)',
     backgroundColor: 'rgba(139,92,246,0.08)',
     fill: true,
     tension: 0.4
@@ -186,9 +186,9 @@ const avgWind = computed((): string => {
 })
 
 const weatherKpis = computed(() => [
-  { label: 'Temperature', value: fmt(latestWeatherTemp.value, 1), unit: latestWeatherTemp.value != null ? '°C' : '', trend: 'stable' as const, icon: 'pi-sun', color: '#f59e0b' },
-  { label: 'Irradiance (GHI)', value: latestWeatherGHI.value !== null ? Math.round(latestWeatherGHI.value) : '—', unit: latestWeatherGHI.value !== null ? 'W/m²' : '', trend: 'stable' as const, icon: 'pi-bolt', color: '#f59e0b' },
-  { label: 'Wind Speed', value: avgWind.value, unit: avgWind.value !== '—' ? 'm/s' : '', trend: 'stable' as const, icon: 'pi-send', color: '#3b82f6' }
+  { label: 'Temperature', value: fmt(latestWeatherTemp.value, 1), unit: latestWeatherTemp.value != null ? '°C' : '', trend: 'stable' as const, icon: 'pi-sun', color: 'var(--color-warning)' },
+  { label: 'Irradiance (GHI)', value: latestWeatherGHI.value !== null ? Math.round(latestWeatherGHI.value) : '—', unit: latestWeatherGHI.value !== null ? 'W/m²' : '', trend: 'stable' as const, icon: 'pi-bolt', color: 'var(--color-warning)' },
+  { label: 'Wind Speed', value: avgWind.value, unit: avgWind.value !== '—' ? 'm/s' : '', trend: 'stable' as const, icon: 'pi-send', color: 'var(--color-secondary)' }
 ])
 
 const weatherLabels = computed((): string[] => {
@@ -201,7 +201,7 @@ const weatherDatasets = computed(() => [
   {
     label: 'Temperature (°C)',
     data: liveWeatherHistory.value.map(r => r.temperature_c),
-    borderColor: '#ef4444',
+    borderColor: 'var(--color-danger)',
     fill: false,
     tension: 0.4,
     yAxisID: 'y'
@@ -209,7 +209,7 @@ const weatherDatasets = computed(() => [
   {
     label: 'Irradiance (W/m²)',
     data: liveWeatherHistory.value.map(r => r.ghi_w_m2),
-    borderColor: '#f59e0b',
+    borderColor: 'var(--color-warning)',
     backgroundColor: 'rgba(245,158,11,0.06)',
     fill: true,
     tension: 0.4,
@@ -239,9 +239,9 @@ const totalPV_kWh = computed((): string => {
 })
 
 const pvKpis = computed(() => [
-  { label: 'Current PV Power', value: fmt(latestPVPower.value, 1), unit: latestPVPower.value != null ? 'kW' : '', trend: 'stable' as const, icon: 'pi-sun', color: '#22c55e' },
-  { label: 'History Sum', value: totalPV_kWh.value, unit: totalPV_kWh.value !== '—' ? 'kWh' : '', trend: 'stable' as const, icon: 'pi-chart-bar', color: '#22c55e' },
-  { label: 'Peak Output', value: fmt(peakPV.value, 1), unit: peakPV.value != null ? 'kW' : '', trend: 'stable' as const, icon: 'pi-arrow-up', color: '#22c55e' }
+  { label: 'Current PV Power', value: fmt(latestPVPower.value, 1), unit: latestPVPower.value != null ? 'kW' : '', trend: 'stable' as const, icon: 'pi-sun', color: 'var(--color-success)' },
+  { label: 'History Sum', value: totalPV_kWh.value, unit: totalPV_kWh.value !== '—' ? 'kWh' : '', trend: 'stable' as const, icon: 'pi-chart-bar', color: 'var(--color-success)' },
+  { label: 'Peak Output', value: fmt(peakPV.value, 1), unit: peakPV.value != null ? 'kW' : '', trend: 'stable' as const, icon: 'pi-arrow-up', color: 'var(--color-success)' }
 ])
 
 const pvLabels = computed((): string[] => {
@@ -254,7 +254,7 @@ const pvDatasets = computed(() => [
   {
     label: 'PV Output (kW)',
     data: livePVHistory.value.map(r => r.power_kw),
-    borderColor: '#22c55e',
+    borderColor: 'var(--color-success)',
     backgroundColor: 'rgba(34,197,94,0.08)',
     fill: true,
     tension: 0.4,
@@ -278,14 +278,14 @@ const activeDevices = computed(() => latestConsumers.value.filter(r => r.state =
 const totalLoad = computed(() => latestConsumers.value.reduce((s, r) => s + (r.powerKw ?? 0), 0).toFixed(1))
 
 const consumerKpis = computed(() => [
-  { label: 'Active Devices', value: activeDevices.value, unit: '', trend: 'stable' as const, icon: 'pi-desktop', color: '#3b82f6' },
-  { label: 'Total Load', value: totalLoad.value, unit: 'kW', trend: 'stable' as const, icon: 'pi-bolt', color: '#f59e0b' }
+  { label: 'Active Devices', value: activeDevices.value, unit: '', trend: 'stable' as const, icon: 'pi-desktop', color: 'var(--color-secondary)' },
+  { label: 'Total Load', value: totalLoad.value, unit: 'kW', trend: 'stable' as const, icon: 'pi-bolt', color: 'var(--color-warning)' }
 ])
 
 const STATE_COLOR: Record<string, string> = {
-  on: '#22c55e',
-  off: '#94a3b8',
-  standby: '#f59e0b'
+  on: 'var(--color-success)',
+  off: 'var(--color-text-soft)',
+  standby: 'var(--color-warning)'
 }
 
 function fmtTs(iso: string): string {
@@ -456,11 +456,11 @@ function fmtTs(iso: string): string {
               <span
                 class="state-badge"
                 :style="{
-                  color: STATE_COLOR[rec.state] ?? '#94a3b8',
-                  background: `${STATE_COLOR[rec.state] ?? '#94a3b8'}18`
+                  color: STATE_COLOR[rec.state] ?? 'var(--color-text-soft)',
+                  background: `${STATE_COLOR[rec.state] ?? 'var(--color-text-soft)'}18`
                 }"
               >
-                <span class="state-dot" :style="{ background: STATE_COLOR[rec.state] ?? '#94a3b8' }"></span>
+                <span class="state-dot" :style="{ background: STATE_COLOR[rec.state] ?? 'var(--color-text-soft)' }"></span>
                 {{ (rec.state ?? 'unknown').toUpperCase() }}
               </span>
             </span>
@@ -483,9 +483,9 @@ function fmtTs(iso: string): string {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1.5rem;
-  background: #fff5f5;
-  border-bottom: 1px solid #fee2e2;
-  color: #991b1b;
+  background: var(--color-danger-soft);
+  border-bottom: 1px solid var(--color-danger-light);
+  color: var(--color-danger-dark);
   font-size: 0.875rem;
 }
 .live-banner {
@@ -495,11 +495,11 @@ function fmtTs(iso: string): string {
   padding: 0.4rem 1.5rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--color-success-dark);
   background: rgba(34, 197, 94, 0.08);
   border-bottom: 1px solid rgba(34, 197, 94, 0.2);
 }
-.live-banner__dot { font-size: 0.5rem; color: #22c55e; }
+.live-banner__dot { font-size: 0.5rem; color: var(--color-success); }
 
 .refresh-btn {
   display: flex;
@@ -547,10 +547,10 @@ function fmtTs(iso: string): string {
   flex-shrink: 0;
 }
 
-.ctx-section__badge--purple { background: rgba(139,92,246,0.12); color: #8b5cf6; }
-.ctx-section__badge--orange { background: rgba(245,158,11,0.12); color: #f59e0b; }
-.ctx-section__badge--green  { background: rgba(34,197,94,0.12);  color: #22c55e; }
-.ctx-section__badge--blue   { background: rgba(59,130,246,0.12); color: #3b82f6; }
+.ctx-section__badge--purple { background: rgba(139,92,246,0.12); color: var(--chart-series-6); }
+.ctx-section__badge--orange { background: rgba(245,158,11,0.12); color: var(--color-warning); }
+.ctx-section__badge--green  { background: rgba(34,197,94,0.12);  color: var(--color-success); }
+.ctx-section__badge--blue   { background: rgba(59,130,246,0.12); color: var(--color-secondary); }
 
 .ctx-section__title {
   font-size: 1rem;

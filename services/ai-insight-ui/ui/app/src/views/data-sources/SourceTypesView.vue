@@ -34,7 +34,7 @@ async function fetchData(): Promise<void> {
 
     if (metersRes?.meters?.length) {
       cards.push({
-        type: 'Energy Meter', icon: 'pi-bolt', color: '#005fff',
+        type: 'Energy Meter', icon: 'pi-bolt', color: 'var(--color-primary)',
         count: metersRes.count,
         protocol: 'MQTT/JSON, Modbus TCP',
         useCases: ['Smart Energy'],
@@ -45,7 +45,7 @@ async function fetchData(): Promise<void> {
 
     if (pvRes?.systems?.length) {
       cards.push({
-        type: 'PV Inverter', icon: 'pi-sun', color: '#f59e0b',
+        type: 'PV Inverter', icon: 'pi-sun', color: 'var(--color-warning)',
         count: pvRes.count,
         protocol: 'SunSpec/Modbus',
         useCases: ['Smart Energy'],
@@ -56,7 +56,7 @@ async function fetchData(): Promise<void> {
 
     if (weatherRes?.stations?.length) {
       cards.push({
-        type: 'Weather Sensor', icon: 'pi-cloud', color: '#06b6d4',
+        type: 'Weather Sensor', icon: 'pi-cloud', color: 'var(--color-secondary)',
         count: weatherRes.count,
         protocol: 'MQTT/JSON',
         useCases: ['Smart Energy', 'Smart City'],
@@ -67,7 +67,7 @@ async function fetchData(): Promise<void> {
 
     if (loadsRes?.devices?.length) {
       cards.push({
-        type: 'Flexible Load', icon: 'pi-microchip', color: '#8b5cf6',
+        type: 'Flexible Load', icon: 'pi-microchip', color: 'var(--chart-series-6)',
         count: loadsRes.count,
         protocol: 'MQTT/JSON',
         useCases: ['Smart Energy'],
@@ -78,7 +78,7 @@ async function fetchData(): Promise<void> {
 
     if (lightsRes?.streetlights?.length) {
       cards.push({
-        type: 'Streetlight Controller', icon: 'pi-lightbulb', color: '#f59e0b',
+        type: 'Streetlight Controller', icon: 'pi-lightbulb', color: 'var(--color-warning)',
         count: lightsRes.count,
         protocol: 'DLMS/COSEM, MQTT',
         useCases: ['Smart City'],
@@ -89,7 +89,7 @@ async function fetchData(): Promise<void> {
 
     if (trafficRes?.zones?.length) {
       cards.push({
-        type: 'Traffic Feed', icon: 'pi-car', color: '#64748b',
+        type: 'Traffic Feed', icon: 'pi-car', color: 'var(--color-neutral-fg)',
         count: trafficRes.count,
         protocol: 'REST/JSON',
         useCases: ['Smart City'],
@@ -100,7 +100,7 @@ async function fetchData(): Promise<void> {
 
     if (eventsRes?.zones?.length) {
       cards.push({
-        type: 'City Event Feed', icon: 'pi-bell', color: '#ef4444',
+        type: 'City Event Feed', icon: 'pi-bell', color: 'var(--color-danger)',
         count: eventsRes.count,
         protocol: 'MQTT/JSON',
         useCases: ['Smart City'],
@@ -111,7 +111,7 @@ async function fetchData(): Promise<void> {
 
     // Market price — always 1
     cards.push({
-      type: 'Market Data', icon: 'pi-chart-line', color: '#8b5cf6',
+      type: 'Market Data', icon: 'pi-chart-line', color: 'var(--chart-series-6)',
       count: 1, protocol: 'REST/XML',
       useCases: ['Smart Energy'],
       ids: ['ENTSOE-price-feed'],
@@ -228,8 +228,8 @@ function viewSources(card: SourceTypeCard): void {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .view-page { display: flex; flex-direction: column; }
@@ -246,7 +246,7 @@ function viewSources(card: SourceTypeCard): void {
 .count-label { font-size: 0.8rem; color: var(--facis-text-secondary); font-weight: 500; }
 .type-card__health { display: flex; gap: 0.375rem; }
 .health-pill { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 20px; }
-.health-pill--ok { background: var(--facis-success-light); color: #15803d; }
+.health-pill--ok { background: var(--facis-success-light); color: var(--color-success-dark); }
 .type-card__meta { display: flex; flex-direction: column; gap: 0.35rem; }
 .meta-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.75rem; }
 .meta-key { font-weight: 500; color: var(--facis-text-secondary); min-width: 70px; flex-shrink: 0; }

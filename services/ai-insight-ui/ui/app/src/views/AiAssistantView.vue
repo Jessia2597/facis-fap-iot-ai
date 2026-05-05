@@ -154,10 +154,10 @@ const kpis = computed(() => {
   const dailyCost = netGrid * 24 * price
 
   return [
-    { label: 'Net Grid Import', value: netGrid.toFixed(1), unit: 'kW', trend: 'stable' as const, icon: 'pi-arrow-down-left', color: '#3b82f6' },
-    { label: 'PV Generation', value: pvPower.toFixed(1), unit: 'kW', trend: 'up' as const, trendValue: isLive.value ? 'Live' : '', icon: 'pi-sun', color: '#f59e0b' },
-    { label: 'Daily Cost Est.', value: `€${dailyCost.toFixed(0)}`, unit: '', trend: 'down' as const, trendValue: isLive.value ? 'Live' : '', icon: 'pi-euro', color: '#22c55e' },
-    { label: 'Anomalies (24h)', value: '--', unit: '', trend: 'stable' as const, icon: 'pi-exclamation-triangle', color: '#ef4444' }
+    { label: 'Net Grid Import', value: netGrid.toFixed(1), unit: 'kW', trend: 'stable' as const, icon: 'pi-arrow-down-left', color: 'var(--color-secondary)' },
+    { label: 'PV Generation', value: pvPower.toFixed(1), unit: 'kW', trend: 'up' as const, trendValue: isLive.value ? 'Live' : '', icon: 'pi-sun', color: 'var(--color-warning)' },
+    { label: 'Daily Cost Est.', value: `€${dailyCost.toFixed(0)}`, unit: '', trend: 'down' as const, trendValue: isLive.value ? 'Live' : '', icon: 'pi-euro', color: 'var(--color-success)' },
+    { label: 'Anomalies (24h)', value: '--', unit: '', trend: 'stable' as const, icon: 'pi-exclamation-triangle', color: 'var(--color-danger)' }
   ]
 })
 
@@ -422,7 +422,7 @@ const forecastDatasets = computed(() => {
     {
       label: 'PV Power (kW)',
       data: slice.map(r => Math.round(r.pvPower_kW * 10) / 10),
-      borderColor: '#f59e0b',
+      borderColor: 'var(--color-warning)',
       backgroundColor: 'rgba(245,158,11,0.1)',
       fill: true,
       tension: 0.4
@@ -430,7 +430,7 @@ const forecastDatasets = computed(() => {
     {
       label: 'Irradiance (W/m² ÷10)',
       data: slice.map(r => Math.round(r.irradiance_w_m2 / 10) / 10),
-      borderColor: '#fbbf24',
+      borderColor: 'var(--color-warning)',
       tension: 0.4
     }
   ]
@@ -442,7 +442,7 @@ const costDatasets = computed(() => {
     {
       label: 'Price (€/kWh)',
       data: src.map(r => Math.round(r.priceEurPerKwh * 1000) / 1000),
-      borderColor: '#3b82f6',
+      borderColor: 'var(--color-secondary)',
       backgroundColor: 'rgba(59,130,246,0.07)',
       fill: true,
       tension: 0.4
@@ -872,7 +872,7 @@ const costLabels = computed(() => {
 }
 
 .chat-message__bubble--user .chat-message__content {
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .chat-message__content :deep(p) {
@@ -907,8 +907,8 @@ const costLabels = computed(() => {
   border-radius: var(--facis-radius-sm);
 }
 
-.ic-section--findings { background: #f8fafc; border: 1px solid var(--facis-border); }
-.ic-section--recs     { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.ic-section--findings { background: var(--color-neutral-bg); border: 1px solid var(--facis-border); }
+.ic-section--recs     { background: var(--color-success-soft); border: 1px solid var(--color-success-light); }
 
 .ic-title {
   font-size: 0.786rem;
@@ -922,7 +922,7 @@ const costLabels = computed(() => {
   gap: 0.3rem;
 }
 
-.ic-section--recs .ic-title { color: #15803d; }
+.ic-section--recs .ic-title { color: var(--color-success-dark); }
 
 .ic-list {
   list-style: none;
@@ -947,7 +947,7 @@ const costLabels = computed(() => {
   color: var(--facis-text-muted);
 }
 
-.ic-section--recs .ic-list li::before { color: #15803d; }
+.ic-section--recs .ic-list li::before { color: var(--color-success-dark); }
 
 /* Typing */
 .typing-avatar { animation: pulse 2s infinite; }
@@ -1080,12 +1080,12 @@ const costLabels = computed(() => {
 
 .uib-status--live {
   background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  color: var(--color-success-dark);
 }
 
 .uib-status--demo {
   background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
+  color: var(--color-warning-dark);
 }
 
 .uib-status__dot {
@@ -1096,13 +1096,13 @@ const costLabels = computed(() => {
 }
 
 .uib-status--live .uib-status__dot {
-  background: #22c55e;
+  background: var(--color-success);
   box-shadow: 0 0 0 2px rgba(34,197,94,0.3);
   animation: pulse-green 2s infinite;
 }
 
 .uib-status--demo .uib-status__dot {
-  background: #f59e0b;
+  background: var(--color-warning);
 }
 
 @keyframes pulse-green {

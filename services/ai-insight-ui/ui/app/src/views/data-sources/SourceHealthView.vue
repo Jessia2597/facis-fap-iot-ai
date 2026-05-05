@@ -156,11 +156,11 @@ function formatDate(ts: string): string {
 
       <template v-else>
         <div class="grid-kpi">
-          <KpiCard label="Healthy"     :value="healthSummary.healthy"   trend="stable" icon="pi-check-circle" color="#22c55e" />
-          <KpiCard label="Warning"     :value="healthSummary.warning"   trend="stable" icon="pi-exclamation-triangle" color="#f59e0b" />
-          <KpiCard label="Error"       :value="healthSummary.error"     trend="stable" icon="pi-times-circle" color="#ef4444" />
-          <KpiCard label="Offline"     :value="healthSummary.offline"   trend="stable" icon="pi-wifi" color="#94a3b8" />
-          <KpiCard label="Avg Avail."  :value="healthSummary.avgAvailability" unit="%" trend="stable" icon="pi-percentage" color="#005fff" />
+          <KpiCard label="Healthy"     :value="healthSummary.healthy"   trend="stable" icon="pi-check-circle" color="var(--color-success)" />
+          <KpiCard label="Warning"     :value="healthSummary.warning"   trend="stable" icon="pi-exclamation-triangle" color="var(--color-warning)" />
+          <KpiCard label="Error"       :value="healthSummary.error"     trend="stable" icon="pi-times-circle" color="var(--color-danger)" />
+          <KpiCard label="Offline"     :value="healthSummary.offline"   trend="stable" icon="pi-wifi" color="var(--color-text-soft)" />
+          <KpiCard label="Avg Avail."  :value="healthSummary.avgAvailability" unit="%" trend="stable" icon="pi-percentage" color="var(--color-primary)" />
         </div>
 
         <div class="card">
@@ -216,15 +216,15 @@ function formatDate(ts: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .view-page { display: flex; flex-direction: column; }
 .view-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .table-meta { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--facis-border); }
 .table-title { font-size: 0.875rem; font-weight: 600; color: var(--facis-text); }
-.live-label { font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.2rem 0.5rem; border-radius: 3px; }
+.live-label { font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.2rem 0.5rem; border-radius: 3px; }
 .id-code { font-family: var(--facis-font-mono); font-size: 0.75rem; background: var(--facis-surface-2); padding: 0.1rem 0.35rem; border-radius: 3px; }
 .proto-chip { font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 20px; background: var(--facis-surface-2); color: var(--facis-text-secondary); }
 .ts { font-size: 0.78rem; color: var(--facis-text-secondary); }

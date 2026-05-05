@@ -141,7 +141,7 @@ const dimmingChartDatasets = computed(() => [
   {
     label: `Zone ${zoneIdParam.value} — Dimming (%)`,
     data: liveDimmingHistory.value.map(r => r.dimming_level_pct),
-    borderColor: '#3b82f6',
+    borderColor: 'var(--color-secondary)',
     backgroundColor: 'rgba(59,130,246,0.10)',
     fill: true
   }
@@ -156,7 +156,7 @@ const trafficChartLabels = computed(() =>
 const trafficDatasets = computed(() => [{
   label: 'Traffic Index (×100)',
   data: liveTrafficHistory.value.map(r => r.traffic_index * 100),
-  borderColor: '#f59e0b',
+  borderColor: 'var(--color-warning)',
   backgroundColor: 'rgba(245,158,11,0.08)',
   fill: true
 }])
@@ -165,14 +165,14 @@ const weatherDatasets = computed(() => [
   {
     label: 'Fog Index (%)',
     data: liveWeather.value ? [liveWeather.value.fog_index * 100] : [],
-    borderColor: '#94a3b8',
+    borderColor: 'var(--color-text-soft)',
     backgroundColor: 'rgba(148,163,184,0.08)',
     fill: true
   },
   {
     label: 'Visibility (km)',
     data: liveWeather.value ? [liveWeather.value.visibility] : [],
-    borderColor: '#0ea5e9',
+    borderColor: 'var(--color-secondary)',
     backgroundColor: 'transparent'
   }
 ])
@@ -326,7 +326,7 @@ const tabs = [
 ]
 
 function impactColor(level: string): string {
-  return level === 'high' ? '#ef4444' : level === 'medium' ? '#f59e0b' : '#3b82f6'
+  return level === 'high' ? 'var(--color-danger)' : level === 'medium' ? 'var(--color-warning)' : 'var(--color-secondary)'
 }
 
 function categoryIcon(cat: string): string {
@@ -334,7 +334,7 @@ function categoryIcon(cat: string): string {
 }
 
 function categoryColor(cat: string): string {
-  return cat === 'energy' ? '#f59e0b' : cat === 'safety' ? '#ef4444' : cat === 'adaptive' ? '#3b82f6' : '#8b5cf6'
+  return cat === 'energy' ? 'var(--color-warning)' : cat === 'safety' ? 'var(--color-danger)' : cat === 'adaptive' ? 'var(--color-secondary)' : 'var(--chart-series-6)'
 }
 </script>
 
@@ -373,17 +373,17 @@ function categoryColor(cat: string): string {
 
       <!-- Zone KPIs -->
       <div class="grid-kpi" style="grid-template-columns: repeat(auto-fill, minmax(175px, 1fr))">
-        <KpiCard label="Luminaires" :value="liveZoneInfo.lightCount" unit="" trend="stable" icon="pi-lightbulb" color="#f59e0b" />
-        <KpiCard label="Avg Dimming" :value="liveZoneInfo.avgDimmingLevel" unit="%" trend="stable" icon="pi-sliders-v" color="#3b82f6" />
-        <KpiCard label="Traffic Index" :value="liveTrafficCurrent?.traffic_index !== undefined ? (liveTrafficCurrent.traffic_index * 100).toFixed(0) : '—'" unit="" trend="stable" icon="pi-car" color="#f59e0b" />
-        <KpiCard label="Visibility" :value="liveWeather?.visibility !== undefined ? liveWeather.visibility.toFixed(1) : '—'" unit="km" trend="stable" icon="pi-eye" color="#3b82f6" />
+        <KpiCard label="Luminaires" :value="liveZoneInfo.lightCount" unit="" trend="stable" icon="pi-lightbulb" color="var(--color-warning)" />
+        <KpiCard label="Avg Dimming" :value="liveZoneInfo.avgDimmingLevel" unit="%" trend="stable" icon="pi-sliders-v" color="var(--color-secondary)" />
+        <KpiCard label="Traffic Index" :value="liveTrafficCurrent?.traffic_index !== undefined ? (liveTrafficCurrent.traffic_index * 100).toFixed(0) : '—'" unit="" trend="stable" icon="pi-car" color="var(--color-warning)" />
+        <KpiCard label="Visibility" :value="liveWeather?.visibility !== undefined ? liveWeather.visibility.toFixed(1) : '—'" unit="km" trend="stable" icon="pi-eye" color="var(--color-secondary)" />
         <KpiCard
           label="Fault Luminaires"
           :value="zoneLuminaires.filter(l => l.state === 'fault').length"
           unit=""
           :trend="zoneLuminaires.filter(l => l.state === 'fault').length > 0 ? 'up' : 'stable'"
           icon="pi-exclamation-triangle"
-          color="#ef4444"
+          color="var(--color-danger)"
         />
       </div>
 
@@ -404,7 +404,7 @@ function categoryColor(cat: string): string {
                 <div class="info-row"><span class="info-row__key">Traffic Index</span><span class="info-row__val">{{ liveTrafficCurrent ? (liveTrafficCurrent.traffic_index * 100).toFixed(0) : '—' }}</span></div>
                 <div class="info-row"><span class="info-row__key">Last Update</span><span class="info-row__val mono">{{ zone?.lastUpdate ? new Date(zone.lastUpdate).toLocaleString('en-GB') : '—' }}</span></div>
                 <div class="info-row"><span class="info-row__key">Data Quality</span>
-                  <span class="info-row__val" :style="{ color: liveZoneLights.length > 0 ? '#15803d' : '#f59e0b' }">
+                  <span class="info-row__val" :style="{ color: liveZoneLights.length > 0 ? 'var(--color-success-dark)' : 'var(--color-warning)' }">
                     {{ liveZoneLights.length > 0 ? '99.0%' : '—' }}
                   </span>
                 </div>
@@ -421,7 +421,7 @@ function categoryColor(cat: string): string {
                         class="dimming-profile__fill"
                         :style="{
                           width: `${zone?.avgDimmingLevel ?? 0}%`,
-                          background: (zone?.avgDimmingLevel ?? 0) > 80 ? '#f59e0b' : '#3b82f6'
+                          background: (zone?.avgDimmingLevel ?? 0) > 80 ? 'var(--color-warning)' : 'var(--color-secondary)'
                         }"
                       ></div>
                     </div>
@@ -431,7 +431,7 @@ function categoryColor(cat: string): string {
                   <div class="info-row"><span class="info-row__key">Schedule Type</span><span class="info-row__val">Astronomical</span></div>
                   <div class="info-row"><span class="info-row__key">Energy Class</span><span class="info-row__val">EN 13201-2 Class P4</span></div>
                   <div class="info-row"><span class="info-row__key">Zone Efficiency</span>
-                    <span class="info-row__val" style="color: #15803d; font-weight: 600;">
+                    <span class="info-row__val" style="color: var(--color-success-dark); font-weight: 600;">
                       {{ Math.round(100 - (zone?.avgDimmingLevel ?? 50) * 0.38) }}%
                     </span>
                   </div>
@@ -487,7 +487,7 @@ function categoryColor(cat: string): string {
             <!-- Events / Presence -->
             <div class="context-section">
               <div class="context-section__header">
-                <i class="pi pi-users context-section__icon" style="color: #8b5cf6"></i>
+                <i class="pi pi-users context-section__icon" style="color: var(--chart-series-6)"></i>
                 <span class="context-section__title">City Events</span>
               </div>
               <div class="context-kpis">
@@ -496,7 +496,7 @@ function categoryColor(cat: string): string {
               </div>
               <div class="ctx-event-list">
                 <div v-for="e in zoneEvents.slice(0, 4)" :key="e.id" class="ctx-event-row">
-                  <span class="ctx-event-type" style="color: #8b5cf6">{{ e.type }}</span>
+                  <span class="ctx-event-type" style="color: var(--chart-series-6)">{{ e.type }}</span>
                   <span class="ctx-event-time">{{ new Date(e.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) }}</span>
                   <span class="ctx-event-conf">{{ e.severity }}</span>
                 </div>
@@ -507,7 +507,7 @@ function categoryColor(cat: string): string {
             <!-- Traffic / Incidents -->
             <div class="context-section">
               <div class="context-section__header">
-                <i class="pi pi-car context-section__icon" style="color: #f59e0b"></i>
+                <i class="pi pi-car context-section__icon" style="color: var(--color-warning)"></i>
                 <span class="context-section__title">Traffic / Incidents</span>
               </div>
               <div class="context-kpis">
@@ -530,7 +530,7 @@ function categoryColor(cat: string): string {
             <!-- Dimming History -->
             <div class="context-section">
               <div class="context-section__header">
-                <i class="pi pi-chart-line context-section__icon" style="color: #3b82f6"></i>
+                <i class="pi pi-chart-line context-section__icon" style="color: var(--color-secondary)"></i>
                 <span class="context-section__title">Dimming History</span>
               </div>
               <div class="context-kpis">
@@ -555,7 +555,7 @@ function categoryColor(cat: string): string {
             <!-- Weather -->
             <div class="context-section">
               <div class="context-section__header">
-                <i class="pi pi-cloud context-section__icon" style="color: #0ea5e9"></i>
+                <i class="pi pi-cloud context-section__icon" style="color: var(--color-secondary)"></i>
                 <span class="context-section__title">Weather</span>
               </div>
               <div class="context-kpis">
@@ -578,28 +578,28 @@ function categoryColor(cat: string): string {
             <!-- Sunrise / Sunset -->
             <div class="context-section context-section--wide">
               <div class="context-section__header">
-                <i class="pi pi-sun context-section__icon" style="color: #f59e0b"></i>
+                <i class="pi pi-sun context-section__icon" style="color: var(--color-warning)"></i>
                 <span class="context-section__title">Sunrise / Sunset</span>
               </div>
               <div class="ss-grid">
                 <div class="ss-today">
                   <div class="ss-today__item">
-                    <i class="pi pi-arrow-up" style="color: #f59e0b"></i>
+                    <i class="pi pi-arrow-up" style="color: var(--color-warning)"></i>
                     <span class="ss-today__label">Sunrise</span>
                     <span class="ss-today__val">{{ sunriseDisplay }}</span>
                   </div>
                   <div class="ss-today__item">
-                    <i class="pi pi-arrow-down" style="color: #8b5cf6"></i>
+                    <i class="pi pi-arrow-down" style="color: var(--chart-series-6)"></i>
                     <span class="ss-today__label">Sunset</span>
                     <span class="ss-today__val">{{ sunsetDisplay }}</span>
                   </div>
                   <div class="ss-today__item">
-                    <i class="pi pi-eye" style="color: #0ea5e9"></i>
+                    <i class="pi pi-eye" style="color: var(--color-secondary)"></i>
                     <span class="ss-today__label">Visibility</span>
                     <span class="ss-today__val">{{ liveWeather?.visibility !== undefined ? `${liveWeather.visibility.toFixed(1)} km` : '—' }}</span>
                   </div>
                   <div class="ss-today__item">
-                    <i class="pi pi-cloud" style="color: #94a3b8"></i>
+                    <i class="pi pi-cloud" style="color: var(--color-text-soft)"></i>
                     <span class="ss-today__label">Fog Index</span>
                     <span class="ss-today__val">{{ liveWeather?.fog_index !== undefined ? `${(liveWeather.fog_index * 100).toFixed(0)}%` : '—' }}</span>
                   </div>
@@ -736,7 +736,7 @@ function categoryColor(cat: string): string {
             <div class="section-title" style="margin: 1.5rem 0 1rem;">Related Contextual Streams</div>
             <div class="ref-list">
               <div class="ref-item">
-                <div class="ref-item__icon" style="color: #8b5cf6"><i class="pi pi-users"></i></div>
+                <div class="ref-item__icon" style="color: var(--chart-series-6)"><i class="pi pi-users"></i></div>
                 <div class="ref-item__body">
                   <div class="ref-item__name">PIR Motion Events — {{ zone?.zoneId }}</div>
                   <div class="ref-item__desc">Source: PIR Motion Sensors Residential · Protocol: Zigbee/MQTT</div>
@@ -744,7 +744,7 @@ function categoryColor(cat: string): string {
                 <StatusBadge status="healthy" size="sm" />
               </div>
               <div class="ref-item">
-                <div class="ref-item__icon" style="color: #f59e0b"><i class="pi pi-car"></i></div>
+                <div class="ref-item__icon" style="color: var(--color-warning)"><i class="pi pi-car"></i></div>
                 <div class="ref-item__body">
                   <div class="ref-item__name">Traffic Camera Array — N12</div>
                   <div class="ref-item__desc">Source: Computer Vision · Protocol: HTTPS/REST</div>
@@ -752,7 +752,7 @@ function categoryColor(cat: string): string {
                 <StatusBadge status="warning" size="sm" />
               </div>
               <div class="ref-item">
-                <div class="ref-item__icon" style="color: #0ea5e9"><i class="pi pi-cloud"></i></div>
+                <div class="ref-item__icon" style="color: var(--color-secondary)"><i class="pi pi-cloud"></i></div>
                 <div class="ref-item__body">
                   <div class="ref-item__name">Weather Station HQ</div>
                   <div class="ref-item__desc">Source: Weather Sensor · Protocol: MQTT/JSON</div>
@@ -768,7 +768,7 @@ function categoryColor(cat: string): string {
                 :key="evt.id"
                 class="ref-item"
               >
-                <div class="ref-item__icon" :style="{ color: evt.type === 'incident' ? '#ef4444' : '#f59e0b' }">
+                <div class="ref-item__icon" :style="{ color: evt.type === 'incident' ? 'var(--color-danger)' : 'var(--color-warning)' }">
                   <i :class="`pi ${evt.type === 'incident' ? 'pi-exclamation-triangle' : evt.type === 'construction' ? 'pi-wrench' : 'pi-star'}`"></i>
                 </div>
                 <div class="ref-item__body">
@@ -799,8 +799,8 @@ function categoryColor(cat: string): string {
   font-size: 0.8rem; font-weight: 500; padding: 0.5rem 1rem;
   border-radius: var(--facis-radius-sm); border: 1px solid; flex-wrap: wrap;
 }
-.data-banner--loading { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; }
-.data-banner--live { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.data-banner--loading { background: var(--color-primary-soft); border-color: var(--color-info-light); color: var(--color-info-dark); }
+.data-banner--live { background: var(--color-success-soft); border-color: var(--color-success-light); color: var(--color-success-dark); }
 .banner-extra { opacity: 0.8; font-weight: 400; }
 
 .section-title { font-size: 0.9rem; font-weight: 600; color: var(--facis-text); }
@@ -831,9 +831,9 @@ function categoryColor(cat: string): string {
 .lumi-summary__item { flex: 1; padding: 0.6rem; border-radius: var(--facis-radius-sm); border: 1px solid var(--facis-border); text-align: center; display: flex; flex-direction: column; gap: 0.2rem; }
 .lumi-summary__count { font-size: 1.2rem; font-weight: 700; color: var(--facis-text); }
 .lumi-summary__label { font-size: 0.68rem; color: var(--facis-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
-.lumi-summary__item--green .lumi-summary__count { color: #15803d; }
-.lumi-summary__item--yellow .lumi-summary__count { color: #92400e; }
-.lumi-summary__item--red .lumi-summary__count { color: #991b1b; }
+.lumi-summary__item--green .lumi-summary__count { color: var(--color-success-dark); }
+.lumi-summary__item--yellow .lumi-summary__count { color: var(--color-warning-dark); }
+.lumi-summary__item--red .lumi-summary__count { color: var(--color-danger-dark); }
 
 /* Section blocks */
 .section-block { }
@@ -841,9 +841,9 @@ function categoryColor(cat: string): string {
 /* JSON view */
 .json-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
 .json-header__title { font-size: 0.82rem; font-weight: 600; color: var(--facis-text); }
-.json-header__badge { font-size: 0.68rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px; background: #f1f5f9; color: #475569; border: 1px solid var(--facis-border); }
+.json-header__badge { font-size: 0.68rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px; background: var(--color-neutral-bg); color: var(--color-neutral-fg); border: 1px solid var(--facis-border); }
 .json-view {
-  background: #0f172a; color: #94a3b8;
+  background: var(--color-text); color: var(--color-text-soft);
   border-radius: var(--facis-radius-sm); padding: 1.25rem;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.78rem; line-height: 1.7; overflow: auto;
@@ -854,8 +854,8 @@ function categoryColor(cat: string): string {
 .provenance-chain { display: flex; flex-direction: column; }
 .prov-step { display: flex; align-items: flex-start; gap: 1rem; }
 .prov-step__dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 0.3rem; }
-.prov-step__dot--green { background: #22c55e; }
-.prov-step__dot--blue { background: #3b82f6; }
+.prov-step__dot--green { background: var(--color-success); }
+.prov-step__dot--blue { background: var(--color-secondary); }
 .prov-step__body { padding-bottom: 0.25rem; }
 .prov-step__stage { font-size: 0.82rem; font-weight: 600; color: var(--facis-text); }
 .prov-step__desc { font-size: 0.8rem; color: var(--facis-text-secondary); margin-top: 0.2rem; line-height: 1.5; }
@@ -868,8 +868,8 @@ function categoryColor(cat: string): string {
 .transform-row__step { font-size: 0.7rem; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; background: var(--facis-primary-light); color: var(--facis-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .transform-row__action { flex: 1; font-size: 0.8rem; color: var(--facis-text); }
 .transform-row__status { font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 20px; flex-shrink: 0; }
-.transform-row__status--ok { background: #dcfce7; color: #15803d; }
-.transform-row__status--warn { background: #fef3c7; color: #92400e; }
+.transform-row__status--ok { background: var(--color-success-soft); color: var(--color-success-dark); }
+.transform-row__status--warn { background: var(--color-warning-light); color: var(--color-warning-dark); }
 
 /* Context signals */
 .context-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; }
@@ -900,8 +900,8 @@ function categoryColor(cat: string): string {
 .advisory-badge {
   display: inline-flex; align-items: center;
   font-size: 0.68rem; font-weight: 600; padding: 0.2rem 0.5rem;
-  border-radius: 20px; border: 1px solid #dbeafe;
-  background: #eff6ff; color: #1d4ed8;
+  border-radius: 20px; border: 1px solid var(--color-info-light);
+  background: var(--color-primary-soft); color: var(--color-info-dark);
 }
 
 /* Recommendations */

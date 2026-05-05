@@ -65,7 +65,7 @@ const chartDatasets = computed(() => [
   {
     label: 'CPU (%)',
     data: cpuData,
-    borderColor: '#3b82f6',
+    borderColor: 'var(--color-secondary)',
     backgroundColor: 'rgba(59,130,246,0.06)',
     fill: true,
     tension: 0.4
@@ -73,7 +73,7 @@ const chartDatasets = computed(() => [
   {
     label: 'Memory (%)',
     data: memData,
-    borderColor: '#8b5cf6',
+    borderColor: 'var(--chart-series-6)',
     backgroundColor: 'rgba(139,92,246,0.06)',
     fill: true,
     tension: 0.4
@@ -81,7 +81,7 @@ const chartDatasets = computed(() => [
   {
     label: 'Disk I/O (MB/s)',
     data: diskIo,
-    borderColor: '#f59e0b',
+    borderColor: 'var(--color-warning)',
     tension: 0.4
   }
 ])
@@ -90,7 +90,7 @@ const pipelineDatasets = computed(() => [
   {
     label: 'Pipeline Runs',
     data: pipelineRuns,
-    borderColor: '#22c55e',
+    borderColor: 'var(--color-success)',
     backgroundColor: 'rgba(34,197,94,0.08)',
     fill: true,
     tension: 0.4
@@ -109,19 +109,19 @@ const moduleAlerts = computed(() => {
       module: `Simulation API${simChecked ? ` (${simHealth.value?.version ?? ''})` : ''}`,
       warnings: simChecked && !simOk ? 1 : 0,
       errors: 0,
-      color: simChecked ? (simOk ? '#22c55e' : '#f59e0b') : '#94a3b8'
+      color: simChecked ? (simOk ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-soft)'
     },
     {
       module: `AI Insight API${aiChecked ? ` (${aiHealth.value?.service ?? ''})` : ''}`,
       warnings: aiChecked && !aiOk ? 1 : 0,
       errors: 0,
-      color: aiChecked ? (aiOk ? '#22c55e' : '#f59e0b') : '#94a3b8'
+      color: aiChecked ? (aiOk ? 'var(--color-success)' : 'var(--color-warning)') : 'var(--color-text-soft)'
     },
-    { module: 'Integrations',     warnings: 1, errors: 1, color: '#ef4444' },
-    { module: 'Schema & Mapping', warnings: 1, errors: 0, color: '#f59e0b' },
-    { module: 'Data Products',    warnings: 0, errors: 0, color: '#22c55e' },
-    { module: 'Analytics',        warnings: 0, errors: 0, color: '#22c55e' },
-    { module: 'Alerts',           warnings: 2, errors: 0, color: '#f59e0b' }
+    { module: 'Integrations',     warnings: 1, errors: 1, color: 'var(--color-danger)' },
+    { module: 'Schema & Mapping', warnings: 1, errors: 0, color: 'var(--color-warning)' },
+    { module: 'Data Products',    warnings: 0, errors: 0, color: 'var(--color-success)' },
+    { module: 'Analytics',        warnings: 0, errors: 0, color: 'var(--color-success)' },
+    { module: 'Alerts',           warnings: 2, errors: 0, color: 'var(--color-warning)' }
   ]
 })
 
@@ -139,10 +139,10 @@ function formatDate(iso: string): string {
 }
 
 const JOB_STATUS_CONFIG: Record<BackgroundJob['status'], { color: string; bg: string; icon: string }> = {
-  completed: { color: '#15803d', bg: '#dcfce7', icon: 'pi-check-circle' },
-  running:   { color: '#1d4ed8', bg: '#dbeafe', icon: 'pi-spin pi-spinner' },
-  failed:    { color: '#991b1b', bg: '#fee2e2', icon: 'pi-times-circle' },
-  queued:    { color: '#64748b', bg: '#f1f5f9', icon: 'pi-clock' }
+  completed: { color: 'var(--color-success-dark)', bg: 'var(--color-success-soft)', icon: 'pi-check-circle' },
+  running:   { color: 'var(--color-info-dark)', bg: 'var(--color-info-light)', icon: 'pi-spin pi-spinner' },
+  failed:    { color: 'var(--color-danger-dark)', bg: 'var(--color-danger-light)', icon: 'pi-times-circle' },
+  queued:    { color: 'var(--color-neutral-fg)', bg: 'var(--color-neutral-bg)', icon: 'pi-clock' }
 }
 </script>
 
@@ -163,7 +163,7 @@ const JOB_STATUS_CONFIG: Record<BackgroundJob['status'], { color: string; bg: st
           unit="%"
           :trend="systemHealth.cpu > 70 ? 'up' : 'stable'"
           icon="pi-server"
-          color="#3b82f6"
+          color="var(--color-secondary)"
         />
         <KpiCard
           label="Memory Usage"
@@ -171,7 +171,7 @@ const JOB_STATUS_CONFIG: Record<BackgroundJob['status'], { color: string; bg: st
           unit="%"
           :trend="systemHealth.memory > 80 ? 'up' : 'stable'"
           icon="pi-database"
-          color="#8b5cf6"
+          color="var(--chart-series-6)"
         />
         <KpiCard
           label="Disk Usage"
@@ -179,7 +179,7 @@ const JOB_STATUS_CONFIG: Record<BackgroundJob['status'], { color: string; bg: st
           unit="%"
           trend="stable"
           icon="pi-hdd"
-          color="#f59e0b"
+          color="var(--color-warning)"
         />
         <KpiCard
           label="Uptime"
@@ -187,7 +187,7 @@ const JOB_STATUS_CONFIG: Record<BackgroundJob['status'], { color: string; bg: st
           unit="days"
           trend="up"
           icon="pi-check-circle"
-          color="#22c55e"
+          color="var(--color-success)"
         />
       </div>
 
@@ -445,9 +445,9 @@ const JOB_STATUS_CONFIG: Record<BackgroundJob['status'], { color: string; bg: st
   border-radius: 20px;
 }
 
-.mhl-badge--error { background: var(--facis-error-light); color: #991b1b; }
-.mhl-badge--warn  { background: var(--facis-warning-light); color: #92400e; }
-.mhl-badge--ok    { background: var(--facis-success-light); color: #15803d; }
+.mhl-badge--error { background: var(--facis-error-light); color: var(--color-danger-dark); }
+.mhl-badge--warn  { background: var(--facis-warning-light); color: var(--color-warning-dark); }
+.mhl-badge--ok    { background: var(--facis-success-light); color: var(--color-success-dark); }
 
 /* Platform info */
 .platform-info {

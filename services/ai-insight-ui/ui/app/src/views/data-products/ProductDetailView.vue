@@ -149,9 +149,9 @@ function formatDate(ts: string): string {
 }
 
 function categoryColor(cat: string): string {
-  if (cat === 'energy') return '#f59e0b'
-  if (cat === 'smart-city') return '#8b5cf6'
-  return '#06b6d4'
+  if (cat === 'energy') return 'var(--color-warning)'
+  if (cat === 'smart-city') return 'var(--chart-series-6)'
+  return 'var(--color-secondary)'
 }
 </script>
 
@@ -192,10 +192,10 @@ function categoryColor(cat: string): string {
     <div class="view-body">
       <!-- KPI strip -->
       <div class="grid-kpi" style="grid-template-columns: repeat(auto-fill, minmax(180px,1fr))">
-        <KpiCard label="Version" :value="product?.version ?? 'N/A'" trend="stable" icon="pi-tag" color="#3b82f6" />
-        <KpiCard label="Sources" :value="product?.sourceCount ?? 0" trend="stable" icon="pi-database" color="#8b5cf6" />
-        <KpiCard label="API Status" :value="product?.apiStatus ?? ''" trend="stable" icon="pi-server" color="#22c55e" />
-        <KpiCard label="Export Status" :value="product?.exportStatus ?? ''" trend="stable" icon="pi-cloud-download" color="#005fff" />
+        <KpiCard label="Version" :value="product?.version ?? 'N/A'" trend="stable" icon="pi-tag" color="var(--color-secondary)" />
+        <KpiCard label="Sources" :value="product?.sourceCount ?? 0" trend="stable" icon="pi-database" color="var(--chart-series-6)" />
+        <KpiCard label="API Status" :value="product?.apiStatus ?? ''" trend="stable" icon="pi-server" color="var(--color-success)" />
+        <KpiCard label="Export Status" :value="product?.exportStatus ?? ''" trend="stable" icon="pi-cloud-download" color="var(--color-primary)" />
       </div>
 
       <!-- Tabbed detail -->
@@ -402,7 +402,7 @@ function categoryColor(cat: string): string {
               <h3 class="semantic-heading">Export Formats</h3>
               <div class="export-grid">
                 <div class="export-card">
-                  <div class="export-card__icon" style="background:#dcfce7; color:#15803d"><i class="pi pi-file-excel"></i></div>
+                  <div class="export-card__icon" style="background:var(--color-success-soft); color:var(--color-success-dark)"><i class="pi pi-file-excel"></i></div>
                   <div class="export-card__info">
                     <span class="export-card__name">CSV</span>
                     <span class="export-card__desc">Flat file, UTF-8 encoded</span>
@@ -410,7 +410,7 @@ function categoryColor(cat: string): string {
                   <StatusBadge :status="product?.exportStatus ?? 'processing'" size="sm" />
                 </div>
                 <div class="export-card">
-                  <div class="export-card__icon" style="background:#dbeafe; color:#1d4ed8"><i class="pi pi-code"></i></div>
+                  <div class="export-card__icon" style="background:var(--color-info-light); color:var(--color-info-dark)"><i class="pi pi-code"></i></div>
                   <div class="export-card__info">
                     <span class="export-card__name">JSON</span>
                     <span class="export-card__desc">Schema-validated JSON</span>
@@ -418,7 +418,7 @@ function categoryColor(cat: string): string {
                   <StatusBadge :status="product?.exportStatus ?? 'processing'" size="sm" />
                 </div>
                 <div class="export-card">
-                  <div class="export-card__icon" style="background:#f3e8ff; color:#7c3aed"><i class="pi pi-table"></i></div>
+                  <div class="export-card__icon" style="background:var(--color-info-light); color:var(--chart-series-6)"><i class="pi pi-table"></i></div>
                   <div class="export-card__info">
                     <span class="export-card__name">Parquet</span>
                     <span class="export-card__desc">Columnar binary format</span>
@@ -491,12 +491,12 @@ function categoryColor(cat: string): string {
 <style scoped>
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 .view-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
@@ -531,8 +531,8 @@ function categoryColor(cat: string): string {
 .schema-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
 .schema-label { font-size: 0.875rem; font-weight: 600; color: var(--facis-text); }
 .format-tag { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; }
-.format-tag--json { background: #dbeafe; color: #1d4ed8; }
-.schema-pre { background: #0f172a; color: #e2e8f0; border-radius: var(--facis-radius); padding: 1rem; overflow: auto; max-height: 500px; font-size: 0.78rem; line-height: 1.6; font-family: var(--facis-font-mono); }
+.format-tag--json { background: var(--color-info-light); color: var(--color-info-dark); }
+.schema-pre { background: var(--color-text); color: var(--color-border); border-radius: var(--facis-radius); padding: 1rem; overflow: auto; max-height: 500px; font-size: 0.78rem; line-height: 1.6; font-family: var(--facis-font-mono); }
 .schema-pre code { background: none; color: inherit; font-family: inherit; }
 
 /* Provenance */
@@ -540,10 +540,10 @@ function categoryColor(cat: string): string {
 .prov-step { display: flex; align-items: flex-start; gap: 1rem; padding: 0.875rem; background: var(--facis-surface-2); border-radius: var(--facis-radius-sm); }
 .prov-arrow { display: flex; justify-content: flex-start; padding-left: 1.1rem; color: var(--facis-text-muted); font-size: 0.8rem; padding-top: 0.3rem; padding-bottom: 0.3rem; }
 .prov-step__icon { width: 36px; height: 36px; border-radius: var(--facis-radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
-.prov-step__icon--source  { background: #dbeafe; color: #1d4ed8; }
-.prov-step__icon--parse   { background: #f3e8ff; color: #7c3aed; }
-.prov-step__icon--enrich  { background: #fef3c7; color: #92400e; }
-.prov-step__icon--product { background: #dcfce7; color: #15803d; }
+.prov-step__icon--source  { background: var(--color-info-light); color: var(--color-info-dark); }
+.prov-step__icon--parse   { background: var(--color-info-light); color: var(--chart-series-6); }
+.prov-step__icon--enrich  { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.prov-step__icon--product { background: var(--color-success-soft); color: var(--color-success-dark); }
 .prov-step__label { font-size: 0.8rem; font-weight: 600; color: var(--facis-text); margin-bottom: 0.2rem; }
 .prov-step__text  { font-size: 0.8rem; color: var(--facis-text-secondary); line-height: 1.5; }
 
@@ -560,9 +560,9 @@ function categoryColor(cat: string): string {
 .api-card { background: var(--facis-surface-2); border-radius: var(--facis-radius); padding: 1.25rem; margin-bottom: 1.5rem; border: 1px solid var(--facis-border); }
 .api-card__header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
 .api-card__title { font-size: 0.9rem; font-weight: 600; color: var(--facis-text); flex: 1; }
-.api-endpoint-row { display: flex; align-items: center; gap: 0.75rem; background: #0f172a; padding: 0.75rem 1rem; border-radius: var(--facis-radius-sm); margin-bottom: 0.75rem; }
-.method-badge { font-size: 0.72rem; font-weight: 700; background: #22c55e; color: #fff; padding: 0.2rem 0.5rem; border-radius: 3px; flex-shrink: 0; }
-.api-url { font-family: var(--facis-font-mono); font-size: 0.78rem; color: #93c5fd; flex: 1; word-break: break-all; background: none; }
+.api-endpoint-row { display: flex; align-items: center; gap: 0.75rem; background: var(--color-text); padding: 0.75rem 1rem; border-radius: var(--facis-radius-sm); margin-bottom: 0.75rem; }
+.method-badge { font-size: 0.72rem; font-weight: 700; background: var(--color-success); color: var(--color-surface); padding: 0.2rem 0.5rem; border-radius: 3px; flex-shrink: 0; }
+.api-url { font-family: var(--facis-font-mono); font-size: 0.78rem; color: var(--color-info-light); flex: 1; word-break: break-all; background: none; }
 .api-params { display: flex; flex-direction: column; gap: 0.3rem; }
 .api-param-row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem; }
 .param-name { font-family: var(--facis-font-mono); font-size: 0.75rem; background: var(--facis-surface); padding: 0.1rem 0.4rem; border-radius: 3px; border: 1px solid var(--facis-border); }

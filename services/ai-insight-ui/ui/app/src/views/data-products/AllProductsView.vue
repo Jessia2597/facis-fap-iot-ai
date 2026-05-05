@@ -115,35 +115,35 @@ const filters = [
           :value="stats.total"
           trend="stable"
           icon="pi-box"
-          color="#005fff"
+          color="var(--color-primary)"
         />
         <KpiCard
           label="API Available"
           :value="stats.available"
           trend="stable"
           icon="pi-check-circle"
-          color="#22c55e"
+          color="var(--color-success)"
         />
         <KpiCard
           label="Energy Products"
           :value="stats.energy"
           trend="stable"
           icon="pi-bolt"
-          color="#f59e0b"
+          color="var(--color-warning)"
         />
         <KpiCard
           label="Smart City Products"
           :value="stats.city"
           trend="stable"
           icon="pi-map"
-          color="#8b5cf6"
+          color="var(--chart-series-6)"
         />
         <KpiCard
           label="Cross-Domain"
           :value="stats.crossDomain"
           trend="stable"
           icon="pi-link"
-          color="#06b6d4"
+          color="var(--color-secondary)"
         />
       </div>
 
@@ -175,15 +175,15 @@ const filters = [
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 .view-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

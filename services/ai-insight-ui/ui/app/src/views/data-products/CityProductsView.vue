@@ -74,9 +74,9 @@ const filters = [
 
     <div class="view-body">
       <div class="grid-kpi">
-        <KpiCard label="City Products" :value="stats.total" trend="stable" icon="pi-map" color="#8b5cf6" />
-        <KpiCard label="API Available" :value="stats.available" trend="stable" icon="pi-check-circle" color="#22c55e" />
-        <KpiCard label="Contributing Sources" :value="stats.totalSources" trend="stable" icon="pi-database" color="#005fff" />
+        <KpiCard label="City Products" :value="stats.total" trend="stable" icon="pi-map" color="var(--chart-series-6)" />
+        <KpiCard label="API Available" :value="stats.available" trend="stable" icon="pi-check-circle" color="var(--color-success)" />
+        <KpiCard label="Contributing Sources" :value="stats.totalSources" trend="stable" icon="pi-database" color="var(--color-primary)" />
       </div>
 
       <DataTablePage
@@ -109,8 +109,8 @@ const filters = [
 .view-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

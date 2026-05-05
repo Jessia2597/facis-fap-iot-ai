@@ -289,8 +289,8 @@ const luminaireStats = computed(() => ({
   font-size: 0.8rem; font-weight: 500; padding: 0.5rem 1rem;
   border-radius: var(--facis-radius-sm); border: 1px solid;
 }
-.data-banner--loading { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; }
-.data-banner--live { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.data-banner--loading { background: var(--color-primary-soft); border-color: var(--color-info-light); color: var(--color-info-dark); }
+.data-banner--live { background: var(--color-success-soft); border-color: var(--color-success-light); color: var(--color-success-dark); }
 
 .view-toggle { display: flex; border: 1px solid var(--facis-border); border-radius: var(--facis-radius-sm); overflow: hidden; }
 .view-toggle-btn {
@@ -311,14 +311,14 @@ const luminaireStats = computed(() => ({
 }
 .summary-chip__val { font-size: 1.1rem; font-weight: 700; color: var(--facis-text); }
 .summary-chip__lbl { font-size: 0.75rem; color: var(--facis-text-secondary); }
-.summary-chip--green .summary-chip__val { color: #15803d; }
-.summary-chip--yellow .summary-chip__val { color: #92400e; }
-.summary-chip--red .summary-chip__val { color: #991b1b; }
+.summary-chip--green .summary-chip__val { color: var(--color-success-dark); }
+.summary-chip--yellow .summary-chip__val { color: var(--color-warning-dark); }
+.summary-chip--red .summary-chip__val { color: var(--color-danger-dark); }
 
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

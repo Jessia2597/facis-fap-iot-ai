@@ -40,14 +40,14 @@ const summary = computed(() => ({
 }))
 
 const PROTOCOL_COLORS: Record<string, string> = {
-  'MQTT 5.0':       '#22c55e',
-  'Modbus TCP':     '#f59e0b',
-  'REST/XML':       '#3b82f6',
-  'WebSocket':      '#8b5cf6',
-  'SunSpec/Modbus': '#ef4444',
-  'Kafka':          '#0ea5e9',
-  'DALI/IP':        '#f97316',
-  'Zigbee/MQTT':    '#14b8a6'
+  'MQTT 5.0':       'var(--color-success)',
+  'Modbus TCP':     'var(--color-warning)',
+  'REST/XML':       'var(--color-secondary)',
+  'WebSocket':      'var(--chart-series-6)',
+  'SunSpec/Modbus': 'var(--color-danger)',
+  'Kafka':          'var(--color-secondary)',
+  'DALI/IP':        'var(--color-warning)',
+  'Zigbee/MQTT':    'var(--color-success)'
 }
 
 const DIRECTION_ICONS: Record<string, string> = {
@@ -63,7 +63,7 @@ const DIRECTION_LABEL: Record<string, string> = {
 }
 
 function protocolColor(protocol: string): string {
-  return PROTOCOL_COLORS[protocol] ?? '#64748b'
+  return PROTOCOL_COLORS[protocol] ?? 'var(--color-neutral-fg)'
 }
 
 function formatRelative(ts: string): string {
@@ -112,10 +112,10 @@ const citySteps = [
     <div class="view-body">
       <!-- KPI row -->
       <div class="grid-kpi">
-        <KpiCard label="Active Integrations" :value="summary.active" unit="" trend="stable" icon="pi-check-circle" color="#22c55e" />
-        <KpiCard label="Errors" :value="summary.error" unit="" trend="stable" icon="pi-times-circle" color="#ef4444" />
-        <KpiCard label="Total Error Events" :value="summary.totalErrors" unit="" trend="stable" icon="pi-exclamation-triangle" color="#f59e0b" />
-        <KpiCard label="Inactive" :value="summary.inactive" unit="" trend="stable" icon="pi-pause-circle" color="#94a3b8" />
+        <KpiCard label="Active Integrations" :value="summary.active" unit="" trend="stable" icon="pi-check-circle" color="var(--color-success)" />
+        <KpiCard label="Errors" :value="summary.error" unit="" trend="stable" icon="pi-times-circle" color="var(--color-danger)" />
+        <KpiCard label="Total Error Events" :value="summary.totalErrors" unit="" trend="stable" icon="pi-exclamation-triangle" color="var(--color-warning)" />
+        <KpiCard label="Inactive" :value="summary.inactive" unit="" trend="stable" icon="pi-pause-circle" color="var(--color-text-soft)" />
       </div>
 
       <!-- Integration cards grid -->
@@ -288,8 +288,8 @@ const citySteps = [
 }
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

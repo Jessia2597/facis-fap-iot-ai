@@ -146,16 +146,16 @@ function rowClass(row: AlertEvent): string {
     <div class="view-body">
       <!-- KPIs -->
       <div class="grid-kpi">
-        <KpiCard label="Total Alerts" :value="summary.total" trend="stable" icon="pi-bell" color="#005fff" />
-        <KpiCard label="Open" :value="summary.open" trend="stable" icon="pi-circle" color="#ef4444" />
+        <KpiCard label="Total Alerts" :value="summary.total" trend="stable" icon="pi-bell" color="var(--color-primary)" />
+        <KpiCard label="Open" :value="summary.open" trend="stable" icon="pi-circle" color="var(--color-danger)" />
         <KpiCard
           label="Critical"
           :value="summary.critical"
           trend="stable"
           icon="pi-times-circle"
-          color="#ef4444"
+          color="var(--color-danger)"
         />
-        <KpiCard label="Resolved" :value="summary.resolved" trend="stable" icon="pi-check-circle" color="#22c55e" />
+        <KpiCard label="Resolved" :value="summary.resolved" trend="stable" icon="pi-check-circle" color="var(--color-success)" />
       </div>
 
       <!-- Filter bar -->
@@ -288,8 +288,8 @@ function rowClass(row: AlertEvent): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 .view-page { display: flex; flex-direction: column; }
@@ -306,18 +306,18 @@ function rowClass(row: AlertEvent): string {
 
 .table-meta { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--facis-border); }
 .table-title { font-size: 0.875rem; font-weight: 600; color: var(--facis-text); }
-.unread-badge { font-size: 0.75rem; font-weight: 700; background: var(--facis-error-light); color: #991b1b; padding: 0.15rem 0.5rem; border-radius: 20px; }
+.unread-badge { font-size: 0.75rem; font-weight: 700; background: var(--facis-error-light); color: var(--color-danger-dark); padding: 0.15rem 0.5rem; border-radius: 20px; }
 
 .id-code { font-family: var(--facis-font-mono); font-size: 0.75rem; background: var(--facis-surface-2); padding: 0.1rem 0.35rem; border-radius: 3px; }
 .uc-badge { font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; white-space: nowrap; }
-.uc-badge--energy   { background: #fef3c7; color: #92400e; }
-.uc-badge--city     { background: #f3e8ff; color: #7c3aed; }
+.uc-badge--energy   { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.uc-badge--city     { background: var(--color-info-light); color: var(--chart-series-6); }
 .uc-badge--platform { background: var(--facis-surface-2); color: var(--facis-text-secondary); }
 .ts { font-size: 0.78rem; color: var(--facis-text-secondary); }
 .msg-text { font-size: 0.8rem; color: var(--facis-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .row-actions { display: flex; align-items: center; gap: 0.25rem; }
 .empty-row { padding: 2rem; text-align: center; color: var(--facis-text-secondary); font-size: 0.875rem; }
 
-:deep(.row--critical) { background: #fff1f2 !important; }
-:deep(.row--error)    { background: #fff8f8 !important; }
+:deep(.row--critical) { background: var(--color-danger-soft) !important; }
+:deep(.row--error)    { background: var(--color-danger-soft) !important; }
 </style>

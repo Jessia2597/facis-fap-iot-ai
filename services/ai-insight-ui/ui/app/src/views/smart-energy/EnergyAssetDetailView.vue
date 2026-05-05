@@ -115,7 +115,7 @@ const sparkDatasets = computed(() => [
   {
     label: 'Active Power (kW)',
     data: sparkData.value,
-    borderColor: '#005fff',
+    borderColor: 'var(--color-primary)',
     backgroundColor: 'rgba(0,95,255,0.08)',
     fill: true,
     tension: 0.4,
@@ -274,11 +274,11 @@ const showJsonAccordion = ref(false)
 
       <!-- Quick KPIs row -->
       <div class="grid-kpi" style="grid-template-columns: repeat(5, 1fr)">
-        <KpiCard label="Active Power" :value="meter?.latestValues.activePowerTotal_kW.toFixed(1) ?? 0" unit="kW" trend="stable" icon="pi-bolt" color="#f59e0b" />
-        <KpiCard label="Voltage L1" :value="meter?.latestValues.voltage_L1.toFixed(1) ?? 0" unit="V" trend="stable" icon="pi-bolt" color="#3b82f6" />
-        <KpiCard label="Current L1" :value="meter?.latestValues.current_L1.toFixed(1) ?? 0" unit="A" trend="stable" icon="pi-wave-pulse" color="#8b5cf6" />
-        <KpiCard label="Power Factor" :value="meter?.latestValues.powerFactor.toFixed(3) ?? 0" unit="" trend="stable" icon="pi-sliders-h" color="#22c55e" />
-        <KpiCard label="Data Quality" :value="meter?.dataQuality ?? 0" unit="%" :trend="(meter?.dataQuality ?? 100) > 90 ? 'up' : 'down'" icon="pi-check-circle" color="#22c55e" />
+        <KpiCard label="Active Power" :value="meter?.latestValues.activePowerTotal_kW.toFixed(1) ?? 0" unit="kW" trend="stable" icon="pi-bolt" color="var(--color-warning)" />
+        <KpiCard label="Voltage L1" :value="meter?.latestValues.voltage_L1.toFixed(1) ?? 0" unit="V" trend="stable" icon="pi-bolt" color="var(--color-secondary)" />
+        <KpiCard label="Current L1" :value="meter?.latestValues.current_L1.toFixed(1) ?? 0" unit="A" trend="stable" icon="pi-wave-pulse" color="var(--chart-series-6)" />
+        <KpiCard label="Power Factor" :value="meter?.latestValues.powerFactor.toFixed(3) ?? 0" unit="" trend="stable" icon="pi-sliders-h" color="var(--color-success)" />
+        <KpiCard label="Data Quality" :value="meter?.dataQuality ?? 0" unit="%" :trend="(meter?.dataQuality ?? 100) > 90 ? 'up' : 'down'" icon="pi-check-circle" color="var(--color-success)" />
       </div>
 
       <!-- Tabs -->
@@ -434,10 +434,10 @@ const showJsonAccordion = ref(false)
               <div class="prov-section">
                 <div class="prov-section__title">Quality Notes</div>
                 <div class="quality-notes">
-                  <div class="qn-row"><i class="pi pi-check-circle" style="color:#22c55e"></i><span>Schema validation: PASSED — all required fields present</span></div>
-                  <div class="qn-row"><i class="pi pi-check-circle" style="color:#22c55e"></i><span>Voltage values within nominal range (207–253 V)</span></div>
-                  <div class="qn-row"><i class="pi pi-check-circle" style="color:#22c55e"></i><span>Frequency within 49.5–50.5 Hz tolerance</span></div>
-                  <div class="qn-row" v-if="(meter?.dataQuality ?? 100) < 95"><i class="pi pi-exclamation-triangle" style="color:#f59e0b"></i><span>Data quality below 95% threshold — intermittent read failures detected</span></div>
+                  <div class="qn-row"><i class="pi pi-check-circle" style="color:var(--color-success)"></i><span>Schema validation: PASSED — all required fields present</span></div>
+                  <div class="qn-row"><i class="pi pi-check-circle" style="color:var(--color-success)"></i><span>Voltage values within nominal range (207–253 V)</span></div>
+                  <div class="qn-row"><i class="pi pi-check-circle" style="color:var(--color-success)"></i><span>Frequency within 49.5–50.5 Hz tolerance</span></div>
+                  <div class="qn-row" v-if="(meter?.dataQuality ?? 100) < 95"><i class="pi pi-exclamation-triangle" style="color:var(--color-warning)"></i><span>Data quality below 95% threshold — intermittent read failures detected</span></div>
                 </div>
               </div>
             </div>
@@ -477,7 +477,7 @@ const showJsonAccordion = ref(false)
                 class="audit-entry"
               >
                 <div class="audit-entry__line"></div>
-                <div class="audit-entry__dot" :style="{ background: entry.result === 'success' ? '#22c55e' : entry.result === 'warning' ? '#f59e0b' : '#ef4444' }"></div>
+                <div class="audit-entry__dot" :style="{ background: entry.result === 'success' ? 'var(--color-success)' : entry.result === 'warning' ? 'var(--color-warning)' : 'var(--color-danger)' }"></div>
                 <div class="audit-entry__body">
                   <div class="audit-entry__header">
                     <span class="audit-entry__action">{{ entry.action }}</span>
@@ -498,7 +498,7 @@ const showJsonAccordion = ref(false)
         <template #tab-5>
           <div class="tab-content">
             <div class="empty-tab">
-              <i class="pi pi-info-circle" style="font-size:1.5rem;color:#64748b"></i>
+              <i class="pi pi-info-circle" style="font-size:1.5rem;color:var(--color-neutral-fg)"></i>
               <p class="empty-tab__title">Power timeline unavailable</p>
               <p class="empty-tab__sub">
                 The simulation REST flow exposes only current readings (no
@@ -570,11 +570,11 @@ const showJsonAccordion = ref(false)
   padding: 0.4rem 1.5rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--color-success-dark);
   background: rgba(34, 197, 94, 0.08);
   border-bottom: 1px solid rgba(34, 197, 94, 0.2);
 }
-.live-banner__dot { font-size: 0.5rem; color: #22c55e; }
+.live-banner__dot { font-size: 0.5rem; color: var(--color-success); }
 
 .demo-banner {
   display: flex;
@@ -681,7 +681,7 @@ const showJsonAccordion = ref(false)
 
 .code-pill--blue {
   background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
+  color: var(--color-info-dark);
 }
 
 /* Register table */
@@ -1033,7 +1033,7 @@ const showJsonAccordion = ref(false)
   border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: var(--facis-radius-sm);
   font-size: 0.786rem;
-  color: #92400e;
+  color: var(--color-warning-dark);
 }
 
 /* References */
@@ -1072,7 +1072,7 @@ const showJsonAccordion = ref(false)
 
 .ref-item__icon--ctx {
   background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
+  color: var(--chart-series-6);
 }
 
 .ref-item__body {

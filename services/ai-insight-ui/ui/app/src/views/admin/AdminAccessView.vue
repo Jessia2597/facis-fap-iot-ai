@@ -65,12 +65,12 @@ const sessionColumns = [
 ]
 
 const EVENT_TYPE_CONFIG: Record<AccessEvent['type'], { icon: string; color: string; bg: string; label: string }> = {
-  login:              { icon: 'pi-sign-in',            color: '#15803d', bg: '#dcfce7', label: 'Login' },
-  logout:             { icon: 'pi-sign-out',           color: '#64748b', bg: '#f1f5f9', label: 'Logout' },
-  role_change:        { icon: 'pi-user-edit',          color: '#7c3aed', bg: '#ede9fe', label: 'Role Change' },
-  failed_login:       { icon: 'pi-ban',                color: '#991b1b', bg: '#fee2e2', label: 'Failed Login' },
-  api_key_created:    { icon: 'pi-key',                color: '#1d4ed8', bg: '#dbeafe', label: 'API Key' },
-  permission_denied:  { icon: 'pi-lock',               color: '#92400e', bg: '#fef3c7', label: 'Access Denied' }
+  login:              { icon: 'pi-sign-in',            color: 'var(--color-success-dark)', bg: 'var(--color-success-soft)', label: 'Login' },
+  logout:             { icon: 'pi-sign-out',           color: 'var(--color-neutral-fg)', bg: 'var(--color-neutral-bg)', label: 'Logout' },
+  role_change:        { icon: 'pi-user-edit',          color: 'var(--chart-series-6)', bg: 'var(--color-info-light)', label: 'Role Change' },
+  failed_login:       { icon: 'pi-ban',                color: 'var(--color-danger-dark)', bg: 'var(--color-danger-light)', label: 'Failed Login' },
+  api_key_created:    { icon: 'pi-key',                color: 'var(--color-info-dark)', bg: 'var(--color-info-light)', label: 'API Key' },
+  permission_denied:  { icon: 'pi-lock',               color: 'var(--color-warning-dark)', bg: 'var(--color-warning-light)', label: 'Access Denied' }
 }
 
 function formatDate(iso: string): string {
@@ -106,7 +106,7 @@ function relativeTime(iso: string): string {
           unit=""
           trend="stable"
           icon="pi-users"
-          color="#3b82f6"
+          color="var(--color-secondary)"
         />
         <KpiCard
           label="Failed Logins (24h)"
@@ -114,7 +114,7 @@ function relativeTime(iso: string): string {
           unit=""
           :trend="stats.failedLogins24h > 3 ? 'up' : 'stable'"
           icon="pi-ban"
-          color="#ef4444"
+          color="var(--color-danger)"
         />
         <KpiCard
           label="Role Changes (7d)"
@@ -122,7 +122,7 @@ function relativeTime(iso: string): string {
           unit=""
           trend="stable"
           icon="pi-user-edit"
-          color="#8b5cf6"
+          color="var(--chart-series-6)"
         />
         <KpiCard
           label="Active API Keys"
@@ -130,7 +130,7 @@ function relativeTime(iso: string): string {
           unit=""
           trend="stable"
           icon="pi-key"
-          color="#f59e0b"
+          color="var(--color-warning)"
         />
       </div>
 

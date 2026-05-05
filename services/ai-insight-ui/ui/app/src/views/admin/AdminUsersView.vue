@@ -83,10 +83,10 @@ const SCOPE_OPTIONS = [
 ]
 
 const ROLE_COLORS: Record<UserRole, string> = {
-  admin:    '#ef4444',
-  operator: '#f59e0b',
-  analyst:  '#3b82f6',
-  viewer:   '#64748b'
+  admin:    'var(--color-danger)',
+  operator: 'var(--color-warning)',
+  analyst:  'var(--color-secondary)',
+  viewer:   'var(--color-neutral-fg)'
 }
 
 // ─── Invite Dialog ───────────────────────────────────────────────────────────
@@ -351,8 +351,8 @@ function saveManage(): void {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 
