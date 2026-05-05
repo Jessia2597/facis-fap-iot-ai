@@ -1,0 +1,150 @@
+# Strategic-merge patch that adds an `init-orce-settings` initContainer to the
+# ORCE Deployment. The container patches /data/settings.js (on the persistent
+# orce-data PVC) so Node-RED's own static-serving hooks handle requests for
+# editor theme assets under `/dynamicsrc/*` and `/orce/dynamicsrc/*`.
+#
+# Why this exists:
+#   The customised Node-RED editor's red.min.js (read-only at
+#   /opt/maestro/MBE/packages/node_modules/@node-red/editor-client/public/red/
+#   red.min.js) hardcodes relative paths like
+#   `${origin}${pathname}dynamicsrc/...` that resolve against the editor URL
+#   `/orce/`, producing requests for `/orce/dynamicsrc/*`. The custom
+#   guided-style.css uses absolute `/dynamicsrc/*` URLs. Until this patch,
+#   both routes were handled by an Ingress rewrite
+#   (infrastructure/ingress/facis-ingress-dynamicsrc-rewrite.yaml) that
+#   stripped the /orce prefix off /orce/dynamicsrc/* to reach Node-RED's
+#   default /dynamicsrc/* static handler.
+#
+#   This init container is the first half of removing that Ingress workaround
+#   without touching the read-only red.min.js. The settings.js patch:
+#     (a) Expands `httpStatic: '/data'` to an array that also serves
+#         /opt/maestro/MBE/.node-red/dynamicsrc at URL `/dynamicsrc/*`,
+#         covering guided-style.css's absolute references.
+#     (b) Adds `httpAdminMiddleware` that serves the same filesystem path
+#         when a request hits the admin tree at `/orce/dynamicsrc/*` (which
+#         arrives as req.path === '/dynamicsrc/...' because httpAdminRoot is
+#         '/orce/').
+#
+#   Phase 1 (this patch) lands with the Ingress still active — the patch is
+#   harmless when the Ingress is also serving the routes, since Node-RED's
+#   middleware only sees requests that the Ingress did not already match.
+#   Phase 2 (separate commit) will delete the Ingress YAML once the editor
+#   has been verified to load cleanly with this patch alone.
+#
+# Behaviour:
+#   - Idempotent: detects an existing FACIS:dynamicsrc-patch marker comment
+#     in settings.js and exits cleanly when re-running on a patched pod.
+#   - Atomic: writes settings.js.new and renames over the original so a
+#     crash mid-patch leaves the original intact.
+#   - Tolerant: any failure logs and exits non-zero; init-data has already
+#     run, so settings.js is guaranteed to exist on /mnt/orce-data.
+#
+# Apply:
+#   kubectl patch deployment orce -n orce \
+#     --type=strategic --patch-file=infrastructure/orce/init-orce-settings-patch.yaml
+#   kubectl rollout restart deployment/orce -n orce
+#
+# Roll back (Phase 1 only — restores the unpatched settings.js):
+#   The init container appends marker-fenced content; remove it by reverting
+#   /data/settings.js from a known-good copy or re-seeding from the image:
+#     kubectl exec -n orce <pod> -- cp /opt/maestro/MBE/.node-red/settings.js /data/settings.js
+#   Then remove the init container with the same kubectl patch tooling and
+#   `kubectl rollout restart deployment/orce -n orce`.
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: init-orce-settings
+          image: ecofacis/xfsc-orce:2.0.12
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - |
+              set -u
+              SETTINGS=/mnt/orce-data/settings.js
+              if [ ! -f "$SETTINGS" ]; then
+                echo "[init-orce-settings] $SETTINGS missing — init-data has not run yet; skipping"
+                exit 0
+              fi
+              node <<'JS'
+              const fs = require('fs');
+              const path = '/mnt/orce-data/settings.js';
+              const MARKER = 'FACIS:dynamicsrc-patch';
+              let src = fs.readFileSync(path, 'utf8');
+              if (src.includes(MARKER)) {
+                console.log('[init-orce-settings] already applied');
+                process.exit(0);
+              }
+
+              // 1. Expand `httpStatic: '/data',` to an array form that also
+              //    serves the editor theme dynamicsrc/ tree at URL
+              //    /dynamicsrc/*. This catches guided-style.css's absolute
+              //    `url("/dynamicsrc/font/...")` references that the
+              //    /orce/dynamicsrc Ingress rewrite previously handled.
+              const before = "httpStatic: '/data',";
+              const after = [
+                "// FACIS:dynamicsrc-patch — httpStatic expanded to also serve editor theme",
+                "    // assets at /dynamicsrc/* (replaces the /orce/dynamicsrc Ingress rewrite).",
+                "    httpStatic: [",
+                "        { path: '/data', root: '/' },",
+                "        { path: '/opt/maestro/MBE/.node-red/dynamicsrc', root: '/dynamicsrc' }",
+                "    ],",
+              ].join('\n    ');
+              if (!src.includes(before)) {
+                console.error('[init-orce-settings] FAIL: expected httpStatic line not found in settings.js');
+                process.exit(1);
+              }
+              src = src.replace(before, after);
+
+              // 2. Inject httpAdminMiddleware just before module.exports's
+              //    closing `};`. Walks the file to find the LAST line of the
+              //    form `^\s*};\s*$` so commented-out `};` snippets earlier
+              //    in the file don't trip us. The middleware fires for any
+              //    request under httpAdminRoot ('/orce/'), seeing req.path
+              //    relative to that root — so /orce/dynamicsrc/* (from
+              //    red.min.js's relative URL construction) hits it as
+              //    /dynamicsrc/*.
+              const re = /^\s*\};\s*$/gm;
+              let lastBraceIdx = -1;
+              let m;
+              while ((m = re.exec(src)) !== null) lastBraceIdx = m.index;
+              if (lastBraceIdx === -1) {
+                console.error('[init-orce-settings] FAIL: closing `};` not found');
+                process.exit(1);
+              }
+              const middleware = [
+                '',
+                '    // FACIS:dynamicsrc-patch — serve red.min.js\'s relative dynamicsrc/*',
+                '    // paths (which resolve under /orce/dynamicsrc/* because httpAdminRoot',
+                '    // is /orce/). The httpStatic block above handles the absolute',
+                '    // /dynamicsrc/* paths used by guided-style.css.',
+                '    httpAdminMiddleware: function(req, res, next) {',
+                '        if (req.path && req.path.indexOf("/dynamicsrc/") === 0) {',
+                '            var file = req.path.slice("/dynamicsrc/".length).replace(/\\.\\./g, "");',
+                '            return res.sendFile(file, { root: "/opt/maestro/MBE/.node-red/dynamicsrc" });',
+                '        }',
+                '        return next();',
+                '    },',
+                ''
+              ].join('\n');
+              src = src.slice(0, lastBraceIdx) + middleware + src.slice(lastBraceIdx);
+
+              // Atomic write so a half-written file never reaches Node-RED.
+              const tmp = path + '.new';
+              fs.writeFileSync(tmp, src);
+              fs.renameSync(tmp, path);
+              console.log('[init-orce-settings] applied (' + src.length + ' bytes)');
+              JS
+              chown 1000:1000 /mnt/orce-data/settings.js 2>/dev/null || true
+          volumeMounts:
+            - mountPath: /mnt/orce-data
+              name: orce-data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
