@@ -1,19 +1,20 @@
 /**
  * FACIS Simulation & AI Insight API service
  *
- * Base URLs are configurable via Vite env vars at build time:
- *   VITE_SIM_API_URL  — defaults to /api/sim  (ingress routes to facis-simulation)
- *   VITE_AI_API_URL   — defaults to /api/ai   (ingress routes to facis-ai-insight)
+ * Transport choice per family (FAP General Guideline §9 / ADR-001):
  *
- * The simulation snapshot endpoints (meters, PV, weather, prices, loads)
- * remain HTTP — they are produced by the simulation runtime and consumed
- * directly by the SPA at the simulation Ingress prefix.
+ *   UIBUILDER §9 (uib helper, dispatcher → responsibility subflow):
+ *     - alerts.*, data-sources.*, provenance.*, integrations.*, schemas.*, admin.*
+ *     - smart-city.*    (zones / streetlights / traffic / events / weather)
+ *     - analytics.*     (trends / correlations / anomalies / recommendations / *.history)
  *
- * The 6 Phase-5 helpers (alerts, data-sources, provenance, integrations,
- * schemas, admin) route through UIBUILDER per FAP §9 — see submit() in
- * services/transport.ts. The function names below are preserved for caller
- * compatibility but their bodies dispatch the FAP §9 command and unwrap the
- * matching result envelope.
+ *   HTTP (kept intentionally — these consume the *simulation runtime's* own
+ *   REST surface, which is a separate ORCE deliverable; the AI Insight UI
+ *   does not own those flows):
+ *     - VITE_SIM_API_URL → /api/sim  (meters / pv / weather / prices / loads
+ *                                     list + current readings, sim controls)
+ *     - VITE_AI_API_URL  → /api/ai   (insight service: latest, energy-summary,
+ *                                     anomaly-report, city-status)
  *
  * Every helper wraps failures in try/catch and returns null so callers can
  * fall back gracefully.
@@ -349,8 +350,7 @@ export function getMeterCurrent(meterId: string): Promise<SimMeterCurrent | null
 }
 
 export function getMeterHistory(meterId: string): Promise<SimMeterHistory | null> {
-  // No /history endpoint in the simulation REST flow; this 404s and returns null.
-  return simGet<SimMeterHistory>(`/meters/${encodeURIComponent(meterId)}/history`)
+  return uib<SimMeterHistory>('analytics.meters.history', { meter_id: meterId })
 }
 
 export async function getWeatherStations(): Promise<SimWeatherStationsResponse | null> {
@@ -374,8 +374,7 @@ export async function getWeatherCurrent(stationId: string): Promise<SimWeatherCu
 }
 
 export function getWeatherHistory(stationId: string): Promise<SimWeatherHistory | null> {
-  // /history endpoint synthesised by services/ai-insight-ui/orce/flows/analytics.json
-  return simGet<SimWeatherHistory>(`/weather/${encodeURIComponent(stationId)}/history`)
+  return uib<SimWeatherHistory>('analytics.weather.history', { station_id: stationId })
 }
 
 export async function getPriceCurrent(): Promise<SimPriceCurrent | null> {
@@ -421,8 +420,7 @@ export async function getPVCurrent(systemId: string): Promise<SimPVCurrent | nul
 }
 
 export function getPVHistory(systemId: string): Promise<SimPVHistory | null> {
-  // /history endpoint synthesised by services/ai-insight-ui/orce/flows/analytics.json
-  return simGet<SimPVHistory>(`/pv/${encodeURIComponent(systemId)}/history`)
+  return uib<SimPVHistory>('analytics.pv.history', { system_id: systemId })
 }
 
 export async function getLoads(): Promise<SimLoadsResponse | null> {
@@ -587,53 +585,53 @@ export interface SimCityWeatherHistory {
 // ─── Smart City — Streetlights functions ──────────────────────────────────────
 
 export function getStreetlights(): Promise<SimStreetlightList | null> {
-  return simGet<SimStreetlightList>('/streetlights')
+  return uib<SimStreetlightList>('smart-city.streetlights.list')
 }
 
 export function getStreetlightCurrent(lightId: string): Promise<SimStreetlightCurrent | null> {
-  return simGet<SimStreetlightCurrent>(`/streetlights/${encodeURIComponent(lightId)}/current`)
+  return uib<SimStreetlightCurrent>('smart-city.streetlights.current', { light_id: lightId })
 }
 
 export function getStreetlightHistory(lightId: string): Promise<SimStreetlightHistory | null> {
-  return simGet<SimStreetlightHistory>(`/streetlights/${encodeURIComponent(lightId)}/history`)
+  return uib<SimStreetlightHistory>('smart-city.streetlights.history', { light_id: lightId })
 }
 
 // ─── Smart City — Traffic functions ──────────────────────────────────────────
 
 export function getTrafficZones(): Promise<SimTrafficZoneList | null> {
-  return simGet<SimTrafficZoneList>('/traffic')
+  return uib<SimTrafficZoneList>('smart-city.traffic.zones')
 }
 
 export function getTrafficCurrent(zoneId: string): Promise<SimTrafficCurrent | null> {
-  return simGet<SimTrafficCurrent>(`/traffic/${encodeURIComponent(zoneId)}/current`)
+  return uib<SimTrafficCurrent>('smart-city.traffic.current', { zone_id: zoneId })
 }
 
 export function getTrafficHistory(zoneId: string): Promise<SimTrafficHistory | null> {
-  return simGet<SimTrafficHistory>(`/traffic/${encodeURIComponent(zoneId)}/history`)
+  return uib<SimTrafficHistory>('smart-city.traffic.history', { zone_id: zoneId })
 }
 
 // ─── Smart City — Events functions ───────────────────────────────────────────
 
 export function getCityEvents(): Promise<SimEventZoneList | null> {
-  return simGet<SimEventZoneList>('/events')
+  return uib<SimEventZoneList>('smart-city.events.zones')
 }
 
 export function getCityEventCurrent(zoneId: string): Promise<SimEventCurrent | null> {
-  return simGet<SimEventCurrent>(`/events/${encodeURIComponent(zoneId)}/current`)
+  return uib<SimEventCurrent>('smart-city.events.current', { zone_id: zoneId })
 }
 
 export function getCityEventHistory(zoneId: string): Promise<SimEventHistory | null> {
-  return simGet<SimEventHistory>(`/events/${encodeURIComponent(zoneId)}/history`)
+  return uib<SimEventHistory>('smart-city.events.history', { zone_id: zoneId })
 }
 
 // ─── Smart City — Weather/Visibility functions ────────────────────────────────
 
 export function getCityWeatherCurrent(): Promise<SimCityWeatherCurrent | null> {
-  return simGet<SimCityWeatherCurrent>('/city-weather/current')
+  return uib<SimCityWeatherCurrent>('smart-city.weather.current')
 }
 
 export function getCityWeatherHistory(): Promise<SimCityWeatherHistory | null> {
-  return simGet<SimCityWeatherHistory>('/city-weather/history')
+  return uib<SimCityWeatherHistory>('smart-city.weather.history')
 }
 
 // ─── AI Insight API functions ─────────────────────────────────────────────────

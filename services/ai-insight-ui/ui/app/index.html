@@ -3,6 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--
+    Anchor document.baseURI to the SPA root regardless of the deep-link path
+    being served by the SPA-fallback flow. Without this, refreshing on
+    /orce/aiInsight/use-cases/smart-city/overview makes document.baseURI end
+    in /smart-city/, and any code that resolves a relative asset against
+    document.baseURI (notably the UIBUILDER iife loader below) requests the
+    asset from the wrong directory and 404s. Vite substitutes %BASE_URL% at
+    build time with the configured base path (vite.config.ts).
+  -->
+  <base href="%BASE_URL%">
   <title>FACIS IoT &amp; AI Platform</title>
   <link rel="icon" type="image/svg+xml" href="/facis-logo.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,8 +22,8 @@
     UIBUILDER client library — injected at runtime. UIBUILDER serves the
     instance-scoped client lib at <spa-url>/uibuilder.iife.js (NOT under
     /uibuilder/vendor/, despite older docs). Loading via document.baseURI
-    keeps the URL consistent regardless of the mount path (/orce/aiInsight/
-    vs /aiInsight/ during transitions).
+    (anchored above) keeps the URL consistent regardless of the current
+    SPA route.
 
     If the script 404s the SPA still mounts (the Pinia store falls back to
     mock mode). The console.error makes that failure mode visible.

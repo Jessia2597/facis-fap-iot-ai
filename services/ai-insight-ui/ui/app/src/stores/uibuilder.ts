@@ -71,23 +71,37 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
       const win = window as any
       if (win.uibuilder) {
         uib = win.uibuilder
-        // CRITICAL: force the absolute Socket.IO path. UIBUILDER's client
-        // lib auto-derives httpNodeRoot from the page URL — when the SPA
-        // loads at /orce/aiInsight/, it infers httpNodeRoot='/orce' and
-        // computes ioPath='/orce/uibuilder/vendor/socket.io'. The nginx-
-        // ingress regex rewrite forwards the polling handshake but mangles
-        // WS upgrade headers, leaving the client stuck (msgsReceived=0).
+        // CRITICAL: force the absolute Socket.IO path AND the namespace.
         //
-        // We override THREE places defensively because UIBUILDER's
-        // start({ioPath:...}) option alone has been observed to not stick:
-        //   1. uib.httpNodeRoot — what the constructor used to derive ioPath
-        //   2. uib.ioPath        — direct override
+        // (a) Socket.IO path. UIBUILDER's client lib auto-derives
+        //     httpNodeRoot from the page URL — when the SPA loads at
+        //     /orce/aiInsight/, it infers httpNodeRoot='/orce' and computes
+        //     ioPath='/orce/uibuilder/vendor/socket.io'. The nginx-ingress
+        //     regex rewrite forwards the polling handshake but mangles WS
+        //     upgrade headers. We force the absolute path.
+        //
+        // (b) Namespace. UIBUILDER takes window.location.pathname's last
+        //     segment as the Socket.IO namespace. At the SPA root that's
+        //     'aiInsight' (correct). On a deep URL such as
+        //     /orce/aiInsight/use-cases/smart-city/overview the auto-derived
+        //     namespace becomes 'overview' — a namespace the server doesn't
+        //     expose, so engine.io rejects the handshake with "server
+        //     error" and msgsReceived stays at 0. Always pin it to the
+        //     instance namespace.
+        //
+        // We override defensively at every property the lib reads, because
+        // start({...}) options alone have been observed to not stick:
+        //   1. uib.httpNodeRoot     — used by constructor to derive ioPath
+        //   2. uib.ioPath           — direct override
         //   3. uib.socketOptions.path — what _ioSetup actually reads
-        // Then call start() with no options (we've already set what start
-        // would set).
+        //   4. uib.url              — UIBUILDER instance URL / namespace key
+        //   5. uib.ioNamespace      — what _ioSetup uses for io(nsp, ...)
+        // Then call start() with no options (already configured).
         uib.httpNodeRoot = ''
         uib.ioPath = '/uibuilder/vendor/socket.io'
         if (uib.socketOptions) uib.socketOptions.path = '/uibuilder/vendor/socket.io'
+        uib.url = 'aiInsight'
+        uib.ioNamespace = '/aiInsight'
         uib.start()
 
         uib.onChange('connected', (val: boolean) => {
