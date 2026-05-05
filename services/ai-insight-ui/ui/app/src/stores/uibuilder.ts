@@ -46,7 +46,7 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
   const lastKpi = ref<KpiUpdatePayload | null>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let uib: any = null
+  let uibuilder: any = null
   const handlers: MessageHandler[] = []
 
   // ─── Init ──────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const win = window as any
       if (win.uibuilder) {
-        uib = win.uibuilder
+        uibuilder = win.uibuilder
         // CRITICAL: force the absolute Socket.IO path AND the namespace.
         //
         // (a) Socket.IO path. UIBUILDER's client lib auto-derives
@@ -82,20 +82,20 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
         //
         // We override defensively at every property the lib reads, because
         // start({...}) options alone have been observed to not stick:
-        //   1. uib.httpNodeRoot     — used by constructor to derive ioPath
-        //   2. uib.ioPath           — direct override
-        //   3. uib.socketOptions.path — what _ioSetup actually reads
-        //   4. uib.url              — UIBUILDER instance URL / namespace key
-        //   5. uib.ioNamespace      — what _ioSetup uses for io(nsp, ...)
+        //   1. uibuilder.httpNodeRoot     — used by constructor to derive ioPath
+        //   2. uibuilder.ioPath           — direct override
+        //   3. uibuilder.socketOptions.path — what _ioSetup actually reads
+        //   4. uibuilder.url              — UIBUILDER instance URL / namespace key
+        //   5. uibuilder.ioNamespace      — what _ioSetup uses for io(nsp, ...)
         // Then call start() with no options (already configured).
-        uib.httpNodeRoot = ''
-        uib.ioPath = '/uibuilder/vendor/socket.io'
-        if (uib.socketOptions) uib.socketOptions.path = '/uibuilder/vendor/socket.io'
-        uib.url = 'aiInsight'
-        uib.ioNamespace = '/aiInsight'
-        uib.start()
+        uibuilder.httpNodeRoot = ''
+        uibuilder.ioPath = '/uibuilder/vendor/socket.io'
+        if (uibuilder.socketOptions) uibuilder.socketOptions.path = '/uibuilder/vendor/socket.io'
+        uibuilder.url = 'aiInsight'
+        uibuilder.ioNamespace = '/aiInsight'
+        uibuilder.start()
 
-        uib.onChange('connected', (val: boolean) => {
+        uibuilder.onChange('connected', (val: boolean) => {
           connected.value = val
         })
 
@@ -105,17 +105,17 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
         // arrive — even though the server demonstrably emits them, onAny()
         // sees them, and the control listener on 'uiBuilderControl' does
         // fire. The result is `uibuilder.msgsReceived` stays at 0 forever
-        // and `uib.onChange('msg', …)` never triggers.
+        // and `uibuilder.onChange('msg', …)` never triggers.
         //
         // Workaround: attach our own direct listener on the socket for the
         // 'uiBuilder' channel and route to `_dispatch`. This bypasses the
         // lib's broken std-msg path entirely. The lib's onChange('msg', …)
         // wiring is left as a redundant secondary path in case it ever
         // recovers, but we no longer rely on it for delivery.
-        if (uib._socket) {
-          uib._socket.on('uiBuilder', (msg: UibMessage) => _dispatch(msg))
+        if (uibuilder._socket) {
+          uibuilder._socket.on('uiBuilder', (msg: UibMessage) => _dispatch(msg))
         }
-        uib.onChange('msg', (msg: UibMessage) => {
+        uibuilder.onChange('msg', (msg: UibMessage) => {
           _dispatch(msg)
         })
 
@@ -195,21 +195,21 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
 
   /** Low-level send — bypasses request/response tracking */
   function send(topic: string, payload: unknown): void {
-    if (!uib || !connected.value) {
+    if (!uibuilder || !connected.value) {
       console.debug('[UIBuilder] send skipped (not connected):', topic, payload)
       return
     }
-    uib.send({ topic, payload })
+    uibuilder.send({ topic, payload })
   }
 
   /** Send a complete FAP §9 envelope as-is (no topic wrapping). Use this for
    *  FAP-aligned command/event messages routed by the transport layer. */
   function sendEnvelope(envelope: object): void {
-    if (!uib || !connected.value) {
+    if (!uibuilder || !connected.value) {
       console.debug('[UIBuilder] sendEnvelope skipped (not connected):', envelope)
       return
     }
-    uib.send(envelope)
+    uibuilder.send(envelope)
   }
 
   function onMessage(handler: MessageHandler): () => void {
@@ -221,10 +221,10 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
   }
 
   function disconnect(): void {
-    if (uib) {
-      try { uib.disconnect?.() } catch { /* ignore */ }
+    if (uibuilder) {
+      try { uibuilder.disconnect?.() } catch { /* ignore */ }
     }
-    uib = null
+    uibuilder = null
     connected.value = false
     handlers.length = 0
   }
