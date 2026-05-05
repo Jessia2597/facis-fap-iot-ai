@@ -32,10 +32,9 @@ from setup_lakehouse import (
     DEFAULT_CATALOG,
     DEFAULT_S3_BUCKET,
     GOLD_VIEWS,
-    connect_trino,
+    AuthRefreshingSession,
     execute,
     execute_ddl,
-    get_oidc_token,
     resolve_credentials,
 )
 
@@ -250,8 +249,13 @@ def main() -> None:
         resolve_credentials(args)
     )
 
-    token = get_oidc_token(keycloak_url, username, password, client_secret)
-    conn = connect_trino(trino_host, trino_port, token, catalog)
+    # AuthRefreshingSession handles 401-on-token-expiry transparently. Gold
+    # materialization touches 12 tables and can comfortably exceed the
+    # 5-minute Keycloak token TTL on first deploy after a long stall.
+    conn = AuthRefreshingSession(
+        trino_host, trino_port, catalog,
+        keycloak_url, username, password, client_secret,
+    )
 
     materialize_all(conn, catalog, s3_bucket, args.tables, args.dry_run)
 
