@@ -9,7 +9,7 @@
   {
     "id": "modbus-server-config",
     "type": "modbus-server",
-    "z": "",
+    "z": "tab-modbus",
     "name": "FACIS Modbus Server",
     "logEnabled": false,
     "hostname": "0.0.0.0",
