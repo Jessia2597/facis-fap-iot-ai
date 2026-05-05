@@ -30,6 +30,18 @@
   -->
   <script>
     (function () {
+      // Pin Socket.IO namespace + UIBUILDER httpNodeRoot via cookies BEFORE
+      // the iife loads. The Uib constructor reads `uibuilder-namespace` and
+      // `uibuilder-webRoot` from document.cookie; without them it auto-derives
+      // from window.location.pathname, which is wrong on any deep SPA URL —
+      // e.g. /orce/aiInsight/use-cases/smart-city/zones makes the lib pick
+      // 'zones' as the Socket.IO namespace, so engine.io rejects the
+      // handshake with "server error" and msgsReceived stays at 0.
+      // Cookies are read at constructor time, so they MUST be set before
+      // the iife script tag is appended below.
+      document.cookie = 'uibuilder-namespace=aiInsight; path=/; SameSite=Lax';
+      document.cookie = 'uibuilder-webRoot=; path=/; SameSite=Lax';
+
       var s = document.createElement('script');
       s.type = 'text/javascript';
       s.src = new URL('uibuilder.iife.js', document.baseURI).href;

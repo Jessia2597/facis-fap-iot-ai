@@ -458,9 +458,21 @@ export function postInsightCityStatus(startTs: string, endTs: string): Promise<u
   return aiInsight<unknown>('city-status', { start_ts: startTs, end_ts: endTs, timezone: 'UTC' })
 }
 
-export function getAiHealth(): Promise<AiHealth | null> {
-  // Use the integrations.health rollup, which already includes ai-insight-service.
-  return uib<AiHealth>('integrations.health.ai-insight')
+export async function getAiHealth(): Promise<AiHealth | null> {
+  // The dispatcher only routes the rollup action `integrations.health`; there
+  // is no dedicated `integrations.health.ai-insight`. Pluck the AI Insight
+  // service entry from the rollup and shape it into the AiHealth contract
+  // the views expect (`status: 'ok'` for healthy, raw status string otherwise).
+  const rollup = await uib<IntegrationsHealth>('integrations.health')
+  if (!rollup || !Array.isArray(rollup.services)) return null
+  const ai = rollup.services.find(
+    (s) => s.service === 'ai-insight' || s.service === 'ai-insight-service'
+  )
+  if (!ai) return null
+  return {
+    status: ai.status === 'healthy' ? 'ok' : ai.status,
+    service: ai.service,
+  }
 }
 
 /* ─── Platform endpoints — UIB-routed ────────────────────────────────────── */
