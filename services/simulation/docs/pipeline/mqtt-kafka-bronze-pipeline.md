@@ -122,15 +122,15 @@ Every message arriving in a Kafka Bronze topic has this structure:
 
 ## Deployment
 
-### Local (Docker Compose)
+### Local (Helm/kind)
 
-The local stack uses plaintext connections to the Mosquitto and Kafka containers
-defined in `docker-compose.yml`:
+> **TDR §9.1.1:** Docker Compose is no longer a FACIS deliverable. Local
+> infrastructure (Mosquitto, Kafka, NiFi) is provisioned via Helm against
+> a kind/minikube cluster — see
+> [`../guides/setup.md`](../guides/setup.md). Plaintext local-dev TLS
+> profile remains the same as the cluster setup.
 
 ```bash
-# Start infrastructure
-docker compose up -d mqtt kafka
-
 # Deploy NiFi pipeline (requires NiFi running)
 python scripts/setup_nifi_mqtt_to_kafka.py --env-file .env.cluster
 
@@ -203,11 +203,10 @@ When thresholds are reached, upstream processors pause until the queue drains.
 pytest tests/integration/test_mqtt_kafka_pipeline.py -v -k "TestMetadataEnrichment or TestTopicMapping or TestPipelineSetupScript"
 ```
 
-### Integration Tests (requires Docker Compose + NiFi)
+### Integration Tests (requires Mosquitto + Kafka + NiFi running)
 
 ```bash
-# Start infrastructure
-docker compose up -d mqtt kafka
+# Start infrastructure (kind/minikube cluster — see ../guides/setup.md)
 
 # Deploy NiFi pipeline
 python scripts/setup_nifi_mqtt_to_kafka.py --env-file .env.cluster

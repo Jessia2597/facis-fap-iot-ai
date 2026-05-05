@@ -46,18 +46,19 @@ View current meter reading:
 curl http://localhost:8080/api/v1/meters
 ```
 
-## Quickstart with Docker (full stack)
+## Quickstart (full stack)
 
-```bash
-# Start simulation + Mosquitto + Kafka + ORCE + Kafka UI
-docker compose up --build
-
-# Endpoints:
-#   REST API:   http://localhost:8080
-#   MQTT:       localhost:1883
-#   Kafka UI:   http://localhost:8090
-#   ORCE:       http://localhost:1880
-```
+> **TDR §9.1.1:** Docker Compose is not a FACIS deliverable. The simulation
+> service no longer ships `docker-compose*.yml`. Run the local stack via
+> Helm against a kind/minikube cluster — see
+> [`../guides/setup.md`](setup.md) for the supported workflow and
+> [`../orce-runtime/migration-guide.md`](../orce-runtime/migration-guide.md)
+> for migration context. Endpoints once the stack is up:
+>
+> - REST API: `http://localhost:8080`
+> - MQTT: `localhost:1883`
+> - Kafka UI: `http://localhost:8090`
+> - ORCE: `http://localhost:1880`
 
 ## Key Concepts
 
