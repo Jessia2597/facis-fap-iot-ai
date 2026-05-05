@@ -192,8 +192,12 @@ async function generateLiveResponse(query: string): Promise<{ text: string; insi
   const dailyCost = netGrid * 24 * price
   const selfSufficiency = power > 0 ? ((pv / power) * 100).toFixed(1) : '0'
 
-  // Fetch fresh data for specific prompts
-  const { getMeterHistory, getPriceForecast, getStreetlights, getStreetlightCurrent, getTrafficZones, getTrafficCurrent, getCityEvents, getCityEventCurrent, getCityWeatherCurrent } = await import('@/services/dispatch')
+  // Fetch fresh data for specific prompts. `getPriceForecast` (formerly
+  // expected to hit /api/v1/prices/forecast — that endpoint does not exist
+  // on the sim runtime) was deleted; the PV Forecast / Cost Optimisation
+  // handlers below use the meter-history rows from gold (which carry the
+  // hourly avg_price_eur_per_kwh column) for a recent-price profile instead.
+  const { getMeterHistory, getStreetlights, getStreetlightCurrent, getTrafficZones, getTrafficCurrent, getCityEvents, getCityEventCurrent, getCityWeatherCurrent } = await import('@/services/dispatch')
 
   const q = query.toLowerCase()
 
@@ -209,11 +213,18 @@ async function generateLiveResponse(query: string): Promise<{ text: string; insi
   }
 
   if (q.includes('pv') || q.includes('solar') || q.includes('forecast') || q.includes('irradiance')) {
-    const forecast = await getPriceForecast()
-    const fcPrices = forecast?.forecast ?? []
+    // Recent hourly price profile from gold.net_grid_hourly (carried by
+    // analytics.meters.history's row shape). No upstream forecast service
+    // is available, so we surface the last 24h of observed prices instead.
+    const hist = await getMeterHistory('meter-001')
+    const recentPrices: number[] = (hist?.readings ?? [])
+      .map((r: any) => Number(r?.avg_price_eur_per_kwh))
+      .filter((v: number) => Number.isFinite(v) && v > 0)
+    const minPrice = recentPrices.length ? Math.min(...recentPrices) : 0
+    const maxPrice = recentPrices.length ? Math.max(...recentPrices) : 0
     return {
-      text: `Current PV generation: **${pv.toFixed(1)} kW**. Based on the 24h price forecast (${fcPrices.length} data points), the optimal self-consumption window is during the highest-price hours. Current irradiance conditions suggest ${pv > 1 ? 'active generation' : 'low/no generation (nighttime or overcast)'}.\n\nPrice forecast range: **€${fcPrices.length > 0 ? Math.min(...fcPrices.map((p: any) => p.price_eur_per_kwh)).toFixed(3) : '?'}** to **€${fcPrices.length > 0 ? Math.max(...fcPrices.map((p: any) => p.price_eur_per_kwh)).toFixed(3) : '?'}/kWh**.`,
-      insightCard: { findings: [`Current PV output: ${pv.toFixed(1)} kW`, `${fcPrices.length} forecast price points available`, `Price range: €${fcPrices.length > 0 ? Math.min(...fcPrices.map((p: any) => p.price_eur_per_kwh)).toFixed(3) : '?'} – €${fcPrices.length > 0 ? Math.max(...fcPrices.map((p: any) => p.price_eur_per_kwh)).toFixed(3) : '?'}/kWh`], recommendations: [`${pv > 1 ? 'Maximise self-consumption during current generation window' : 'PV not generating — schedule loads for next solar window'}`, `Monitor forecast for optimal battery charging times`] }
+      text: `Current PV generation: **${pv.toFixed(1)} kW**. Recent 24h price profile (${recentPrices.length} hourly points): **€${minPrice.toFixed(3)}** to **€${maxPrice.toFixed(3)}/kWh**. Optimal self-consumption windows are the hours closest to the upper end of that range. Current irradiance conditions suggest ${pv > 1 ? 'active generation' : 'low/no generation (nighttime or overcast)'}.`,
+      insightCard: { findings: [`Current PV output: ${pv.toFixed(1)} kW`, `${recentPrices.length} hourly price points (last 24h)`, recentPrices.length ? `Price range: €${minPrice.toFixed(3)} – €${maxPrice.toFixed(3)}/kWh` : 'Price history unavailable'], recommendations: [`${pv > 1 ? 'Maximise self-consumption during current generation window' : 'PV not generating — schedule loads for next solar window'}`, `Shift deferrable load to hours nearest the recent price minimum`] }
     }
   }
 
@@ -247,15 +258,22 @@ async function generateLiveResponse(query: string): Promise<{ text: string; insi
   }
 
   if (q.includes('cost') || q.includes('saving') || q.includes('price') || q.includes('tariff') || q.includes('optimi')) {
-    const forecast = await getPriceForecast()
-    const fcPrices = forecast?.forecast ?? []
-    const minPrice = fcPrices.length > 0 ? Math.min(...fcPrices.map((p: any) => p.price_eur_per_kwh)) : 0
-    const maxPrice = fcPrices.length > 0 ? Math.max(...fcPrices.map((p: any) => p.price_eur_per_kwh)) : 0
+    // Use the recent 24h hourly price profile from gold.net_grid_hourly
+    // (rides along on the analytics.meters.history row shape) since no
+    // forward-looking price forecast service is wired up.
+    const hist = await getMeterHistory('meter-001')
+    const rows: any[] = hist?.readings ?? []
+    const priced = rows
+      .map((r: any) => ({ ts: r?.timestamp ?? r?.hour, p: Number(r?.avg_price_eur_per_kwh) }))
+      .filter((r) => Number.isFinite(r.p) && r.p > 0)
+    const minPrice = priced.length ? Math.min(...priced.map((p) => p.p)) : 0
+    const maxPrice = priced.length ? Math.max(...priced.map((p) => p.p)) : 0
     const savings = (maxPrice - minPrice) * netGrid * 24
-    const cheapHours = fcPrices.filter((p: any) => p.price_eur_per_kwh < (minPrice + maxPrice) / 2).map((p: any) => new Date(p.timestamp).getHours()).slice(0, 4)
+    const midPrice = (minPrice + maxPrice) / 2
+    const cheapHours = priced.filter((p) => p.p < midPrice).map((p) => new Date(p.ts).getUTCHours()).slice(0, 4)
     return {
-      text: `Analysing the ENTSO-E spot price forecast alongside your current load of **${netGrid.toFixed(1)} kW** net grid import:\n\n- Price range: **€${minPrice.toFixed(3)}/kWh** to **€${maxPrice.toFixed(3)}/kWh** (spread: €${(maxPrice - minPrice).toFixed(3)}/kWh)\n- Estimated savings from load shifting: **€${savings.toFixed(0)}/day**\n- Cheapest hours: **${cheapHours.map(h => `${h}:00`).join(', ')}**\n- Current rate: **€${price.toFixed(3)}/kWh** (${price > (minPrice + maxPrice) / 2 ? 'above average' : 'below average'})`,
-      insightCard: { findings: [`Current price: €${price.toFixed(3)}/kWh`, `24h range: €${minPrice.toFixed(3)} – €${maxPrice.toFixed(3)}/kWh`, `Net grid import: ${netGrid.toFixed(1)} kW`, `Estimated daily cost: €${dailyCost.toFixed(0)}`], recommendations: [`Shift deferrable loads to ${cheapHours.map(h => `${h}:00`).join(', ')}`, `Potential savings: €${savings.toFixed(0)}/day from load shifting`, `Current rate is ${price > (minPrice + maxPrice) / 2 ? 'above' : 'below'} average — ${price > (minPrice + maxPrice) / 2 ? 'defer non-essential loads' : 'good time to run high-power equipment'}`] }
+      text: `Recent 24h price observations (${priced.length} hourly points) alongside your current load of **${netGrid.toFixed(1)} kW** net grid import:\n\n- Price range: **€${minPrice.toFixed(3)}/kWh** to **€${maxPrice.toFixed(3)}/kWh** (spread: €${(maxPrice - minPrice).toFixed(3)}/kWh)\n- Estimated savings from load shifting: **€${savings.toFixed(0)}/day** at this spread\n- Cheapest hours observed: **${cheapHours.length ? cheapHours.map(h => `${h}:00`).join(', ') : '—'}**\n- Current rate: **€${price.toFixed(3)}/kWh** (${price > midPrice ? 'above the recent mid' : 'below the recent mid'})`,
+      insightCard: { findings: [`Current price: €${price.toFixed(3)}/kWh`, `24h range: €${minPrice.toFixed(3)} – €${maxPrice.toFixed(3)}/kWh`, `Net grid import: ${netGrid.toFixed(1)} kW`, `Estimated daily cost: €${dailyCost.toFixed(0)}`], recommendations: [`Shift deferrable loads to hours similar to ${cheapHours.length ? cheapHours.map(h => `${h}:00`).join(', ') : 'the cheapest historical band'}`, `Potential savings: €${savings.toFixed(0)}/day from load shifting at this spread`, `Current rate is ${price > midPrice ? 'above' : 'below'} the recent average — ${price > midPrice ? 'defer non-essential loads' : 'good time to run high-power equipment'}`] }
     }
   }
 
