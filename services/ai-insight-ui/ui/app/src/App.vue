@@ -727,7 +727,7 @@ const breadcrumbs = computed(() =>
 
 .sidebar-item__badge {
   background: var(--facis-error);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 0.65rem;
   font-weight: 700;
   min-width: 18px;
@@ -840,7 +840,7 @@ const breadcrumbs = computed(() =>
   top: 4px;
   right: 4px;
   background: var(--facis-error);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 0.6rem;
   font-weight: 700;
   min-width: 16px;
@@ -908,7 +908,7 @@ const breadcrumbs = computed(() =>
   right: 0;
   height: 3px;
   z-index: 9999;
-  background: linear-gradient(90deg, var(--facis-primary), #60a5fa);
+  background: linear-gradient(90deg, var(--facis-primary), var(--color-secondary));
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0s;
@@ -991,7 +991,7 @@ const breadcrumbs = computed(() =>
 }
 
 .notif-item--unread:hover {
-  background: #d9e8ff;
+  background: var(--color-info-light);
 }
 
 .notif-item__severity {
@@ -1004,7 +1004,7 @@ const breadcrumbs = computed(() =>
 .notif-item__severity--info     { background: var(--facis-info); }
 .notif-item__severity--warning  { background: var(--facis-warning); }
 .notif-item__severity--error    { background: var(--facis-error); }
-.notif-item__severity--critical { background: #7c0000; }
+.notif-item__severity--critical { background: var(--color-danger-dark); }
 
 .notif-item__body {
   display: flex;

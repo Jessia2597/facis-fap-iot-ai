@@ -9,7 +9,7 @@
 .cta-button,
 button.cta-button {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: var(--radius-control);
   padding: 14px 32px;
