@@ -309,7 +309,7 @@
         "type": "link in",
         "z": "tab_aiui_dispatcher",
         "name": "← broadcast events",
-        "links": ["link-broadcast"],
+        "links": ["link-broadcast", "kpi_broadcast_link_out"],
         "x": 380,
         "y": 540,
         "wires": [["merge-session-send"]]
