@@ -36,6 +36,12 @@ const simHealth = ref<SimHealth | null>(null)
 const aiHealth = ref<AiHealth | null>(null)
 const meterCount = ref<number | null>(null)
 const streetlightCount = ref<number | null>(null)
+// Wall-clock timestamp of the last successful fetchLiveData() — what the
+// "Last reading Nm ago" badge below renders. Distinct from
+// simStatus.simulation_time, which is the simulator's accelerated clock and
+// runs ahead of real time when acceleration > 1 (using it produces a
+// nonsensical negative "ago" value).
+const lastFetchedAt = ref<string | null>(null)
 
 interface DataProductRow {
   id: string
@@ -124,6 +130,8 @@ async function fetchLiveData(): Promise<void> {
     ]
   }
 
+  // Wall-clock fetch time — what the "Last reading" badges below render.
+  lastFetchedAt.value = new Date().toISOString()
   loading.value = false
 }
 
@@ -236,14 +244,14 @@ const platformKpis = computed(() => {
 // Use-case summary cards — all from real API
 const energyCard = computed(() => ({
   health: (simHealth.value?.status === 'ok' ? 'healthy' : (simHealth.value ? 'warning' : 'healthy')) as string,
-  lastTimestamp: simStatus.value?.simulation_time ?? new Date().toISOString(),
+  lastTimestamp: lastFetchedAt.value,
   assetCount: meterCount.value !== null ? meterCount.value : '—',
   insightCount: notifications.openAlerts.filter(a => a.useCase === 'Smart Energy').length
 }))
 
 const cityCard = computed(() => ({
   health: 'healthy' as const,
-  lastTimestamp: simStatus.value?.simulation_time ?? new Date().toISOString(),
+  lastTimestamp: lastFetchedAt.value,
   assetCount: streetlightCount.value !== null ? streetlightCount.value : '—',
   insightCount: notifications.openAlerts.filter(a => a.useCase === 'Smart City').length
 }))
@@ -299,8 +307,14 @@ function fmtTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
-function fmtRelative(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
+function fmtRelative(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return '—'
+  // Defensive clamp: any caller passing a future (or sub-second past)
+  // timestamp gets "just now" instead of a nonsensical negative duration.
+  const diff = Math.max(0, Date.now() - t)
+  if (diff < 60_000) return 'just now'
   const mins = Math.floor(diff / 60_000)
   if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
