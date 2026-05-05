@@ -19,12 +19,6 @@ export interface LlmResponsePayload {
   timestamp: string
 }
 
-export interface KpiUpdatePayload {
-  netGrid: number
-  pvGeneration: number
-  dailyCost: number
-}
-
 export interface UibMessage {
   topic: string
   payload: {
@@ -43,7 +37,6 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
   const connected = ref(false)
   const connecting = ref(false)
   const lastError = ref<string | null>(null)
-  const lastKpi = ref<KpiUpdatePayload | null>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let uibuilder: any = null
@@ -133,17 +126,10 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
 
   // ─── Internal dispatcher ───────────────────────────────────────────────────
 
-  // Pure fan-out to registered handlers — the request/response routing for
-  // FAP §9 commands lives in services/transport.ts. The only legacy hook
-  // retained here is the live KPI push, which the dashboard reads via
-  // the reactive `lastKpi` ref. When the server starts emitting FAP §9
-  // events for KPIs, this branch can be deleted in favour of a
-  // reduceEvent('kpi.update') case.
+  // Pure fan-out to registered handlers. Request/response correlation lives
+  // in services/transport.ts; FAP §9 events flow through there into
+  // services/reducers.ts (e.g. reduceEvent('kpi.update') → state.model.kpi).
   function _dispatch(msg: UibMessage): void {
-    if (msg?.topic === 'kpi.update') {
-      const kpi = msg.payload?.recordDetails as KpiUpdatePayload | undefined
-      if (kpi) lastKpi.value = kpi
-    }
     handlers.forEach(h => h(msg))
   }
 
@@ -235,7 +221,6 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
     connected,
     connecting,
     lastError,
-    lastKpi,
     isAvailable,
     init,
     send,

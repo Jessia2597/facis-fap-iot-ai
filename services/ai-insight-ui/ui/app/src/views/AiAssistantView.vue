@@ -9,6 +9,7 @@ import KpiCard from '@/components/common/KpiCard.vue'
 import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
 import { useInsightApi } from '@/composables/useInsightApi'
 import { useUiBuilderStore } from '@/stores/uibuilder'
+import { useAppStore } from '@/services/state'
 import {
   getMeters, getMeterCurrent,
   getPVSystems, getPVCurrent,
@@ -35,6 +36,7 @@ interface InsightCard {
 
 const { askAi } = useInsightApi()
 const uib = useUiBuilderStore()
+const app = useAppStore()
 
 // Live data from simulation API
 const isLive = ref(false)
@@ -45,9 +47,10 @@ const liveMeterCount = ref(0)
 const livePvRecords = ref<{ timestamp: string; pvPower_kW: number; irradiance_w_m2: number }[]>([])
 const livePriceRecords = ref<{ timestamp: string; priceEurPerKwh: number }[]>([])
 
-// UIBUILDER is initialised once at app boot in main.ts. Per-view KPI updates
-// arrive through the store's reactive `lastKpi` ref (kept in sync by the
-// store's message dispatcher); no per-view subscription is needed.
+// UIBUILDER is initialised once at app boot in main.ts. Server-side
+// kpi.update broadcasts arrive as FAP §9 events, get routed by the
+// transport reducer into `state.model.kpi`, and surface in the `kpis`
+// computed below. No per-view subscription is needed.
 onMounted(async () => {
   // Fetch live simulation data for KPIs and charts
   try {
@@ -139,16 +142,26 @@ const TIME_RANGE_OPTIONS = [
 // ─── KPI Cards ────────────────────────────────────────────────────────────────
 
 const kpis = computed(() => {
+  // Server-broadcast KPIs (gold-layer Trino aggregates) take precedence when
+  // present; the view falls back to sim-derived values otherwise so the panel
+  // is never empty before the first broadcast arrives.
+  const live = app.state.model.kpi
+  const liveLabel = live ? 'Trino' : (isLive.value ? 'Live' : '')
+
   const totalPower = Number(liveTotalPowerKw.value) || 0
   const pvPower = Number(livePvPowerKw.value) || 0
   const price = Number(livePricePerKwh.value) || 0.12
-  const netGrid = Math.max(0, totalPower - pvPower)
-  const dailyCost = netGrid * 24 * price
+  const fallbackNetGrid = Math.max(0, totalPower - pvPower)
+  const fallbackDailyCost = fallbackNetGrid * 24 * price
+
+  const netGrid = live?.netGrid ?? fallbackNetGrid
+  const pvGen = live?.pvGeneration ?? pvPower
+  const dailyCost = live?.dailyCost ?? fallbackDailyCost
 
   return [
-    { label: 'Net Grid Import', value: netGrid.toFixed(1), unit: 'kW', trend: 'stable' as const, icon: 'pi-arrow-down-left', color: 'var(--color-secondary)' },
-    { label: 'PV Generation', value: pvPower.toFixed(1), unit: 'kW', trend: 'up' as const, trendValue: isLive.value ? 'Live' : '', icon: 'pi-sun', color: 'var(--color-warning)' },
-    { label: 'Daily Cost Est.', value: `€${dailyCost.toFixed(0)}`, unit: '', trend: 'down' as const, trendValue: isLive.value ? 'Live' : '', icon: 'pi-euro', color: 'var(--color-success)' },
+    { label: 'Net Grid Import', value: netGrid.toFixed(1), unit: 'kW', trend: 'stable' as const, trendValue: live ? liveLabel : '', icon: 'pi-arrow-down-left', color: 'var(--color-secondary)' },
+    { label: 'PV Generation', value: pvGen.toFixed(1), unit: 'kW', trend: 'up' as const, trendValue: liveLabel, icon: 'pi-sun', color: 'var(--color-warning)' },
+    { label: 'Daily Cost Est.', value: `€${dailyCost.toFixed(0)}`, unit: '', trend: 'down' as const, trendValue: liveLabel, icon: 'pi-euro', color: 'var(--color-success)' },
     { label: 'Anomalies (24h)', value: '--', unit: '', trend: 'stable' as const, icon: 'pi-exclamation-triangle', color: 'var(--color-danger)' }
   ]
 })
