@@ -323,45 +323,64 @@ ls /tmp/facis-rollback/
 
 ---
 
-## 11. Why the `/orce/dynamicsrc/*` rewrite stays
+## 11. Editor theme assets — the `httpStatic` + `httpAdminMiddleware` patch
 
-The repository ships `infrastructure/ingress/facis-ingress-dynamicsrc-rewrite.yaml`,
-which strips the `/orce` prefix off `/orce/dynamicsrc/<file>` so requests
-reach the ORCE pod's static handler at `/dynamicsrc/<file>`.
+Background: the customised Node-RED editor at `/orce/#` ships an unmodifiable
+`red.min.js` (read-only at `/opt/maestro/MBE/packages/node_modules/@node-red/
+editor-client/public/red/red.min.js`) plus theme assets (`guided-script.js`,
+`guided-style.css`) that reference editor fonts and node icons under
+`dynamicsrc/...`. Two URL shapes arrive at the cluster:
 
-Reviewer Hossein flagged this in the PR review (§B.2 / C.4) as a custom
-rewrite that "should not be necessary if the integration is done correctly".
-This section is the deliberate rationale for keeping it; it is an editor
-asset path, not an application path.
+  - **Relative** — `red.min.js` constructs URLs as
+    `${window.location.origin + window.location.pathname}dynamicsrc/...`,
+    which under the editor URL `/orce/` resolves to `/orce/dynamicsrc/*`.
+  - **Absolute** — `guided-style.css` uses `url("/dynamicsrc/font/...")`,
+    which always lands at root `/dynamicsrc/*`.
 
-**Scope.** The rewrite is required ONLY by the customised Node-RED editor
-served at `/orce/#`. The shipped `red.min.js` plus theme assets
-(`theme/scripts/guided-script.js`, `theme/css/guided-style.css`) hardcode
-relative paths like `"dynamicsrc/images/nodes/common/info-icon.svg"` and
-construct font URLs as `${window.location.origin + window.location.pathname} +
-"dynamicsrc/..."`. With the editor mounted at `/orce/`, those resolve to
-`/orce/dynamicsrc/...` which 404 against Node-RED's static handler (which
-maps `/data > /`, not `/orce`). The shipped `red.min.js` lives under
-`/opt/maestro/...` (read-only in the running container) so we cannot patch
-the file in place.
+Both are now handled inside Node-RED itself, with no ingress-layer rewrite:
 
-**Not used by the SPA.** Verified: `services/ai-insight-ui/ui/app/index.html`
-contains no `dynamicsrc` reference; `vite.config.ts` uses
-`base='/orce/aiInsight/'` and only emits absolute Vite-resolved paths into
-the bundle. The Playwright smoke test
-`services/ai-insight-ui/ui/app/test/e2e/cluster-smoke.spec.ts` records the
-network traffic of every Smart City + Analytics view and asserts zero
-`/api/sim/*` requests; it does not observe any `/orce/dynamicsrc/*` request
-from the SPA either.
+  - `/data/settings.js` is patched at pod boot (by the
+    `init-orce-settings` initContainer in
+    `infrastructure/orce/init-orce-settings-patch.yaml`) to:
+      * **Expand** the existing `httpStatic: '/data'` into an array
+        also serving `/opt/maestro/MBE/.node-red/dynamicsrc` at URL
+        `/dynamicsrc/*` — this catches the absolute references.
+      * **Add** an `httpAdminMiddleware` that serves the same filesystem
+        path when a request hits the admin tree at `/orce/dynamicsrc/*`
+        (which arrives as `req.path === '/dynamicsrc/...'` because
+        `httpAdminRoot` is `/orce/`) — this catches the relative
+        references.
+  - The patch is idempotent (detects an existing `FACIS:dynamicsrc-patch`
+    marker comment in `settings.js`) and atomic (writes
+    `settings.js.new` and renames over the original).
 
-**Effect of removing it.** The editor at `/orce/#` would still load and
-function but would render with fallback sans-serif fonts and broken node
-icons in the palette. The SPA at `/orce/aiInsight/` is unaffected.
+Reviewer Hossein flagged the prior Ingress workaround
+(`facis-ingress-dynamicsrc-rewrite.yaml`) in the PR review (§B.2 / C.4)
+as a path-prefix rewrite that "should not be necessary if the integration
+is done correctly". Phase 1 of the cleanup landed the settings.js patch
+alongside the Ingress; Phase 2 (commit `<TBD>`) deleted the Ingress YAML
+and the cluster Ingress object. Verified end-to-end: the editor renders
+with all custom fonts and node icons via Node-RED's static-serving hooks
+alone.
 
-**Future cleanup.** When the upstream Node-RED editor moves away from the
-hardcoded relative `dynamicsrc/...` paths (or we ship a patched
-`red.min.js`), this Ingress can be deleted in one commit. Until then it
-stays, with an inline comment in the YAML referencing this paragraph.
+**Verification snippet** (from a fresh cluster session, post-removal):
+
+```bash
+curl -sS -o /dev/null -w "via /orce/dynamicsrc/: HTTP %{http_code}\n" \
+  https://fap-iotai.facis.cloud/orce/dynamicsrc/font/Manrope-Bold.woff
+curl -sS -o /dev/null -w "via /dynamicsrc/:      HTTP %{http_code}\n" \
+  https://fap-iotai.facis.cloud/dynamicsrc/font/Manrope-Bold.woff
+# expect: HTTP 200 on both
+kubectl get ingress -n orce | grep dynamicsrc
+# expect: empty
+```
+
+**Not used by the SPA.** Confirmed during the Phase 2 verification:
+`services/ai-insight-ui/ui/app/index.html` contains no `dynamicsrc`
+reference; `vite.config.ts` uses `base='/orce/aiInsight/'` and only emits
+absolute Vite-resolved paths into the bundle. The SPA at
+`/orce/aiInsight/` is unaffected by either the patch or the Ingress
+removal.
 
 ---
 
@@ -371,8 +390,8 @@ stays, with an inline comment in the YAML referencing this paragraph.
 |---|---|
 | `infrastructure/orce/init-ai-ui-patch.yaml`              | Strategic-merge patch adding init-ai-ui container |
 | `infrastructure/orce/init-deps-patch.yaml`               | npm install + rdkafka SSL patch initContainer |
+| `infrastructure/orce/init-orce-settings-patch.yaml`      | Patches `/data/settings.js` with `httpStatic` + `httpAdminMiddleware` for `/dynamicsrc/*` (replaces the prior path-rewrite Ingress) |
 | `infrastructure/ingress/facis-ingress.yaml`              | Main Ingress |
-| `infrastructure/ingress/facis-ingress-dynamicsrc-rewrite.yaml` | Path-rewrite Ingress for editor theme assets |
 | `infrastructure/keycloak/configure-ai-insight-client.sh` | Idempotent Keycloak client setup |
 | `services/ai-insight-ui/ui/app/`                         | Vue 3 SPA source |
 | `services/ai-insight-ui/orce/flows/`                     | 6 Phase-5 backend flow JSONs |

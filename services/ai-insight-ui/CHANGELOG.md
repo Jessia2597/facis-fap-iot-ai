@@ -19,9 +19,12 @@
   - `schemas.json`           → `GET /api/v1/schemas[/:catalog/:schema/:table]` (Trino information_schema, regex-validated identifiers)
   - `admin.json`             → `GET /api/v1/admin/{users,roles,access}` (Keycloak Admin API proxy, JWT-gated, requires `admin` realm role)
 - `infrastructure/orce/init-ai-ui-patch.yaml` — strategic-merge patch wiring the bundle-extraction initContainer.
-- `infrastructure/ingress/facis-ingress-dynamicsrc-rewrite.yaml` — separate
-  Ingress that rewrites `/orce/dynamicsrc/(.*)` to `/dynamicsrc/$1` so
-  the editor theme's hardcoded `dynamicsrc/...` URLs resolve.
+- `infrastructure/orce/init-orce-settings-patch.yaml` — strategic-merge
+  patch adding an `init-orce-settings` initContainer that idempotently
+  patches `/data/settings.js` with `httpStatic` + `httpAdminMiddleware`
+  hooks so Node-RED itself serves editor theme assets at `/dynamicsrc/*`
+  and `/orce/dynamicsrc/*`. Replaces the prior
+  `facis-ingress-dynamicsrc-rewrite.yaml` Ingress workaround (deleted).
 - `infrastructure/keycloak/configure-ai-insight-client.sh` — idempotent
   redirect-URI / web-origin setup for the `facis-ai-insight` client.
 - `services/ai-insight-ui/docs/deployment/orce-native-runbook.md` —
