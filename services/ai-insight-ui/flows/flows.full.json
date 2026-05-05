@@ -1169,7 +1169,7 @@
     "type": "function",
     "z": "tab_aiui_kpi_broadcast",
     "name": "Prepare Keycloak Auth",
-    "func": "// Build the same Keycloak token request as tab-trino-query's prepare-trino-auth.\n// This is the broadcast path — no msg._req or msg.data to forward; the result\n// goes straight to a fan-out broadcast (no requestId).\nconst tokenUrl = env.get('FACIS_KEYCLOAK_URL') || 'https://identity.facis.cloud/realms/facis/protocol/openid-connect/token';\nconst clientId = env.get('FACIS_OIDC_CLIENT_ID') || 'trino';\nconst clientSecret = env.get('FACIS_OIDC_CLIENT_SECRET') || '';\nconst username = env.get('FACIS_TRINO_USER') || 'admin';\nconst password = env.get('FACIS_TRINO_PASSWORD') || '';\n\nmsg.url = tokenUrl;\nmsg.method = 'POST';\nmsg.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };\nmsg.payload = `grant_type=password&client_id=${clientId}&client_secret=${clientSecret}&username=${username}&password=${password}&scope=openid`;\n\nreturn msg;\n",
+    "func": "// Build the same Keycloak token request as tab-trino-query's prepare-trino-auth.\n// This is the broadcast path — no msg._req or msg.data to forward; the result\n// goes straight to a fan-out broadcast (no requestId).\n//\n// Env vars: prefer the cluster's AI_INSIGHT_TRINO__OIDC_* (the actual injected\n// names per the helm chart), fall back to FACIS_* for older naming.\nconst formEncode = (pairs) => Object.entries(pairs)\n    .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))\n    .join('&');\n\nconst tokenUrl = env.get('AI_INSIGHT_TRINO__OIDC_TOKEN_URL') || env.get('FACIS_KEYCLOAK_URL') || 'https://identity.facis.cloud/realms/facis/protocol/openid-connect/token';\nconst clientId = env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_ID') || env.get('FACIS_OIDC_CLIENT_ID') || 'OIDC';\nconst clientSecret = env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_SECRET') || env.get('FACIS_OIDC_CLIENT_SECRET') || '';\nconst username = env.get('AI_INSIGHT_TRINO__OIDC_USERNAME') || env.get('FACIS_TRINO_USER') || 'test';\nconst password = env.get('AI_INSIGHT_TRINO__OIDC_PASSWORD') || env.get('FACIS_TRINO_PASSWORD') || '';\nconst scope = env.get('AI_INSIGHT_TRINO__OIDC_SCOPE') || 'openid';\n\nmsg.url = tokenUrl;\nmsg.method = 'POST';\nmsg.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };\nmsg.payload = formEncode({\n    grant_type: 'password',\n    client_id: clientId,\n    client_secret: clientSecret,\n    username,\n    password,\n    scope,\n});\n\nreturn msg;\n",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -1192,7 +1192,7 @@
     "ret": "obj",
     "paytoqs": "ignore",
     "url": "",
-    "tls": "",
+    "tls": "aiinsight-tls-noverify",
     "persist": false,
     "proxy": "",
     "insecureHTTPParser": false,
@@ -1211,7 +1211,7 @@
     "type": "function",
     "z": "tab_aiui_kpi_broadcast",
     "name": "Execute kpi-summary SQL",
-    "func": "const token = msg.payload?.access_token;\nif (!token) {\n    node.warn('KPI broadcast: failed to fetch Keycloak token; skipping cycle');\n    return null;\n}\n\nconst trinoHost = env.get('FACIS_TRINO_HOST') || '212.132.83.150';\nconst trinoPort = env.get('FACIS_TRINO_PORT') || '8443';\n\n// Same kpi-summary SQL as tab-trino-query's execute-trino-sql, with a fixed\n// 24h window for the broadcast (the on-demand path lets clients pass start_ts\n// /end_ts; here we fix it so the broadcast is a single canonical view).\nconst endTs = new Date().toISOString();\nconst startTs = new Date(Date.now() - 24*60*60*1000).toISOString();\nconst sql = `SELECT \\n    AVG(net_grid_kw) as avg_net_grid,\\n    AVG(avg_generation_kw) as avg_pv_generation,\\n    SUM(estimated_hourly_cost_eur) as total_cost\\nFROM gold.net_grid_hourly\\nWHERE hour >= from_iso8601_timestamp('${startTs}')\\n  AND hour < from_iso8601_timestamp('${endTs}')`;\n\nmsg.url = `https://${trinoHost}:${trinoPort}/v1/statement`;\nmsg.method = 'POST';\nmsg.headers = {\n    'Authorization': 'Bearer ' + token,\n    'Content-Type': 'text/plain',\n    'X-Trino-User': env.get('FACIS_TRINO_USER') || 'admin',\n    'X-Trino-Catalog': 'hive',\n    'X-Trino-Schema': 'default'\n};\nmsg.payload = sql;\n\nreturn msg;\n",
+    "func": "const token = msg.payload?.access_token;\nif (!token) {\n    node.warn('KPI broadcast: failed to fetch Keycloak token; skipping cycle');\n    return null;\n}\n\nconst trinoHost = env.get('AI_INSIGHT_TRINO__HOST') || env.get('FACIS_TRINO_HOST') || '212.132.83.150';\nconst trinoPort = env.get('AI_INSIGHT_TRINO__PORT') || env.get('FACIS_TRINO_PORT') || '8443';\nconst trinoUser = env.get('AI_INSIGHT_TRINO__USER') || env.get('FACIS_TRINO_USER') || 'test';\nconst trinoCatalog = env.get('AI_INSIGHT_TRINO__CATALOG') || 'fap-iotai-stackable';\nconst trinoSchema  = env.get('AI_INSIGHT_TRINO__TARGET_SCHEMA') || env.get('AI_INSIGHT_TRINO__SCHEMA') || 'gold';\nconst tableNetGrid = env.get('AI_INSIGHT_TRINO__TABLE_NET_GRID_HOURLY') || 'net_grid_hourly';\n\nconst endTs = new Date().toISOString();\nconst startTs = new Date(Date.now() - 24*60*60*1000).toISOString();\nconst sql = `SELECT \\n    AVG(net_grid_kw) as avg_net_grid,\\n    AVG(avg_generation_kw) as avg_pv_generation,\\n    SUM(estimated_hourly_cost_eur) as total_cost\\nFROM ${trinoSchema}.${tableNetGrid}\\nWHERE hour >= from_iso8601_timestamp('${startTs}')\\n  AND hour < from_iso8601_timestamp('${endTs}')`;\n\n// Trino's /v1/statement returns a paginated chain (queued → planning → running\n// → finished, follow nextUri at each step). Headers must persist across pages,\n// so stash them under msg._trinoNextHeaders for the collect-pages loop below.\nmsg._trinoNextHeaders = {\n    'Authorization': 'Bearer ' + token,\n    'X-Trino-User': trinoUser,\n    'X-Trino-Catalog': trinoCatalog,\n    'X-Trino-Schema': trinoSchema\n};\nmsg.url = `https://${trinoHost}:${trinoPort}/v1/statement`;\nmsg.method = 'POST';\nmsg.headers = Object.assign({ 'Content-Type': 'text/plain' }, msg._trinoNextHeaders);\nmsg.payload = sql;\nmsg._trinoRows = [];\nmsg._trinoColumns = [];\n\nreturn msg;\n",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -1234,7 +1234,7 @@
     "ret": "obj",
     "paytoqs": "ignore",
     "url": "",
-    "tls": "",
+    "tls": "aiinsight-tls-noverify",
     "persist": false,
     "proxy": "",
     "insecureHTTPParser": false,
@@ -1243,6 +1243,28 @@
     "x": 1050,
     "y": 100,
     "wires": [
+      [
+        "kpi_broadcast_collect_pages"
+      ]
+    ]
+  },
+  {
+    "id": "kpi_broadcast_collect_pages",
+    "type": "function",
+    "z": "tab_aiui_kpi_broadcast",
+    "name": "Collect Trino pages",
+    "func": "// Trino /v1/statement is paginated: each response has nextUri until the\n// query reaches FINISHED. Accumulate rows across pages, looping back to\n// the http-request via output 1. When body.nextUri is absent, emit on\n// output 2 with msg.trinoRows fully populated.\nconst status = Number(msg.statusCode || 0);\nif (status >= 400) {\n    node.warn('KPI broadcast: Trino HTTP ' + status + '; skipping cycle');\n    return null;\n}\nconst body = msg.payload || {};\nif (Array.isArray(body.columns) && body.columns.length > 0 && (!Array.isArray(msg._trinoColumns) || msg._trinoColumns.length === 0)) {\n    msg._trinoColumns = body.columns.map((c) => c.name);\n}\nconst columns = msg._trinoColumns || [];\nconst rows = msg._trinoRows || [];\nconst data = Array.isArray(body.data) ? body.data : [];\nfor (const row of data) {\n    if (!Array.isArray(row)) continue;\n    const mapped = {};\n    for (let i = 0; i < columns.length; i++) mapped[columns[i]] = row[i];\n    rows.push(mapped);\n}\nmsg._trinoRows = rows;\n\nif (body.nextUri) {\n    // Loop back to the http-request node with GET on the nextUri.\n    msg.method = 'GET';\n    msg.url = String(body.nextUri);\n    msg.headers = Object.assign({}, msg._trinoNextHeaders || {});\n    msg.payload = '';\n    return [msg, null];\n}\n\n// Done — forward to build-event with rows.\nmsg.trinoRows = rows;\nreturn [null, msg];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1290,
+    "y": 100,
+    "wires": [
+      [
+        "kpi_broadcast_trino_request"
+      ],
       [
         "kpi_broadcast_build_event"
       ]
@@ -1253,13 +1275,13 @@
     "type": "function",
     "z": "tab_aiui_kpi_broadcast",
     "name": "Build kpi.update EventEnvelope",
-    "func": "const data = msg.payload;\nif (msg.statusCode >= 400 || !data || !data.data || !data.columns) {\n    node.warn('KPI broadcast: Trino query failed (' + msg.statusCode + '); skipping cycle');\n    return null;\n}\n\n// Reshape Trino's [columns, data[]] into a single row.\nlet row;\ntry {\n    const cols = data.columns.map(c => c.name);\n    if (!Array.isArray(data.data) || data.data.length === 0) {\n        node.warn('KPI broadcast: Trino returned no rows; skipping cycle');\n        return null;\n    }\n    row = {};\n    data.data[0].forEach((v, i) => { row[cols[i]] = v; });\n} catch (e) {\n    node.warn('KPI broadcast: failed to parse Trino result: ' + e.message);\n    return null;\n}\n\n// Emit a fresh msg containing only the payload — no msg._req / msg._result /\n// msg._socketId leakage from the upstream HTTP request, so merge-session-send\n// fans out to all clients (broadcast).\nreturn {\n    payload: {\n        type: 'event',\n        event: 'kpi.update',\n        data: {\n            netGrid:      row.avg_net_grid      ?? null,\n            pvGeneration: row.avg_pv_generation ?? null,\n            dailyCost:    row.total_cost        ?? null\n        }\n    }\n};\n",
+    "func": "// At this point msg.trinoRows is the fully-collected result of the\n// kpi-summary query (one row, three aggregates). Reshape into the\n// FAP §9 EventEnvelope shape and broadcast.\nconst rows = Array.isArray(msg.trinoRows) ? msg.trinoRows : [];\nif (rows.length === 0) {\n    node.warn('KPI broadcast: Trino returned no rows; skipping cycle');\n    return null;\n}\nconst r = rows[0] || {};\n\n// Emit a fresh msg containing only the payload — no msg._req / msg._result /\n// msg._socketId leakage from the upstream HTTP request, so merge-session-send\n// fans out to all clients (broadcast).\nreturn {\n    payload: {\n        type: 'event',\n        event: 'kpi.update',\n        data: {\n            netGrid:      r.avg_net_grid      ?? null,\n            pvGeneration: r.avg_pv_generation ?? null,\n            dailyCost:    r.total_cost        ?? null\n        }\n    }\n};\n",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 1290,
+    "x": 1530,
     "y": 100,
     "wires": [
       [
@@ -1276,7 +1298,7 @@
     "links": [
       "link-from-broadcast"
     ],
-    "x": 1535,
+    "x": 1770,
     "y": 100,
     "wires": []
   },
@@ -1289,7 +1311,8 @@
       "kpi_broadcast_token_request",
       "kpi_broadcast_trino_request",
       "kpi_broadcast_execute_sql",
-      "kpi_broadcast_build_event"
+      "kpi_broadcast_build_event",
+      "kpi_broadcast_collect_pages"
     ],
     "uncaught": false,
     "x": 380,
