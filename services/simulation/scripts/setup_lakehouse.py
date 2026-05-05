@@ -458,51 +458,62 @@ SILVER_VIEWS["city_event"] = """
 CREATE OR REPLACE VIEW "{catalog}".silver.city_event AS
 SELECT
     ingestion_timestamp,
-    event_timestamp,
-    city_id,
-    zone_id,
-    event_type,
-    severity,
-    active,
-    -- Derived: severity label
+    from_iso8601_timestamp(json_extract_scalar(raw_value, '$.timestamp')) AS event_timestamp,
+    json_extract_scalar(raw_value, '$.city_id')                            AS city_id,
+    json_extract_scalar(raw_value, '$.zone_id')                            AS zone_id,
+    COALESCE(json_extract_scalar(raw_value, '$.event_type'), 'unknown')    AS event_type,
+    -- Defensive severity parse: bronze rows are inconsistent — some carry
+    -- the numeric Severity enum value (1/2/3) the simulation source claims
+    -- to emit (services/simulation/src/models/smart_city/event.py), others
+    -- carry the enum NAME ('LOW'/'MEDIUM'/'HIGH'). The previous unconditional
+    -- CAST(... AS INTEGER) blew up on the first 'LOW' row and killed every
+    -- silver-materializer run. TRY_CAST tolerates numeric strings; the
+    -- CASE maps the documented names; anything else becomes NULL and is
+    -- ignored by AVG()/COUNT() downstream.
+    COALESCE(
+        TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
+        CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
+            WHEN 'LOW'      THEN 1
+            WHEN 'MEDIUM'   THEN 2
+            WHEN 'HIGH'     THEN 3
+            WHEN 'CRITICAL' THEN 4
+            ELSE NULL
+        END
+    )                                                                       AS severity,
+    COALESCE(CAST(json_extract_scalar(raw_value, '$.active') AS BOOLEAN), false) AS active,
+    -- Derived: severity label. We re-evaluate the same COALESCE expression
+    -- inline rather than wrap the SELECT in a subquery, because
+    -- materialize_silver.build_insert_sql() appends the watermark filter
+    -- via "\\n  AND ingestion_timestamp > TIMESTAMP '...'" to the end of
+    -- this SELECT — that only works if the last clause is a WHERE.
     CASE
-        WHEN severity >= 4 THEN 'critical'
-        WHEN severity >= 3 THEN 'high'
-        WHEN severity >= 2 THEN 'medium'
+        WHEN COALESCE(
+                TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
+                CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
+                    WHEN 'LOW' THEN 1 WHEN 'MEDIUM' THEN 2
+                    WHEN 'HIGH' THEN 3 WHEN 'CRITICAL' THEN 4 ELSE NULL
+                END
+             ) >= 4 THEN 'critical'
+        WHEN COALESCE(
+                TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
+                CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
+                    WHEN 'LOW' THEN 1 WHEN 'MEDIUM' THEN 2
+                    WHEN 'HIGH' THEN 3 WHEN 'CRITICAL' THEN 4 ELSE NULL
+                END
+             ) >= 3 THEN 'high'
+        WHEN COALESCE(
+                TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
+                CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
+                    WHEN 'LOW' THEN 1 WHEN 'MEDIUM' THEN 2
+                    WHEN 'HIGH' THEN 3 WHEN 'CRITICAL' THEN 4 ELSE NULL
+                END
+             ) >= 2 THEN 'medium'
         ELSE 'low'
     END AS severity_label,
     message_key
-FROM (
-    SELECT
-        ingestion_timestamp,
-        from_iso8601_timestamp(json_extract_scalar(raw_value, '$.timestamp')) AS event_timestamp,
-        json_extract_scalar(raw_value, '$.city_id')                            AS city_id,
-        json_extract_scalar(raw_value, '$.zone_id')                            AS zone_id,
-        COALESCE(json_extract_scalar(raw_value, '$.event_type'), 'unknown')    AS event_type,
-        -- Defensive severity parse: bronze rows are inconsistent — some carry
-        -- the numeric Severity enum value (1/2/3) the simulation source
-        -- claims to emit (services/simulation/src/models/smart_city/event.py),
-        -- some carry the enum NAME ('LOW'/'MEDIUM'/'HIGH'). The previous
-        -- unconditional CAST(... AS INTEGER) blew up on the first 'LOW' row
-        -- and killed every silver-materializer run. TRY_CAST tolerates
-        -- numeric strings; the CASE maps the documented names; anything
-        -- else becomes NULL and is ignored by AVG()/COUNT() downstream.
-        COALESCE(
-            TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
-            CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
-                WHEN 'LOW'      THEN 1
-                WHEN 'MEDIUM'   THEN 2
-                WHEN 'HIGH'     THEN 3
-                WHEN 'CRITICAL' THEN 4
-                ELSE NULL
-            END
-        )                                                                       AS severity,
-        COALESCE(CAST(json_extract_scalar(raw_value, '$.active') AS BOOLEAN), false) AS active,
-        message_key
-    FROM "{catalog}".bronze.city_event
-    WHERE json_extract_scalar(raw_value, '$.timestamp') IS NOT NULL
-      AND json_extract_scalar(raw_value, '$.zone_id') IS NOT NULL
-)
+FROM "{catalog}".bronze.city_event
+WHERE json_extract_scalar(raw_value, '$.timestamp') IS NOT NULL
+  AND json_extract_scalar(raw_value, '$.zone_id') IS NOT NULL
 """
 
 # ---------------------------------------------------------------------------
