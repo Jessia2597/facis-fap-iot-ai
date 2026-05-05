@@ -323,7 +323,49 @@ ls /tmp/facis-rollback/
 
 ---
 
-## 11. Reference: file locations
+## 11. Why the `/orce/dynamicsrc/*` rewrite stays
+
+The repository ships `infrastructure/ingress/facis-ingress-dynamicsrc-rewrite.yaml`,
+which strips the `/orce` prefix off `/orce/dynamicsrc/<file>` so requests
+reach the ORCE pod's static handler at `/dynamicsrc/<file>`.
+
+Reviewer Hossein flagged this in the PR review (§B.2 / C.4) as a custom
+rewrite that "should not be necessary if the integration is done correctly".
+This section is the deliberate rationale for keeping it; it is an editor
+asset path, not an application path.
+
+**Scope.** The rewrite is required ONLY by the customised Node-RED editor
+served at `/orce/#`. The shipped `red.min.js` plus theme assets
+(`theme/scripts/guided-script.js`, `theme/css/guided-style.css`) hardcode
+relative paths like `"dynamicsrc/images/nodes/common/info-icon.svg"` and
+construct font URLs as `${window.location.origin + window.location.pathname} +
+"dynamicsrc/..."`. With the editor mounted at `/orce/`, those resolve to
+`/orce/dynamicsrc/...` which 404 against Node-RED's static handler (which
+maps `/data > /`, not `/orce`). The shipped `red.min.js` lives under
+`/opt/maestro/...` (read-only in the running container) so we cannot patch
+the file in place.
+
+**Not used by the SPA.** Verified: `services/ai-insight-ui/ui/app/index.html`
+contains no `dynamicsrc` reference; `vite.config.ts` uses
+`base='/orce/aiInsight/'` and only emits absolute Vite-resolved paths into
+the bundle. The Playwright smoke test
+`services/ai-insight-ui/ui/app/test/e2e/cluster-smoke.spec.ts` records the
+network traffic of every Smart City + Analytics view and asserts zero
+`/api/sim/*` requests; it does not observe any `/orce/dynamicsrc/*` request
+from the SPA either.
+
+**Effect of removing it.** The editor at `/orce/#` would still load and
+function but would render with fallback sans-serif fonts and broken node
+icons in the palette. The SPA at `/orce/aiInsight/` is unaffected.
+
+**Future cleanup.** When the upstream Node-RED editor moves away from the
+hardcoded relative `dynamicsrc/...` paths (or we ship a patched
+`red.min.js`), this Ingress can be deleted in one commit. Until then it
+stays, with an inline comment in the YAML referencing this paragraph.
+
+---
+
+## 12. Reference: file locations
 
 | Path | Purpose |
 |---|---|
