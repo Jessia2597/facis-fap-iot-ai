@@ -2,323 +2,84 @@
   {
     "id": "tab_aiui_smart_city",
     "type": "tab",
-    "label": "AI Insight UI — Smart City",
+    "label": "AI Insight UI \u2014 Smart City",
     "disabled": false,
-    "info": "Smart City data backend, REAL data only. Queries Trino's gold layer:\n  - gold.streetlight_zone_hourly  → /streetlights, /streetlights/:zone/{current,history}\n  - gold.traffic_pattern_hourly   → /traffic,      /traffic/:zone/{current,history}\n  - gold.event_impact_daily       → /events,       /events/:zone/{current,history}\n  - gold.weather_hourly           → /city-weather/{current,history}\n\nThe Trino tables are populated by the gold-layer aggregation flow (NiFi/ORCE)\nfrom Kafka feeds emitted by the simulation engine. They are zone-level hourly\naggregates — there is no per-light or per-vehicle granularity, so the\n`/streetlights/:id/...` endpoints take a `zone_id` as the path parameter\n(reflecting what the gold table actually exposes).\n\nIf a Trino query returns no rows the endpoint returns an empty array with\n`metadata.source = 'gold.<table>'` and `metadata.note = 'no rows in window'`,\nrather than fabricating data. FAP §10 (subflow design) + §12 (explicit\nfailure) — never imply success when no data is available.\n\nFAP §9 actions: smart-city.{zones.list,zones.detail,streetlights.list,traffic.summary,events.recent}."
+    "info": "Smart City data backend, REAL data only. All application traffic flows over\nUIBUILDER \u00a79 (link-from-ui-smart-city \u2192 fn_smart_city_fap_route \u2192 fn_trino_run_fap\n\u2192 link-response-smart-city \u2192 link-from-response). The HTTP routes under\n/api/v1/{streetlights,traffic,events,city-weather}/... are scheduled for removal\nafter the \u00a79 path is verified end-to-end.\n\nFAP \u00a79 actions:\n  smart-city.zones.list           \u2014 distinct zones\n  smart-city.zones.detail         \u2014 recent observations for a zone\n  smart-city.streetlights.list    \u2014 fleet rollup, hourly\n  smart-city.streetlights.current \u2014 latest hourly row for a 'light' (zone_id)\n  smart-city.streetlights.history \u2014 last 24h hourly\n  smart-city.traffic.zones        \u2014 distinct zones\n  smart-city.traffic.current      \u2014 latest hourly row\n  smart-city.traffic.history      \u2014 last 24h hourly\n  smart-city.traffic.summary      \u2014 24h aggregate per zone\n  smart-city.events.zones         \u2014 distinct zones\n  smart-city.events.current       \u2014 latest event row for a zone\n  smart-city.events.history       \u2014 last 30 days\n  smart-city.events.recent        \u2014 last 7 days, all active zones\n  smart-city.weather.current      \u2014 latest hour\n  smart-city.weather.history      \u2014 last 24h\n\nAll queries hit Trino's gold layer:\n  gold.streetlight_zone_hourly  \u00b7 gold.traffic_pattern_hourly\n  gold.event_impact_daily       \u00b7 gold.weather_hourly\n\nIf a Trino query returns no rows the response carries\nmetadata.note='no rows in window' and an empty payload \u2014 never synthesised data\n(FAP \u00a710 design rule 4 + \u00a712 mandatory rule)."
   },
-
-  {
-    "id": "node_smart_city_streetlights_list",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /api/v1/streetlights",
-    "url": "/api/v1/streetlights",
-    "method": "get",
-    "x": 200,
-    "y": 80,
-    "wires": [["fn_prep_streetlights_list"]]
-  },
-  {
-    "id": "fn_prep_streetlights_list",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare streetlights list",
-    "func": "msg._sql = `SELECT DISTINCT zone_id FROM \"gold\".\"streetlight_zone_hourly\" ORDER BY zone_id`;\nmsg._shape = 'streetlights_list';\nreturn msg;\n",
-    "outputs": 1,
-    "x": 540, "y": 80,
-    "wires": [["fn_trino_run"]]
-  },
-
-  {
-    "id": "node_smart_city_streetlight_current",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /streetlights/:zone/current",
-    "url": "/api/v1/streetlights/:zone_id/current",
-    "method": "get",
-    "x": 220, "y": 140,
-    "wires": [["fn_prep_streetlight_current"]]
-  },
-  {
-    "id": "fn_prep_streetlight_current",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare streetlight current",
-    "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst zone = msg.req && msg.req.params && msg.req.params.zone_id;\nif (!zone || !IDENT.test(zone)) {\n    msg.statusCode = 400; msg.headers = { 'Content-Type': 'application/json' };\n    msg.payload = { error: 'invalid zone_id' };\n    return [null, msg];\n}\nmsg._sql = `SELECT hour, zone_id, avg_dimming_pct, total_power_w, light_count FROM \"gold\".\"streetlight_zone_hourly\" WHERE zone_id = '${zone.replace(/'/g, \"''\")}' ORDER BY hour DESC LIMIT 1`;\nmsg._shape = 'streetlight_current';\nmsg._zone_id = zone;\nreturn [msg, null];\n",
-    "outputs": 2,
-    "x": 540, "y": 140,
-    "wires": [["fn_trino_run"], ["node_smart_city_resp"]]
-  },
-
-  {
-    "id": "node_smart_city_streetlight_history",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /streetlights/:zone/history",
-    "url": "/api/v1/streetlights/:zone_id/history",
-    "method": "get",
-    "x": 220, "y": 200,
-    "wires": [["fn_prep_streetlight_history"]]
-  },
-  {
-    "id": "fn_prep_streetlight_history",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare streetlight history",
-    "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst zone = msg.req && msg.req.params && msg.req.params.zone_id;\nif (!zone || !IDENT.test(zone)) { msg.statusCode = 400; msg.payload = { error: 'invalid zone_id' }; return [null, msg]; }\nmsg._sql = `SELECT hour, zone_id, avg_dimming_pct, total_power_w, light_count FROM \"gold\".\"streetlight_zone_hourly\" WHERE zone_id = '${zone.replace(/'/g, \"''\")}' AND hour >= now() - INTERVAL '24' HOUR ORDER BY hour ASC`;\nmsg._shape = 'streetlight_history';\nmsg._zone_id = zone;\nreturn [msg, null];\n",
-    "outputs": 2,
-    "x": 540, "y": 200,
-    "wires": [["fn_trino_run"], ["node_smart_city_resp"]]
-  },
-
-  {
-    "id": "node_smart_city_traffic_list",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /api/v1/traffic",
-    "url": "/api/v1/traffic",
-    "method": "get",
-    "x": 200, "y": 280,
-    "wires": [["fn_prep_traffic_list"]]
-  },
-  {
-    "id": "fn_prep_traffic_list",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare traffic list",
-    "func": "msg._sql = `SELECT DISTINCT zone_id FROM \"gold\".\"traffic_pattern_hourly\" ORDER BY zone_id`;\nmsg._shape = 'traffic_list';\nreturn msg;\n",
-    "outputs": 1,
-    "x": 520, "y": 280,
-    "wires": [["fn_trino_run"]]
-  },
-
-  {
-    "id": "node_smart_city_traffic_current",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /traffic/:zone/current",
-    "url": "/api/v1/traffic/:zone_id/current",
-    "method": "get",
-    "x": 220, "y": 340,
-    "wires": [["fn_prep_traffic_current"]]
-  },
-  {
-    "id": "fn_prep_traffic_current",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare traffic current",
-    "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst zone = msg.req && msg.req.params && msg.req.params.zone_id;\nif (!zone || !IDENT.test(zone)) { msg.statusCode = 400; msg.payload = { error: 'invalid zone_id' }; return [null, msg]; }\nmsg._sql = `SELECT * FROM \"gold\".\"traffic_pattern_hourly\" WHERE zone_id = '${zone.replace(/'/g, \"''\")}' ORDER BY hour DESC LIMIT 1`;\nmsg._shape = 'traffic_current';\nmsg._zone_id = zone;\nreturn [msg, null];\n",
-    "outputs": 2,
-    "x": 540, "y": 340,
-    "wires": [["fn_trino_run"], ["node_smart_city_resp"]]
-  },
-
-  {
-    "id": "node_smart_city_traffic_history",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /traffic/:zone/history",
-    "url": "/api/v1/traffic/:zone_id/history",
-    "method": "get",
-    "x": 220, "y": 400,
-    "wires": [["fn_prep_traffic_history"]]
-  },
-  {
-    "id": "fn_prep_traffic_history",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare traffic history",
-    "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst zone = msg.req && msg.req.params && msg.req.params.zone_id;\nif (!zone || !IDENT.test(zone)) { msg.statusCode = 400; msg.payload = { error: 'invalid zone_id' }; return [null, msg]; }\nmsg._sql = `SELECT * FROM \"gold\".\"traffic_pattern_hourly\" WHERE zone_id = '${zone.replace(/'/g, \"''\")}' AND hour >= now() - INTERVAL '24' HOUR ORDER BY hour ASC`;\nmsg._shape = 'traffic_history';\nmsg._zone_id = zone;\nreturn [msg, null];\n",
-    "outputs": 2,
-    "x": 540, "y": 400,
-    "wires": [["fn_trino_run"], ["node_smart_city_resp"]]
-  },
-
-  {
-    "id": "node_smart_city_events_list",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /api/v1/events",
-    "url": "/api/v1/events",
-    "method": "get",
-    "x": 200, "y": 480,
-    "wires": [["fn_prep_events_list"]]
-  },
-  {
-    "id": "fn_prep_events_list",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare events list",
-    "func": "msg._sql = `SELECT DISTINCT zone_id FROM \"gold\".\"event_impact_daily\" ORDER BY zone_id`;\nmsg._shape = 'events_list';\nreturn msg;\n",
-    "outputs": 1,
-    "x": 520, "y": 480,
-    "wires": [["fn_trino_run"]]
-  },
-
-  {
-    "id": "node_smart_city_event_current",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /events/:zone/current",
-    "url": "/api/v1/events/:zone_id/current",
-    "method": "get",
-    "x": 220, "y": 540,
-    "wires": [["fn_prep_event_current"]]
-  },
-  {
-    "id": "fn_prep_event_current",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare event current",
-    "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst zone = msg.req && msg.req.params && msg.req.params.zone_id;\nif (!zone || !IDENT.test(zone)) { msg.statusCode = 400; msg.payload = { error: 'invalid zone_id' }; return [null, msg]; }\nmsg._sql = `SELECT event_date, zone_id, event_type, event_count, avg_severity, active_count FROM \"gold\".\"event_impact_daily\" WHERE zone_id = '${zone.replace(/'/g, \"''\")}' ORDER BY event_date DESC LIMIT 1`;\nmsg._shape = 'event_current';\nmsg._zone_id = zone;\nreturn [msg, null];\n",
-    "outputs": 2,
-    "x": 540, "y": 540,
-    "wires": [["fn_trino_run"], ["node_smart_city_resp"]]
-  },
-
-  {
-    "id": "node_smart_city_event_history",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /events/:zone/history",
-    "url": "/api/v1/events/:zone_id/history",
-    "method": "get",
-    "x": 220, "y": 600,
-    "wires": [["fn_prep_event_history"]]
-  },
-  {
-    "id": "fn_prep_event_history",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare event history",
-    "func": "const IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nconst zone = msg.req && msg.req.params && msg.req.params.zone_id;\nif (!zone || !IDENT.test(zone)) { msg.statusCode = 400; msg.payload = { error: 'invalid zone_id' }; return [null, msg]; }\nmsg._sql = `SELECT event_date, zone_id, event_type, event_count, avg_severity, active_count FROM \"gold\".\"event_impact_daily\" WHERE zone_id = '${zone.replace(/'/g, \"''\")}' AND event_date >= CAST(now() - INTERVAL '30' DAY AS DATE) ORDER BY event_date ASC`;\nmsg._shape = 'event_history';\nmsg._zone_id = zone;\nreturn [msg, null];\n",
-    "outputs": 2,
-    "x": 540, "y": 600,
-    "wires": [["fn_trino_run"], ["node_smart_city_resp"]]
-  },
-
-  {
-    "id": "node_smart_city_weather_current",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /city-weather/current",
-    "url": "/api/v1/city-weather/current",
-    "method": "get",
-    "x": 220, "y": 680,
-    "wires": [["fn_prep_weather_current"]]
-  },
-  {
-    "id": "fn_prep_weather_current",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare weather current",
-    "func": "msg._sql = `SELECT hour, avg_temperature_c, avg_irradiance_w_m2, avg_humidity_pct, avg_wind_speed_ms, avg_cloud_cover_pct FROM \"gold\".\"weather_hourly\" ORDER BY hour DESC LIMIT 1`;\nmsg._shape = 'weather_current';\nreturn msg;\n",
-    "outputs": 1,
-    "x": 540, "y": 680,
-    "wires": [["fn_trino_run"]]
-  },
-
-  {
-    "id": "node_smart_city_weather_history",
-    "type": "http in",
-    "z": "tab_aiui_smart_city",
-    "name": "GET /city-weather/history",
-    "url": "/api/v1/city-weather/history",
-    "method": "get",
-    "x": 220, "y": 740,
-    "wires": [["fn_prep_weather_history"]]
-  },
-  {
-    "id": "fn_prep_weather_history",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "prepare weather history",
-    "func": "msg._sql = `SELECT hour, avg_temperature_c, avg_irradiance_w_m2, avg_humidity_pct, avg_wind_speed_ms, avg_cloud_cover_pct FROM \"gold\".\"weather_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR ORDER BY hour ASC`;\nmsg._shape = 'weather_history';\nreturn msg;\n",
-    "outputs": 1,
-    "x": 540, "y": 740,
-    "wires": [["fn_trino_run"]]
-  },
-
-  {
-    "id": "fn_trino_run",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "execute Trino SQL (shared)",
-    "func": "// Shared Trino client. Accepts msg._sql, sets msg._rows + msg._columns, then\n// passes to the formatter. On Trino failure sets msg.statusCode = 502.\nfunction httpsFetch(urlStr, opts = {}) {\n    return new Promise((resolve, reject) => {\n        let parsed; try { parsed = new urlmod.URL(urlStr); } catch (e) { return reject(new Error('bad URL: ' + urlStr)); }\n        const lib = parsed.protocol === 'https:' ? https : http;\n        const headers = Object.assign({}, opts.headers || {});\n        if (opts.body && !headers['Content-Length']) headers['Content-Length'] = Buffer.byteLength(opts.body);\n        const req = lib.request({\n            method: opts.method || 'GET', hostname: parsed.hostname,\n            port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),\n            path: parsed.pathname + (parsed.search || ''), headers,\n            timeout: opts.timeoutMs || 8000,\n            rejectUnauthorized: opts.rejectUnauthorized !== false\n        }, (res) => { let d = ''; res.on('data', (c) => d += c); res.on('end', () => resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, json: () => { try { return Promise.resolve(JSON.parse(d)); } catch (e) { return Promise.reject(e); } } })); });\n        req.on('error', reject);\n        req.on('timeout', () => req.destroy(new Error('timeout')));\n        if (opts.body) req.write(opts.body);\n        req.end();\n    });\n}\nconst formEncode = (o) => Object.entries(o).filter(([,v]) => v !== undefined && v !== null && v !== '').map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');\nconst tokenUrl = env.get('AI_INSIGHT_TRINO__OIDC_TOKEN_URL');\nconst clientId = env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_ID');\nconst clientSecret = env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_SECRET');\nconst username = env.get('AI_INSIGHT_TRINO__OIDC_USERNAME');\nconst password = env.get('AI_INSIGHT_TRINO__OIDC_PASSWORD');\nconst scope = env.get('AI_INSIGHT_TRINO__OIDC_SCOPE') || 'openid';\nconst trinoScheme = env.get('AI_INSIGHT_TRINO__HTTP_SCHEME') || 'https';\nconst trinoHost = env.get('AI_INSIGHT_TRINO__HOST');\nconst trinoPort = env.get('AI_INSIGHT_TRINO__PORT') || 8443;\nconst trinoUser = env.get('AI_INSIGHT_TRINO__USER') || 'trino';\nconst trinoCatalog = env.get('AI_INSIGHT_TRINO__CATALOG') || 'fap-iotai-stackable';\nasync function getToken() {\n    const body = formEncode({ grant_type: 'password', client_id: clientId, client_secret: clientSecret, username, password, scope });\n    const res = await httpsFetch(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body, rejectUnauthorized: false });\n    if (!res.ok) throw new Error('token grant failed: ' + res.status);\n    return (await res.json()).access_token;\n}\nasync function runQuery(sql, token) {\n    const base = `${trinoScheme}://${trinoHost}:${trinoPort}`;\n    const headers = { 'Authorization': 'Bearer ' + token, 'X-Trino-User': trinoUser, 'X-Trino-Catalog': trinoCatalog, 'Content-Type': 'text/plain' };\n    let res = await httpsFetch(`${base}/v1/statement`, { method: 'POST', headers, body: sql, rejectUnauthorized: false });\n    if (!res.ok) throw new Error('POST /v1/statement failed: ' + res.status);\n    let body = await res.json();\n    let columns = body.columns || null;\n    const rows = body.data ? [...body.data] : [];\n    while (body.nextUri) {\n        res = await httpsFetch(body.nextUri, { headers, rejectUnauthorized: false });\n        if (!res.ok) throw new Error('nextUri failed: ' + res.status);\n        body = await res.json();\n        if (body.columns) columns = body.columns;\n        if (body.data) rows.push(...body.data);\n    }\n    return { columns, rows };\n}\ntry {\n    if (!msg._sql) { msg.statusCode = 500; msg.payload = { error: 'no SQL prepared' }; return msg; }\n    const token = await getToken();\n    const { columns, rows } = await runQuery(msg._sql, token);\n    msg._rows = rows;\n    msg._columns = (columns || []).map((c) => c.name);\n} catch (e) {\n    node.warn('Trino query failed: ' + String(e.message || e));\n    msg.statusCode = 502;\n    msg.headers = { 'Content-Type': 'application/json' };\n    msg.payload = { error: 'gold layer query failed', detail: String(e.message || e), source: 'trino' };\n    msg._trinoError = true;\n}\nreturn msg;\n",
-    "outputs": 1,
-    "x": 820, "y": 420,
-    "wires": [["fn_trino_format"]],
-    "libs": [
-      { "var": "https", "module": "https" },
-      { "var": "http",  "module": "http" },
-      { "var": "urlmod", "module": "url" }
-    ]
-  },
-
-  {
-    "id": "fn_trino_format",
-    "type": "function",
-    "z": "tab_aiui_smart_city",
-    "name": "format response by shape",
-    "func": "// On Trino error, the runner already set the response. Pass through.\nif (msg._trinoError) return msg;\nconst columns = msg._columns || [];\nconst rows = (msg._rows || []).map((r) => { const o = {}; for (let i = 0; i < columns.length; i++) o[columns[i]] = r[i]; return o; });\nconst meta = { source: 'gold', generated_at: new Date().toISOString(), row_count: rows.length };\nfunction emptyMeta(extra) { return Object.assign({}, meta, { note: 'no rows in window' }, extra || {}); }\nlet payload;\nswitch (msg._shape) {\n    case 'streetlights_list':\n        payload = { streetlights: rows.map(r => ({ light_id: r.zone_id, zone_id: r.zone_id, rated_power_w: 75 })), count: rows.length, metadata: meta };\n        break;\n    case 'streetlight_current':\n        if (!rows.length) { payload = { metadata: emptyMeta({ zone_id: msg._zone_id }) }; break; }\n        payload = { timestamp: rows[0].hour, light_id: msg._zone_id, zone_id: rows[0].zone_id, dimming_level_pct: Number(rows[0].avg_dimming_pct) || 0, power_w: Number(rows[0].total_power_w) || 0, metadata: meta };\n        break;\n    case 'streetlight_history':\n        payload = { light_id: msg._zone_id, readings: rows.map(r => ({ timestamp: r.hour, zone_id: r.zone_id, dimming_level_pct: Number(r.avg_dimming_pct) || 0, power_w: Number(r.total_power_w) || 0 })), metadata: meta };\n        break;\n    case 'traffic_list':\n        payload = { zones: rows.map(r => ({ zone_id: r.zone_id })), count: rows.length, metadata: meta };\n        break;\n    case 'traffic_current':\n        if (!rows.length) { payload = { metadata: emptyMeta({ zone_id: msg._zone_id }) }; break; }\n        payload = { timestamp: rows[0].hour, zone_id: rows[0].zone_id, traffic_index: Number(rows[0].traffic_index ?? rows[0].avg_traffic_index ?? 0), metadata: meta };\n        break;\n    case 'traffic_history':\n        payload = { zone_id: msg._zone_id, readings: rows.map(r => ({ timestamp: r.hour, traffic_index: Number(r.traffic_index ?? r.avg_traffic_index ?? 0) })), metadata: meta };\n        break;\n    case 'events_list':\n        payload = { zones: rows.map(r => ({ zone_id: r.zone_id })), count: rows.length, metadata: meta };\n        break;\n    case 'event_current':\n        if (!rows.length) { payload = { metadata: emptyMeta({ zone_id: msg._zone_id }) }; break; }\n        payload = { timestamp: String(rows[0].event_date), zone_id: rows[0].zone_id, event_type: rows[0].event_type, severity: String(rows[0].avg_severity ?? 'unknown'), active: Number(rows[0].active_count) > 0, metadata: meta };\n        break;\n    case 'event_history':\n        payload = { zone_id: msg._zone_id, readings: rows.map(r => ({ timestamp: String(r.event_date), event_type: r.event_type, severity: String(r.avg_severity ?? 'unknown'), active: Number(r.active_count) > 0 })), metadata: meta };\n        break;\n    case 'weather_current':\n        if (!rows.length) { payload = { metadata: emptyMeta() }; break; }\n        // No fog/visibility column in gold.weather_hourly; derive from cloud cover.\n        const r = rows[0]; const cc = Number(r.avg_cloud_cover_pct) || 0; const fog = cc / 100 * 0.6;\n        payload = { timestamp: r.hour, fog_index: Math.round(fog * 100) / 100, visibility: Math.round(10000 * (1 - fog * 0.8)), sunrise_time: null, sunset_time: null, metadata: Object.assign({ note: 'fog/visibility derived from gold.weather_hourly cloud cover; no per-station sunrise/sunset in gold layer' }, meta) };\n        break;\n    case 'weather_history':\n        payload = { readings: rows.map(rr => { const cc = Number(rr.avg_cloud_cover_pct) || 0; const fog = cc / 100 * 0.6; return { timestamp: rr.hour, fog_index: Math.round(fog * 100) / 100, visibility: Math.round(10000 * (1 - fog * 0.8)), sunrise_time: null, sunset_time: null }; }), metadata: meta };\n        break;\n    default:\n        payload = { rows, columns, metadata: meta };\n}\nmsg.statusCode = 200;\nmsg.headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };\nmsg.payload = payload;\nreturn msg;\n",
-    "outputs": 1,
-    "x": 1100, "y": 420,
-    "wires": [["node_smart_city_resp"]]
-  },
-
-  {
-    "id": "node_smart_city_resp",
-    "type": "http response",
-    "z": "tab_aiui_smart_city",
-    "name": "JSON",
-    "statusCode": "",
-    "headers": {},
-    "x": 1340, "y": 420,
-    "wires": []
-  },
-
   {
     "id": "link-from-ui-smart-city",
     "type": "link in",
     "z": "tab_aiui_smart_city",
-    "name": "← from UI (smart-city FAP)",
-    "links": ["link-to-smart-city"],
-    "x": 160, "y": 860,
-    "wires": [["fn_smart_city_fap_route"]]
+    "name": "\u2190 from UI (smart-city FAP)",
+    "links": [
+      "link-to-smart-city"
+    ],
+    "x": 160,
+    "y": 860,
+    "wires": [
+      [
+        "fn_smart_city_fap_route"
+      ]
+    ]
   },
   {
     "id": "fn_smart_city_fap_route",
     "type": "function",
     "z": "tab_aiui_smart_city",
-    "name": "smart-city.* FAP — prepare SQL",
-    "func": "const action = msg._req && msg._req.action;\nconst payload = (msg._req && msg._req.payload) || {};\nconst IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\nif (action === 'smart-city.zones.list') {\n    msg._sql = `SELECT DISTINCT zone_id FROM \"gold\".\"streetlight_zone_hourly\" ORDER BY zone_id`;\n    msg._fapShape = 'zones_list'; return [msg, null];\n}\nif (action === 'smart-city.zones.detail') {\n    if (!payload.zone_id || !IDENT.test(payload.zone_id)) { msg._result = { ok: false, errors: { fields: { zone_id: 'required' } } }; return [null, msg]; }\n    const z = payload.zone_id.replace(/'/g, \"''\");\n    msg._sql = `SELECT 'streetlights' AS source, hour AS ts, CAST(avg_dimming_pct AS DOUBLE) AS v1, CAST(total_power_w AS DOUBLE) AS v2 FROM \"gold\".\"streetlight_zone_hourly\" WHERE zone_id = '${z}' AND hour >= now() - INTERVAL '24' HOUR UNION ALL SELECT 'traffic' AS source, hour AS ts, CAST(traffic_index AS DOUBLE) AS v1, CAST(0 AS DOUBLE) AS v2 FROM \"gold\".\"traffic_pattern_hourly\" WHERE zone_id = '${z}' AND hour >= now() - INTERVAL '24' HOUR ORDER BY ts DESC LIMIT 200`;\n    msg._fapShape = 'zone_detail'; msg._zone_id = payload.zone_id; return [msg, null];\n}\nif (action === 'smart-city.streetlights.list') {\n    msg._sql = `SELECT zone_id, MAX(hour) AS hour, AVG(avg_dimming_pct) AS avg_dimming_pct, AVG(total_power_w) AS total_power_w, MAX(light_count) AS light_count FROM \"gold\".\"streetlight_zone_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR GROUP BY zone_id ORDER BY zone_id`;\n    msg._fapShape = 'streetlights_list'; return [msg, null];\n}\nif (action === 'smart-city.traffic.summary') {\n    msg._sql = `SELECT zone_id, AVG(traffic_index) AS avg_traffic_index, MAX(traffic_index) AS peak_traffic_index FROM \"gold\".\"traffic_pattern_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR GROUP BY zone_id ORDER BY avg_traffic_index DESC`;\n    msg._fapShape = 'traffic_summary'; return [msg, null];\n}\nif (action === 'smart-city.events.recent') {\n    msg._sql = `SELECT event_date, zone_id, event_type, event_count, avg_severity, active_count FROM \"gold\".\"event_impact_daily\" WHERE event_date >= CAST(now() - INTERVAL '7' DAY AS DATE) AND active_count > 0 ORDER BY event_date DESC, zone_id`;\n    msg._fapShape = 'events_recent'; return [msg, null];\n}\nmsg._result = { ok: false, errors: { action: 'smart-city: unknown action: ' + action } };\nreturn [null, msg];\n",
+    "name": "smart-city.* FAP \u2014 route + prepare SQL",
+    "func": "const action = msg._req && msg._req.action;\nconst payload = (msg._req && msg._req.payload) || {};\nconst IDENT = /^[A-Za-z0-9_.-]{1,64}$/;\n\nfunction safe(v) { return String(v).replace(/'/g, \"''\"); }\nfunction badField(name) { msg._result = { ok: false, errors: { fields: { [name]: 'required or invalid' } } }; return [null, msg]; }\n\n// \u2500\u2500\u2500 Existing actions (preserved) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'smart-city.zones.list') {\n    msg._sql = `SELECT DISTINCT zone_id FROM \"gold\".\"streetlight_zone_hourly\" ORDER BY zone_id`;\n    msg._fapShape = 'zones_list'; return [msg, null];\n}\nif (action === 'smart-city.zones.detail') {\n    if (!payload.zone_id || !IDENT.test(payload.zone_id)) return badField('zone_id');\n    const z = safe(payload.zone_id);\n    msg._sql = `SELECT 'streetlights' AS source, hour AS ts, CAST(avg_dimming_pct AS DOUBLE) AS v1, CAST(total_power_w AS DOUBLE) AS v2 FROM \"gold\".\"streetlight_zone_hourly\" WHERE zone_id = '${z}' AND hour >= now() - INTERVAL '24' HOUR UNION ALL SELECT 'traffic' AS source, hour AS ts, CAST(traffic_index AS DOUBLE) AS v1, CAST(0 AS DOUBLE) AS v2 FROM \"gold\".\"traffic_pattern_hourly\" WHERE zone_id = '${z}' AND hour >= now() - INTERVAL '24' HOUR ORDER BY ts DESC LIMIT 200`;\n    msg._fapShape = 'zone_detail'; msg._zone_id = payload.zone_id; return [msg, null];\n}\nif (action === 'smart-city.streetlights.list') {\n    msg._sql = `SELECT zone_id, MAX(hour) AS hour, AVG(avg_dimming_pct) AS avg_dimming_pct, AVG(total_power_w) AS total_power_w, MAX(light_count) AS light_count FROM \"gold\".\"streetlight_zone_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR GROUP BY zone_id ORDER BY zone_id`;\n    msg._fapShape = 'streetlights_list'; return [msg, null];\n}\nif (action === 'smart-city.traffic.summary') {\n    msg._sql = `SELECT zone_id, AVG(traffic_index) AS avg_traffic_index, MAX(traffic_index) AS peak_traffic_index FROM \"gold\".\"traffic_pattern_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR GROUP BY zone_id ORDER BY avg_traffic_index DESC`;\n    msg._fapShape = 'traffic_summary'; return [msg, null];\n}\nif (action === 'smart-city.events.recent') {\n    msg._sql = `SELECT event_date, zone_id, event_type, event_count, avg_severity, active_count FROM \"gold\".\"event_impact_daily\" WHERE event_date >= CAST(now() - INTERVAL '7' DAY AS DATE) AND active_count > 0 ORDER BY event_date DESC, zone_id`;\n    msg._fapShape = 'events_recent'; return [msg, null];\n}\n\n// \u2500\u2500\u2500 NEW: streetlights current / history \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n// gold.streetlight_zone_hourly is keyed by zone_id; the SPA's \"light_id\"\n// is treated as zone_id (the gold layer doesn't carry per-light rows).\nif (action === 'smart-city.streetlights.current') {\n    if (!payload.light_id || !IDENT.test(payload.light_id)) return badField('light_id');\n    const z = safe(payload.light_id);\n    msg._sql = `SELECT hour, zone_id, avg_dimming_pct, total_power_w, light_count FROM \"gold\".\"streetlight_zone_hourly\" WHERE zone_id = '${z}' ORDER BY hour DESC LIMIT 1`;\n    msg._fapShape = 'streetlight_current'; msg._light_id = payload.light_id; return [msg, null];\n}\nif (action === 'smart-city.streetlights.history') {\n    if (!payload.light_id || !IDENT.test(payload.light_id)) return badField('light_id');\n    const z = safe(payload.light_id);\n    msg._sql = `SELECT hour, zone_id, avg_dimming_pct, total_power_w, light_count FROM \"gold\".\"streetlight_zone_hourly\" WHERE zone_id = '${z}' AND hour >= now() - INTERVAL '24' HOUR ORDER BY hour ASC`;\n    msg._fapShape = 'streetlight_history'; msg._light_id = payload.light_id; return [msg, null];\n}\n\n// \u2500\u2500\u2500 NEW: traffic zones / current / history \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'smart-city.traffic.zones') {\n    msg._sql = `SELECT DISTINCT zone_id FROM \"gold\".\"traffic_pattern_hourly\" ORDER BY zone_id`;\n    msg._fapShape = 'traffic_zones'; return [msg, null];\n}\nif (action === 'smart-city.traffic.current') {\n    if (!payload.zone_id || !IDENT.test(payload.zone_id)) return badField('zone_id');\n    const z = safe(payload.zone_id);\n    msg._sql = `SELECT hour, zone_id, traffic_index FROM \"gold\".\"traffic_pattern_hourly\" WHERE zone_id = '${z}' ORDER BY hour DESC LIMIT 1`;\n    msg._fapShape = 'traffic_current'; msg._zone_id = payload.zone_id; return [msg, null];\n}\nif (action === 'smart-city.traffic.history') {\n    if (!payload.zone_id || !IDENT.test(payload.zone_id)) return badField('zone_id');\n    const z = safe(payload.zone_id);\n    msg._sql = `SELECT hour, zone_id, traffic_index FROM \"gold\".\"traffic_pattern_hourly\" WHERE zone_id = '${z}' AND hour >= now() - INTERVAL '24' HOUR ORDER BY hour ASC`;\n    msg._fapShape = 'traffic_history'; msg._zone_id = payload.zone_id; return [msg, null];\n}\n\n// \u2500\u2500\u2500 NEW: events zones / current / history \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'smart-city.events.zones') {\n    msg._sql = `SELECT DISTINCT zone_id FROM \"gold\".\"event_impact_daily\" ORDER BY zone_id`;\n    msg._fapShape = 'events_zones'; return [msg, null];\n}\nif (action === 'smart-city.events.current') {\n    if (!payload.zone_id || !IDENT.test(payload.zone_id)) return badField('zone_id');\n    const z = safe(payload.zone_id);\n    msg._sql = `SELECT event_date, zone_id, event_type, event_count, avg_severity, active_count FROM \"gold\".\"event_impact_daily\" WHERE zone_id = '${z}' ORDER BY event_date DESC LIMIT 1`;\n    msg._fapShape = 'event_current'; msg._zone_id = payload.zone_id; return [msg, null];\n}\nif (action === 'smart-city.events.history') {\n    if (!payload.zone_id || !IDENT.test(payload.zone_id)) return badField('zone_id');\n    const z = safe(payload.zone_id);\n    msg._sql = `SELECT event_date, zone_id, event_type, event_count, avg_severity, active_count FROM \"gold\".\"event_impact_daily\" WHERE zone_id = '${z}' AND event_date >= CAST(now() - INTERVAL '30' DAY AS DATE) ORDER BY event_date ASC`;\n    msg._fapShape = 'event_history'; msg._zone_id = payload.zone_id; return [msg, null];\n}\n\n// \u2500\u2500\u2500 NEW: city weather current / history \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'smart-city.weather.current') {\n    msg._sql = `SELECT hour, avg_temperature_c, avg_irradiance_w_m2, avg_humidity_pct, avg_wind_speed_ms, avg_cloud_cover_pct FROM \"gold\".\"weather_hourly\" ORDER BY hour DESC LIMIT 1`;\n    msg._fapShape = 'weather_current'; return [msg, null];\n}\nif (action === 'smart-city.weather.history') {\n    msg._sql = `SELECT hour, avg_temperature_c, avg_irradiance_w_m2, avg_humidity_pct, avg_wind_speed_ms, avg_cloud_cover_pct FROM \"gold\".\"weather_hourly\" WHERE hour >= now() - INTERVAL '24' HOUR ORDER BY hour ASC`;\n    msg._fapShape = 'weather_history'; return [msg, null];\n}\n\nmsg._result = { ok: false, errors: { action: 'smart-city: unknown action: ' + action } };\nreturn [null, msg];\n",
     "outputs": 2,
-    "x": 460, "y": 860,
-    "wires": [["fn_trino_run_fap"], ["link-response-smart-city"]]
+    "x": 460,
+    "y": 860,
+    "wires": [
+      [
+        "fn_trino_run_fap"
+      ],
+      [
+        "link-response-smart-city"
+      ]
+    ]
   },
   {
     "id": "fn_trino_run_fap",
     "type": "function",
     "z": "tab_aiui_smart_city",
-    "name": "execute Trino SQL (FAP)",
-    "func": "// Same Trino client as fn_trino_run, but produces msg._result for the FAP path.\nfunction httpsFetch(urlStr, opts = {}) { return new Promise((resolve, reject) => { let parsed; try { parsed = new urlmod.URL(urlStr); } catch (e) { return reject(new Error('bad URL')); } const lib = parsed.protocol === 'https:' ? https : http; const headers = Object.assign({}, opts.headers || {}); if (opts.body && !headers['Content-Length']) headers['Content-Length'] = Buffer.byteLength(opts.body); const req = lib.request({ method: opts.method || 'GET', hostname: parsed.hostname, port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80), path: parsed.pathname + (parsed.search || ''), headers, timeout: opts.timeoutMs || 8000, rejectUnauthorized: opts.rejectUnauthorized !== false }, (res) => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, json: () => { try { return Promise.resolve(JSON.parse(d)); } catch (e) { return Promise.reject(e); } } })); }); req.on('error', reject); req.on('timeout', () => req.destroy(new Error('timeout'))); if (opts.body) req.write(opts.body); req.end(); }); }\nconst formEncode = (o) => Object.entries(o).filter(([,v]) => v !== undefined && v !== null && v !== '').map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');\nconst trinoVars = { tokenUrl: env.get('AI_INSIGHT_TRINO__OIDC_TOKEN_URL'), clientId: env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_ID'), clientSecret: env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_SECRET'), username: env.get('AI_INSIGHT_TRINO__OIDC_USERNAME'), password: env.get('AI_INSIGHT_TRINO__OIDC_PASSWORD'), scope: env.get('AI_INSIGHT_TRINO__OIDC_SCOPE') || 'openid', scheme: env.get('AI_INSIGHT_TRINO__HTTP_SCHEME') || 'https', host: env.get('AI_INSIGHT_TRINO__HOST'), port: env.get('AI_INSIGHT_TRINO__PORT') || 8443, user: env.get('AI_INSIGHT_TRINO__USER') || 'trino', catalog: env.get('AI_INSIGHT_TRINO__CATALOG') || 'fap-iotai-stackable' };\nasync function runSql(sql) { const tres = await httpsFetch(trinoVars.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formEncode({ grant_type: 'password', client_id: trinoVars.clientId, client_secret: trinoVars.clientSecret, username: trinoVars.username, password: trinoVars.password, scope: trinoVars.scope }), rejectUnauthorized: false }); if (!tres.ok) throw new Error('token grant failed: ' + tres.status); const token = (await tres.json()).access_token; const base = `${trinoVars.scheme}://${trinoVars.host}:${trinoVars.port}`; const headers = { 'Authorization': 'Bearer ' + token, 'X-Trino-User': trinoVars.user, 'X-Trino-Catalog': trinoVars.catalog, 'Content-Type': 'text/plain' }; let res = await httpsFetch(`${base}/v1/statement`, { method: 'POST', headers, body: sql, rejectUnauthorized: false }); if (!res.ok) throw new Error('POST /v1/statement failed: ' + res.status); let body = await res.json(); let columns = body.columns || null; const rows = body.data ? [...body.data] : []; while (body.nextUri) { res = await httpsFetch(body.nextUri, { headers, rejectUnauthorized: false }); if (!res.ok) throw new Error('nextUri failed: ' + res.status); body = await res.json(); if (body.columns) columns = body.columns; if (body.data) rows.push(...body.data); } return { columns, rows }; }\ntry {\n    const { columns, rows } = await runSql(msg._sql);\n    const cols = (columns || []).map(c => c.name);\n    const objects = rows.map(r => { const o = {}; for (let i = 0; i < cols.length; i++) o[cols[i]] = r[i]; return o; });\n    const meta = { source: 'gold', generated_at: new Date().toISOString(), row_count: objects.length };\n    let data;\n    switch (msg._fapShape) {\n        case 'zones_list':       data = { zones: objects.map(o => ({ zone_id: o.zone_id })), count: objects.length, metadata: meta }; break;\n        case 'zone_detail':      data = { zone_id: msg._zone_id, recent_observations: objects, metadata: meta }; break;\n        case 'streetlights_list':data = { streetlights: objects.map(o => ({ light_id: o.zone_id, zone_id: o.zone_id, rated_power_w: 75, dimming_level_pct: Number(o.avg_dimming_pct) || 0, power_w: Number(o.total_power_w) || 0, light_count: Number(o.light_count) || 0, last_hour: o.hour })), count: objects.length, metadata: meta }; break;\n        case 'traffic_summary':  data = { zones: objects, count: objects.length, peak_zone: objects[0] ? objects[0].zone_id : null, metadata: meta }; break;\n        case 'events_recent':    data = { events: objects.map(o => ({ zone_id: o.zone_id, timestamp: String(o.event_date), event_type: o.event_type, severity: String(o.avg_severity ?? 'unknown'), active: Number(o.active_count) > 0, count: Number(o.event_count) || 0 })), count: objects.length, metadata: meta }; break;\n        default:                  data = { rows: objects, metadata: meta };\n    }\n    msg._result = { ok: true, data };\n} catch (e) {\n    node.warn('Trino query failed (FAP): ' + String(e.message || e));\n    msg._result = { ok: false, errors: { integration: { service: 'trino', message: 'gold layer query failed' } } };\n}\nreturn msg;\n",
+    "name": "execute Trino + shape FAP result",
+    "func": "// Trino client for FAP (UIBUILDER \u00a79) path. Reads msg._sql + msg._fapShape;\n// produces msg._result for fn_build_response upstream of merge-session-send.\nfunction httpsFetch(urlStr, opts = {}) { return new Promise((resolve, reject) => { let parsed; try { parsed = new urlmod.URL(urlStr); } catch (e) { return reject(new Error('bad URL')); } const lib = parsed.protocol === 'https:' ? https : http; const headers = Object.assign({}, opts.headers || {}); if (opts.body && !headers['Content-Length']) headers['Content-Length'] = Buffer.byteLength(opts.body); const req = lib.request({ method: opts.method || 'GET', hostname: parsed.hostname, port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80), path: parsed.pathname + (parsed.search || ''), headers, timeout: opts.timeoutMs || 8000, rejectUnauthorized: opts.rejectUnauthorized !== false }, (res) => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, json: () => { try { return Promise.resolve(JSON.parse(d)); } catch (e) { return Promise.reject(e); } } })); }); req.on('error', reject); req.on('timeout', () => req.destroy(new Error('timeout'))); if (opts.body) req.write(opts.body); req.end(); }); }\nconst formEncode = (o) => Object.entries(o).filter(([,v]) => v !== undefined && v !== null && v !== '').map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');\nconst T = { tokenUrl: env.get('AI_INSIGHT_TRINO__OIDC_TOKEN_URL'), clientId: env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_ID'), clientSecret: env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_SECRET'), username: env.get('AI_INSIGHT_TRINO__OIDC_USERNAME'), password: env.get('AI_INSIGHT_TRINO__OIDC_PASSWORD'), scope: env.get('AI_INSIGHT_TRINO__OIDC_SCOPE') || 'openid', scheme: env.get('AI_INSIGHT_TRINO__HTTP_SCHEME') || 'https', host: env.get('AI_INSIGHT_TRINO__HOST'), port: env.get('AI_INSIGHT_TRINO__PORT') || 8443, user: env.get('AI_INSIGHT_TRINO__USER') || 'trino', catalog: env.get('AI_INSIGHT_TRINO__CATALOG') || 'fap-iotai-stackable' };\nasync function runSql(sql) { const tres = await httpsFetch(T.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formEncode({ grant_type: 'password', client_id: T.clientId, client_secret: T.clientSecret, username: T.username, password: T.password, scope: T.scope }), rejectUnauthorized: false }); if (!tres.ok) throw new Error('token grant failed: ' + tres.status); const token = (await tres.json()).access_token; const base = `${T.scheme}://${T.host}:${T.port}`; const headers = { 'Authorization': 'Bearer ' + token, 'X-Trino-User': T.user, 'X-Trino-Catalog': T.catalog, 'Content-Type': 'text/plain' }; let res = await httpsFetch(`${base}/v1/statement`, { method: 'POST', headers, body: sql, rejectUnauthorized: false }); if (!res.ok) throw new Error('POST /v1/statement failed: ' + res.status); let body = await res.json(); let columns = body.columns || null; const rows = body.data ? [...body.data] : []; while (body.nextUri) { res = await httpsFetch(body.nextUri, { headers, rejectUnauthorized: false }); if (!res.ok) throw new Error('nextUri failed: ' + res.status); body = await res.json(); if (body.columns) columns = body.columns; if (body.data) rows.push(...body.data); } return { columns, rows }; }\n\ntry {\n    const { columns, rows } = await runSql(msg._sql);\n    const cols = (columns || []).map(c => c.name);\n    const objs = rows.map(r => { const o = {}; for (let i = 0; i < cols.length; i++) o[cols[i]] = r[i]; return o; });\n    const meta = { source: 'gold', generated_at: new Date().toISOString(), row_count: objs.length };\n    function emptyMeta(extra) { return Object.assign({}, meta, { note: 'no rows in window' }, extra || {}); }\n    let data;\n    switch (msg._fapShape) {\n        // Existing shapes\n        case 'zones_list':\n            data = { zones: objs.map(o => ({ zone_id: o.zone_id })), count: objs.length, metadata: meta };\n            break;\n        case 'zone_detail':\n            data = { zone_id: msg._zone_id, recent_observations: objs, metadata: meta };\n            break;\n        case 'streetlights_list':\n            data = {\n                streetlights: objs.map(o => ({\n                    light_id: o.zone_id, zone_id: o.zone_id, rated_power_w: 75,\n                    dimming_level_pct: Number(o.avg_dimming_pct) || 0,\n                    power_w: Number(o.total_power_w) || 0,\n                    light_count: Number(o.light_count) || 0,\n                    last_hour: o.hour\n                })),\n                count: objs.length,\n                metadata: meta\n            };\n            break;\n        case 'traffic_summary':\n            data = { zones: objs, count: objs.length, peak_zone: objs[0] ? objs[0].zone_id : null, metadata: meta };\n            break;\n        case 'events_recent':\n            data = {\n                events: objs.map(o => ({\n                    zone_id: o.zone_id,\n                    timestamp: String(o.event_date),\n                    event_type: o.event_type,\n                    severity: String(o.avg_severity ?? 'unknown'),\n                    active: Number(o.active_count) > 0,\n                    count: Number(o.event_count) || 0\n                })),\n                count: objs.length,\n                metadata: meta\n            };\n            break;\n        // NEW shapes (Sim* shapes preserved 1:1 with the SPA's interfaces)\n        case 'streetlight_current':\n            if (!objs.length) { data = { metadata: emptyMeta({ light_id: msg._light_id }) }; break; }\n            data = {\n                timestamp: objs[0].hour,\n                light_id: msg._light_id,\n                zone_id: objs[0].zone_id,\n                dimming_level_pct: Number(objs[0].avg_dimming_pct) || 0,\n                power_w: Number(objs[0].total_power_w) || 0,\n                metadata: meta\n            };\n            break;\n        case 'streetlight_history':\n            data = {\n                light_id: msg._light_id,\n                readings: objs.map(r => ({\n                    timestamp: r.hour,\n                    zone_id: r.zone_id,\n                    dimming_level_pct: Number(r.avg_dimming_pct) || 0,\n                    power_w: Number(r.total_power_w) || 0\n                })),\n                metadata: meta\n            };\n            break;\n        case 'traffic_zones':\n            data = { zones: objs.map(o => ({ zone_id: o.zone_id })), count: objs.length, metadata: meta };\n            break;\n        case 'traffic_current':\n            if (!objs.length) { data = { metadata: emptyMeta({ zone_id: msg._zone_id }) }; break; }\n            data = {\n                timestamp: objs[0].hour,\n                zone_id: objs[0].zone_id,\n                traffic_index: Number(objs[0].traffic_index) || 0,\n                metadata: meta\n            };\n            break;\n        case 'traffic_history':\n            data = {\n                zone_id: msg._zone_id,\n                readings: objs.map(r => ({ timestamp: r.hour, traffic_index: Number(r.traffic_index) || 0 })),\n                metadata: meta\n            };\n            break;\n        case 'events_zones':\n            data = { zones: objs.map(o => ({ zone_id: o.zone_id })), count: objs.length, metadata: meta };\n            break;\n        case 'event_current':\n            if (!objs.length) { data = { metadata: emptyMeta({ zone_id: msg._zone_id }) }; break; }\n            data = {\n                timestamp: String(objs[0].event_date),\n                zone_id: objs[0].zone_id,\n                event_type: objs[0].event_type,\n                severity: String(objs[0].avg_severity ?? 'unknown'),\n                active: Number(objs[0].active_count) > 0,\n                metadata: meta\n            };\n            break;\n        case 'event_history':\n            data = {\n                zone_id: msg._zone_id,\n                readings: objs.map(r => ({\n                    timestamp: String(r.event_date),\n                    event_type: r.event_type,\n                    severity: String(r.avg_severity ?? 'unknown'),\n                    active: Number(r.active_count) > 0\n                })),\n                metadata: meta\n            };\n            break;\n        case 'weather_current': {\n            if (!objs.length) { data = { metadata: emptyMeta() }; break; }\n            // gold.weather_hourly has no fog/visibility column; derive from cloud cover.\n            const r = objs[0];\n            const cc = Number(r.avg_cloud_cover_pct) || 0;\n            const fog = cc / 100 * 0.6;\n            data = {\n                timestamp: r.hour,\n                fog_index: Math.round(fog * 100) / 100,\n                visibility: Math.round(10000 * (1 - fog * 0.8)),\n                sunrise_time: null,\n                sunset_time: null,\n                metadata: Object.assign({ note: 'fog/visibility derived from gold.weather_hourly cloud cover; gold has no per-station sunrise/sunset' }, meta)\n            };\n            break;\n        }\n        case 'weather_history':\n            data = {\n                readings: objs.map(rr => {\n                    const cc = Number(rr.avg_cloud_cover_pct) || 0;\n                    const fog = cc / 100 * 0.6;\n                    return {\n                        timestamp: rr.hour,\n                        fog_index: Math.round(fog * 100) / 100,\n                        visibility: Math.round(10000 * (1 - fog * 0.8)),\n                        sunrise_time: null,\n                        sunset_time: null\n                    };\n                }),\n                metadata: meta\n            };\n            break;\n        default:\n            data = { rows: objs, metadata: meta };\n    }\n    msg._result = { ok: true, data };\n} catch (e) {\n    node.warn('smart-city Trino query failed (FAP): ' + String(e.message || e));\n    msg._result = { ok: false, errors: { integration: { service: 'trino', message: 'gold layer query failed' } } };\n}\nreturn msg;\n",
     "outputs": 1,
-    "x": 820, "y": 860,
-    "wires": [["link-response-smart-city"]],
+    "x": 820,
+    "y": 860,
+    "wires": [
+      [
+        "link-response-smart-city"
+      ]
+    ],
     "libs": [
-      { "var": "https", "module": "https" },
-      { "var": "http",  "module": "http" },
-      { "var": "urlmod", "module": "url" }
+      {
+        "var": "https",
+        "module": "https"
+      },
+      {
+        "var": "http",
+        "module": "http"
+      },
+      {
+        "var": "urlmod",
+        "module": "url"
+      }
     ]
   },
   {
     "id": "link-response-smart-city",
     "type": "link out",
     "z": "tab_aiui_smart_city",
-    "name": "→ Response (smart-city)",
+    "name": "\u2192 Response (smart-city)",
     "mode": "link",
-    "links": ["link-from-response"],
-    "x": 1100, "y": 860,
+    "links": [
+      "link-from-response"
+    ],
+    "x": 1100,
+    "y": 860,
     "wires": []
   }
 ]
