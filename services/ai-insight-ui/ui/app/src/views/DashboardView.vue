@@ -5,7 +5,6 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import PipelineFlow from '@/components/common/PipelineFlow.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { useKpiStore } from '@/stores/kpi'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAppStore } from '@/services/state'
 import { useRelativeTime } from '@/composables/useRelativeTime'
@@ -23,7 +22,6 @@ import {
   type AiHealth
 } from '@/services/dispatch'
 
-const kpi = useKpiStore()
 const notifications = useNotificationsStore()
 const app = useAppStore()
 const router = useRouter()
@@ -136,7 +134,6 @@ async function fetchLiveData(): Promise<void> {
 }
 
 onMounted(() => {
-  kpi.refresh()
   fetchLiveData()
 })
 
@@ -330,7 +327,7 @@ function fmtRelative(iso: string | null | undefined): string {
       subtitle="Real-time overview of FACIS IoT & AI demonstrator platform"
     >
       <template #actions>
-        <Button icon="pi pi-refresh" label="Refresh" size="small" outlined @click="kpi.refresh()" />
+        <Button icon="pi pi-refresh" label="Refresh" size="small" outlined @click="fetchLiveData()" />
         <Button icon="pi pi-chart-bar" label="Analytics" size="small" text @click="router.push('/analytics')" />
       </template>
     </PageHeader>

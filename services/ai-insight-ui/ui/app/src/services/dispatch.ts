@@ -366,6 +366,21 @@ export function getSimulationStatus(): Promise<SimSimulationStatus | null> {
   return simGet<SimSimulationStatus>('/simulation/status')
 }
 
+/**
+ * Returns "now" as the simulator sees it — the only sensible end-of-window
+ * for any query that hits gold/silver tables, since their `hour` column is
+ * derived from sim-clock event timestamps. Wall-clock NOW would miss every
+ * row whenever the simulator runs at acceleration > 1 (its emitted
+ * timestamps drift past wall time within minutes).
+ *
+ * Falls back to wall-clock NOW only when the sim status endpoint is
+ * unreachable — preserves the previous behaviour for offline/dev runs.
+ */
+export async function getSimNow(): Promise<string> {
+  const status = await getSimulationStatus()
+  return status?.simulation_time ?? new Date().toISOString()
+}
+
 export function getSimulationConfig(): Promise<unknown> {
   return simGet('/config')
 }

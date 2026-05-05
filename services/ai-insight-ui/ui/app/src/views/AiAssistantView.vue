@@ -359,15 +359,18 @@ async function sendMessage(text?: string, promptKey?: string): Promise<void> {
     }
   } else {
     // ALL queries go through the AI Insight API (Trino + GPT-4.1-mini)
-    const { postInsightEnergySummary, postInsightAnomalyReport, postInsightCityStatus } = await import('@/services/dispatch')
+    const { postInsightEnergySummary, postInsightAnomalyReport, postInsightCityStatus, getSimNow } = await import('@/services/dispatch')
 
-    // Use the frontend time range filter
-    const now = new Date()
+    // Anchor the time-range filter on the simulator's clock, not wall-clock.
+    // Gold tables are populated from sim-clock event timestamps; querying
+    // wall-clock NOW returns 0 rows whenever the sim runs at >1x acceleration.
+    const endIso = await getSimNow()
+    const endMs = new Date(endIso).getTime()
     const rangeMs = timeRange.value === '30d' ? 30 * 86_400_000
                   : timeRange.value === '7d'  ? 7 * 86_400_000
                   : 86_400_000
-    const startTs = new Date(now.getTime() - rangeMs).toISOString()
-    const endTs = now.toISOString()
+    const startTs = new Date(endMs - rangeMs).toISOString()
+    const endTs = endIso
 
     let aiResult: any = null
     const q = query.toLowerCase()

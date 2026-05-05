@@ -26,7 +26,7 @@ interface ModelState {
   smartCity: Record<string, unknown>
   dataProducts: { all: unknown[]; energy: unknown[]; city: unknown[]; detail: unknown | null }
   analytics: Record<string, unknown>
-  kpi: { netGrid: number; pvGeneration: number; dailyCost: number; updatedAt?: string } | null
+  kpi: { netGrid: number; pvGeneration: number; dailyCost: number; updatedAt?: string; dataAsOf?: string } | null
   conversation: Array<{ role: 'user' | 'assistant'; text: string; ts: number }>
   bootstrap: Record<string, unknown> | null
 }

@@ -5,6 +5,7 @@ import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import {
   getInsightLatest,
+  getSimNow,
   postInsightEnergySummary,
   postInsightAnomalyReport,
   postInsightCityStatus,
@@ -27,11 +28,15 @@ const insights       = ref<InsightCard[]>([])
 const lastError      = ref<string | null>(null)
 const notifications  = useNotificationsStore()
 
-// Window: today (UTC). The backend uses strict-less-than on the date column,
-// so we set end to 00:00 of the *next* day to include today's daily rows.
-function todayWindow(): { start: string; end: string } {
-  const now = new Date()
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0))
+// Window: today in *simulator-clock* terms. The backend uses strict-less-than
+// on the date column, so we set end to 00:00 of the next day to include today's
+// daily rows. Sim runs at acceleration > 1 so its clock diverges from wall
+// time fast — using wall-clock here would query a window that gold rows have
+// already moved past, producing 0-row results.
+async function todayWindow(): Promise<{ start: string; end: string }> {
+  const simNowIso = await getSimNow()
+  const simNow = new Date(simNowIso)
+  const start = new Date(Date.UTC(simNow.getUTCFullYear(), simNow.getUTCMonth(), simNow.getUTCDate(), 0, 0, 0))
   const end = new Date(start.getTime() + 24 * 3600 * 1000)
   return { start: start.toISOString(), end: end.toISOString() }
 }
@@ -65,7 +70,7 @@ async function fetchData(): Promise<void> {
     // The insight POSTs are what populate the cache that getInsightLatest() reads,
     // so we trigger them explicitly for today's window. Each call returns LLM-
     // narrated content with key_findings + recommendations from real Trino data.
-    const { start, end } = todayWindow()
+    const { start, end } = await todayWindow()
     const body = { start_ts: start, end_ts: end, timezone: 'UTC' }
 
     const [energy, anomaly, city, _alerts] = await Promise.all([
