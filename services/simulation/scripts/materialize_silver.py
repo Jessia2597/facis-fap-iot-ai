@@ -68,7 +68,10 @@ def ensure_watermark_table(conn, catalog: str, s3_bucket: str) -> None:
 
 
 def get_watermark(conn, catalog: str, table_name: str) -> str | None:
-    """Return the last watermark timestamp for a table, or None."""
+    """Return the most recently recorded watermark timestamp for a table,
+    or None.  We pick the row with the latest `updated_at` because the
+    table is append-only (see update_watermark below) — multiple rows may
+    exist per table_name, oldest first."""
     # table_name comes from the hardcoded SILVER_VIEWS dict — validated.
     # Trino's python client does not support ? placeholder substitution
     # against this Trino version, so we inline the validated identifier.
@@ -77,7 +80,8 @@ def get_watermark(conn, catalog: str, table_name: str) -> str | None:
     rows = execute(
         conn,
         f'SELECT last_watermark FROM "{catalog}".silver._watermarks'
-        f" WHERE table_name = '{table_name}'",
+        f" WHERE table_name = '{table_name}'"
+        f" ORDER BY updated_at DESC LIMIT 1",
     )
     if rows and rows[0][0]:
         return str(rows[0][0])
@@ -96,15 +100,17 @@ def update_watermark(conn, catalog: str, table_name: str) -> None:
         return
     max_ts = str(rows[0][0])
 
-    # Delete old watermark row, then insert new one. Trino's python client
-    # does not perform ? placeholder substitution against this server, so we
-    # inline values: table_name is validated against SILVER_VIEWS above and
-    # max_ts comes from MAX(ingestion_timestamp) which Trino emits as a
-    # safe TIMESTAMP literal-compatible string.
-    execute(
-        conn,
-        f'DELETE FROM "{catalog}".silver._watermarks WHERE table_name = \'{table_name}\'',
-    )
+    # Append a new watermark row.  We deliberately DO NOT delete previous
+    # rows for this table_name: Iceberg's DELETE + INSERT in two separate
+    # statements creates a race where the INSERT's commit conflicts with
+    # the DELETE's positional-delete file (ICEBERG_COMMIT_ERROR: "Found
+    # new conflicting delete files that can apply to records matching
+    # ref(name=\"table_name\")...", observed 2026-05-05 on a backlog
+    # catch-up run).  Append-only sidesteps the race entirely; get_watermark
+    # picks the latest row via ORDER BY updated_at DESC LIMIT 1.  At
+    # 9 tables × every 10 minutes = ~50k rows/year — trivially small.
+    # table_name is validated against SILVER_VIEWS; max_ts is a TIMESTAMP
+    # literal from Trino's MAX().
     execute(
         conn,
         f'INSERT INTO "{catalog}".silver._watermarks'
