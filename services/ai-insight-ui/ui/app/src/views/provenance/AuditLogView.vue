@@ -4,7 +4,7 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getSimHealth } from '@/services/api'
+import { getSimHealth } from '@/services/dispatch'
 import type { AuditEntry } from '@/data/types'
 
 const isLive = ref(false)

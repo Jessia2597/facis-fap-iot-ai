@@ -13,7 +13,7 @@ import {
   getMeters, getMeterCurrent,
   getPVSystems, getPVCurrent,
   getPriceCurrent, getPriceHistory
-} from '@/services/api'
+} from '@/services/dispatch'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ onMounted(async () => {
 
     // Fetch PV history for forecast chart
     if (pvResp && pvResp.count > 0) {
-      const { getPVHistory } = await import('@/services/api')
+      const { getPVHistory } = await import('@/services/dispatch')
       const pvHist = await getPVHistory(pvResp.systems[0].system_id)
       if (pvHist) {
         livePvRecords.value = pvHist.readings.map(r => ({
@@ -184,7 +184,7 @@ async function generateLiveResponse(query: string): Promise<{ text: string; insi
   const selfSufficiency = power > 0 ? ((pv / power) * 100).toFixed(1) : '0'
 
   // Fetch fresh data for specific prompts
-  const { getMeterHistory, getPriceForecast, getStreetlights, getStreetlightCurrent, getTrafficZones, getTrafficCurrent, getCityEvents, getCityEventCurrent, getCityWeatherCurrent } = await import('@/services/api')
+  const { getMeterHistory, getPriceForecast, getStreetlights, getStreetlightCurrent, getTrafficZones, getTrafficCurrent, getCityEvents, getCityEventCurrent, getCityWeatherCurrent } = await import('@/services/dispatch')
 
   const q = query.toLowerCase()
 
@@ -332,7 +332,7 @@ async function sendMessage(text?: string, promptKey?: string): Promise<void> {
     }
   } else {
     // ALL queries go through the AI Insight API (Trino + GPT-4.1-mini)
-    const { postInsightEnergySummary, postInsightAnomalyReport, postInsightCityStatus } = await import('@/services/api')
+    const { postInsightEnergySummary, postInsightAnomalyReport, postInsightCityStatus } = await import('@/services/dispatch')
 
     // Use the frontend time range filter
     const now = new Date()

@@ -5,7 +5,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import PipelineFlow from '@/components/common/PipelineFlow.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getSimHealth, getAiHealth, type SimHealth, type AiHealth } from '@/services/api'
+import { getSimHealth, getAiHealth, type SimHealth, type AiHealth } from '@/services/dispatch'
 
 const simHealth = ref<SimHealth | null>(null)
 const aiHealth = ref<AiHealth | null>(null)

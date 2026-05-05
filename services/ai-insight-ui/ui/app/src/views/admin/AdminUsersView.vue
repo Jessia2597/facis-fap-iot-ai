@@ -10,7 +10,7 @@ import Checkbox from 'primevue/checkbox'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getAdminUsers, getAdminRoles } from '@/services/api'
+import { getAdminUsers, getAdminRoles } from '@/services/dispatch'
 import { auth } from '@/auth'
 import type { User, UserRole } from '@/data/types'
 

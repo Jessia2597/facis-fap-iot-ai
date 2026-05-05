@@ -9,7 +9,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useNotificationsStore } from '@/stores/notifications'
-import { getMeters, getMeterHistory, getStreetlights, getStreetlightHistory, getCityEvents, getCityEventCurrent } from '@/services/api'
+import { getMeters, getMeterHistory, getStreetlights, getStreetlightHistory, getCityEvents, getCityEventCurrent } from '@/services/dispatch'
 import { detectAnomalies, detectStreetlightAnomalies } from '@/services/analytics'
 import type { AlertEvent } from '@/data/types'
 

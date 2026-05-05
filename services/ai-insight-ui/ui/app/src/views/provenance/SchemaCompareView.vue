@@ -4,7 +4,7 @@ import Select from 'primevue/select'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import JsonCompare from '@/components/common/JsonCompare.vue'
-import { getMeterCurrent, getPVCurrent, getWeatherStations, getWeatherCurrent } from '@/services/api'
+import { getMeterCurrent, getPVCurrent, getWeatherStations, getWeatherCurrent } from '@/services/dispatch'
 
 interface SchemaVersion {
   version: string

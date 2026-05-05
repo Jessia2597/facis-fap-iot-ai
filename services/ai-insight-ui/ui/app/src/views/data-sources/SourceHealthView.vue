@@ -9,7 +9,7 @@ import {
   getMeters, getMeterCurrent, getPVSystems, getPVCurrent,
   getWeatherStations, getWeatherCurrent, getStreetlights, getStreetlightCurrent,
   getTrafficZones, getTrafficCurrent, getSimHealth, getAiHealth
-} from '@/services/api'
+} from '@/services/dispatch'
 
 interface SourceHealthRow {
   id: string

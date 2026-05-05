@@ -7,7 +7,7 @@ import {
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
-import { getStreetlights, getStreetlightCurrent, getStreetlightHistory, getTrafficZones, getTrafficCurrent } from '@/services/api'
+import { getStreetlights, getStreetlightCurrent, getStreetlightHistory, getTrafficZones, getTrafficCurrent } from '@/services/dispatch'
 import { computeTrends, detectStreetlightAnomalies, extractStreetlightPowerW, extractTrafficIndex } from '@/services/analytics'
 import type { Anomaly } from '@/services/analytics'
 

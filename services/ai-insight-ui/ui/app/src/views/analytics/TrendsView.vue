@@ -4,7 +4,7 @@ import SelectButton from 'primevue/selectbutton'
 import PageHeader from '@/components/common/PageHeader.vue'
 import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getMeterHistory, getPVSystems, getPVHistory, getStreetlights, getStreetlightHistory } from '@/services/api'
+import { getMeters, getMeterHistory, getPVSystems, getPVHistory, getStreetlights, getStreetlightHistory } from '@/services/dispatch'
 import { computeTrends, extractMeterPowerKw, extractPvPowerKw, extractStreetlightPowerW } from '@/services/analytics'
 import type { TrendResult } from '@/services/analytics'
 

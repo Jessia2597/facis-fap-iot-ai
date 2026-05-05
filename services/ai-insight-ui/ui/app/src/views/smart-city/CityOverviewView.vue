@@ -16,7 +16,7 @@ import {
   type SimTrafficCurrent,
   type SimEventCurrent,
   type SimCityWeatherCurrent
-} from '@/services/api'
+} from '@/services/dispatch'
 
 const router = useRouter()
 

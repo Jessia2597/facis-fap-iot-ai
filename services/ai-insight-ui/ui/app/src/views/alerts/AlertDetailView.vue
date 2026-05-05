@@ -8,7 +8,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import { useNotificationsStore } from '@/stores/notifications'
-import { getMeterHistory, getMeters } from '@/services/api'
+import { getMeterHistory, getMeters } from '@/services/dispatch'
 import { detectAnomalies } from '@/services/analytics'
 import type { Anomaly } from '@/services/analytics'
 

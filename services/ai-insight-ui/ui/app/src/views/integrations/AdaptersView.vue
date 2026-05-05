@@ -5,7 +5,7 @@ import Dialog from 'primevue/dialog'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getSimHealth, getAiHealth } from '@/services/api'
+import { getSimHealth, getAiHealth } from '@/services/dispatch'
 
 const isLive    = ref(false)
 const error     = ref(false)

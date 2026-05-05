@@ -21,7 +21,7 @@ import {
   type SimEventHistoryReading,
   type SimCityWeatherCurrent,
   type SimCityWeatherHistoryReading
-} from '@/services/api'
+} from '@/services/dispatch'
 
 // ─── Live data state ──────────────────────────────────────────────────────────
 const isLive = ref(false)

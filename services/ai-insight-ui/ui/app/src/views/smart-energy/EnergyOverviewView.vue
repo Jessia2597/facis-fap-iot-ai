@@ -22,7 +22,7 @@ import {
   type SimWeatherCurrent,
   type SimMeterHistoryReading,
   type SimPrice
-} from '@/services/api'
+} from '@/services/dispatch'
 
 const router = useRouter()
 

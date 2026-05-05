@@ -7,7 +7,7 @@ import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { getSimConfig, getSimulationStatus, getSimHealth, getAiHealth, startSimulation, pauseSimulation, resetSimulation } from '@/services/api'
+import { getSimConfig, getSimulationStatus, getSimHealth, getAiHealth, startSimulation, pauseSimulation, resetSimulation } from '@/services/dispatch'
 
 const isLive = ref(false)
 const simState = ref('unknown')

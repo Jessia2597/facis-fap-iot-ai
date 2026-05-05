@@ -6,7 +6,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import type { DataSource } from '@/data/types'
-import { getDataSources } from '@/services/api'
+import { getDataSources } from '@/services/dispatch'
 
 const loading = ref(true)
 const error = ref(false)

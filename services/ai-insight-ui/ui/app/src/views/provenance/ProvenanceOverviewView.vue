@@ -5,7 +5,7 @@ import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
 import Button from 'primevue/button'
-import { getMeters, getPVSystems, getStreetlights, getTrafficZones, getLoads } from '@/services/api'
+import { getMeters, getPVSystems, getStreetlights, getTrafficZones, getLoads } from '@/services/dispatch'
 
 const isLive = ref(false)
 const error = ref(false)

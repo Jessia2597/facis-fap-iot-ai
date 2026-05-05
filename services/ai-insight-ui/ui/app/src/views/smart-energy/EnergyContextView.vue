@@ -27,7 +27,7 @@ import {
   type SimWeatherHistoryReading,
   type SimPVHistoryReading,
   type SimLoadCurrent
-} from '@/services/api'
+} from '@/services/dispatch'
 
 // ─── Live data refs ────────────────────────────────────────────────────────────
 const loading = ref(true)

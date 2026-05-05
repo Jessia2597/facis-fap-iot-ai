@@ -9,7 +9,7 @@ import {
   getStreetlightCurrent,
   type SimStreetlight,
   type SimStreetlightCurrent
-} from '@/services/api'
+} from '@/services/dispatch'
 
 const router = useRouter()
 

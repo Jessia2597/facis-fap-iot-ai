@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getMeters, getPVSystems, getStreetlights } from '@/services/api'
+import { getMeters, getPVSystems, getStreetlights } from '@/services/dispatch'
 
 const router = useRouter()
 const isLive = ref(false)

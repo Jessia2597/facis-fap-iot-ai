@@ -7,7 +7,7 @@ import {
 } from 'chart.js'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getMeterHistory, getPriceHistory, getWeatherStations, getWeatherHistory, getPVSystems, getPVHistory } from '@/services/api'
+import { getMeters, getMeterHistory, getPriceHistory, getWeatherStations, getWeatherHistory, getPVSystems, getPVHistory } from '@/services/dispatch'
 import { computeCorrelations, extractMeterPowerKw } from '@/services/analytics'
 import type { CorrelationResult } from '@/services/analytics'
 

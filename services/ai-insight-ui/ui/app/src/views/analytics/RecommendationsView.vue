@@ -6,7 +6,7 @@ import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getMeterHistory, getPriceHistory, getPVSystems, getPVHistory } from '@/services/api'
+import { getMeters, getMeterHistory, getPriceHistory, getPVSystems, getPVHistory } from '@/services/dispatch'
 import { generateRecommendations } from '@/services/analytics'
 import type { Recommendation } from '@/services/analytics'
 

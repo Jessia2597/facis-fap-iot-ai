@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getMeterCurrent, getLoads, type SimMeter, type SimDevice } from '@/services/api'
+import { getMeters, getMeterCurrent, getLoads, type SimMeter, type SimDevice } from '@/services/dispatch'
 
 const router = useRouter()
 

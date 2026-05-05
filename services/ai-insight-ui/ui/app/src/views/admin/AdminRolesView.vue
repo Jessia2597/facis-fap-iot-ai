@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { getAdminRoles } from '@/services/api'
+import { getAdminRoles } from '@/services/dispatch'
 import { auth } from '@/auth'
 
 const ROLE_USER_COUNTS = ref<Record<string, number>>({ admin: 0, operator: 0, analyst: 0, viewer: 0 })

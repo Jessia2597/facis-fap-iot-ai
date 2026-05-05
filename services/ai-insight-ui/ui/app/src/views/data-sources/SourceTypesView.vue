@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getMeters, getPVSystems, getWeatherStations, getLoads, getStreetlights, getTrafficZones, getCityEvents } from '@/services/api'
+import { getMeters, getPVSystems, getWeatherStations, getLoads, getStreetlights, getTrafficZones, getCityEvents } from '@/services/dispatch'
 
 const loading = ref(true)
 const isLive  = ref(false)

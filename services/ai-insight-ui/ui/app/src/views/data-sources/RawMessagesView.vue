@@ -11,7 +11,7 @@ import {
   getMeters, getMeterCurrent, getPVSystems, getPVCurrent,
   getWeatherStations, getWeatherCurrent, getStreetlights, getStreetlightCurrent,
   getTrafficZones, getTrafficCurrent, getCityEvents, getCityEventCurrent
-} from '@/services/api'
+} from '@/services/dispatch'
 
 interface RawMessage {
   id: string

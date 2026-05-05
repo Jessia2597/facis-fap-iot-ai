@@ -9,7 +9,7 @@ import {
   getMeters, getMeterCurrent,
   getPVSystems, getPVCurrent,
   getWeatherStations, getWeatherCurrent
-} from '@/services/api'
+} from '@/services/dispatch'
 
 const route = useRoute()
 const isLive = ref(false)

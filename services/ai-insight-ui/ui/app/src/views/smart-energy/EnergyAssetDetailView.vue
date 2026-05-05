@@ -12,7 +12,7 @@ import {
   getMeterHistory,
   type SimMeterCurrent,
   type SimMeterHistoryReading
-} from '@/services/api'
+} from '@/services/dispatch'
 
 const route = useRoute()
 const router = useRouter()

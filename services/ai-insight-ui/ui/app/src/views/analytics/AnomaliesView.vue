@@ -7,7 +7,7 @@ import InputText from 'primevue/inputtext'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getMeters, getMeterHistory, getStreetlights, getStreetlightHistory } from '@/services/api'
+import { getMeters, getMeterHistory, getStreetlights, getStreetlightHistory } from '@/services/dispatch'
 import { detectAnomalies, detectStreetlightAnomalies, extractMeterPowerKw } from '@/services/analytics'
 import type { Anomaly } from '@/services/analytics'
 

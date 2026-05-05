@@ -19,7 +19,7 @@ import {
   type SimSimulationStatus,
   type SimHealth,
   type AiHealth
-} from '@/services/api'
+} from '@/services/dispatch'
 
 const kpi = useKpiStore()
 const notifications = useNotificationsStore()

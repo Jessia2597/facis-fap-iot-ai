@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getMeters, getPVSystems, getWeatherStations, getLoads, getSimHealth } from '@/services/api'
+import { getMeters, getPVSystems, getWeatherStations, getLoads, getSimHealth } from '@/services/dispatch'
 
 const router = useRouter()
 const loading = ref(true)

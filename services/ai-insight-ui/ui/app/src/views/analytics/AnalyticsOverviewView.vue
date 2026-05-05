@@ -8,7 +8,7 @@ import {
   postInsightEnergySummary,
   postInsightAnomalyReport,
   postInsightCityStatus,
-} from '@/services/api'
+} from '@/services/dispatch'
 import { useNotificationsStore } from '@/stores/notifications'
 
 interface InsightCard {
