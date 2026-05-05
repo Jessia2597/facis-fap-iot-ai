@@ -9,6 +9,7 @@
   {
     "id": "sftp-dlq-broker-config",
     "type": "kafka-broker",
+    "z": "",
     "name": "FACIS Stackable Kafka Cluster (DLQ)",
     "broker": "${SFTP_KAFKA_BROKERS}",
     "clientid": "facis-orce-sftp-dlq",

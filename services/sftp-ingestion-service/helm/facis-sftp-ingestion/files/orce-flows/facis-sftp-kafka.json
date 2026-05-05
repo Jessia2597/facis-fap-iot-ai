@@ -9,6 +9,7 @@
   {
     "id": "sftp-kafka-broker-config",
     "type": "kafka-broker",
+    "z": "",
     "name": "FACIS Stackable Kafka Cluster",
     "broker": "${SFTP_KAFKA_BROKERS}",
     "clientid": "facis-orce-sftp",

@@ -19,6 +19,7 @@
   {
     "id": "mqtt-broker-config",
     "type": "mqtt-broker",
+    "z": "",
     "name": "FACIS MQTT Broker",
     "broker": "mqtt",
     "port": "1883",

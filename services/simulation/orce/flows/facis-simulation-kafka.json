@@ -19,6 +19,7 @@
     {
         "id": "kafka-broker-config",
         "type": "kafka-broker",
+        "z": "",
         "name": "FACIS Kafka Cluster",
         "broker": "212.132.83.222:9093,85.215.37.238:32121,217.160.216.54:32067,85.215.39.90:30604",
         "clientid": "facis-orce",
