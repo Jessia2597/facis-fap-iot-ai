@@ -39,14 +39,6 @@ export interface UibMessage {
 
 type MessageHandler = (msg: UibMessage) => void
 
-// ─── Pending requests ─────────────────────────────────────────────────────────
-
-interface PendingRequest {
-  resolve: (value: string) => void
-  reject: (reason: unknown) => void
-  timeoutId: ReturnType<typeof setTimeout>
-}
-
 export const useUiBuilderStore = defineStore('uibuilder', () => {
   const connected = ref(false)
   const connecting = ref(false)
@@ -56,7 +48,6 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let uib: any = null
   const handlers: MessageHandler[] = []
-  const pending = new Map<string, PendingRequest>()
 
   // ─── Init ──────────────────────────────────────────────────────────────────
 
@@ -142,43 +133,17 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
 
   // ─── Internal dispatcher ───────────────────────────────────────────────────
 
+  // Pure fan-out to registered handlers — the request/response routing for
+  // FAP §9 commands lives in services/transport.ts. The only legacy hook
+  // retained here is the live KPI push, which the dashboard reads via
+  // the reactive `lastKpi` ref. When the server starts emitting FAP §9
+  // events for KPIs, this branch can be deleted in favour of a
+  // reduceEvent('kpi.update') case.
   function _dispatch(msg: UibMessage): void {
-    const topic = msg?.topic ?? ''
-
-    // Handle live KPI pushes
-    if (topic === 'kpi.update') {
+    if (msg?.topic === 'kpi.update') {
       const kpi = msg.payload?.recordDetails as KpiUpdatePayload | undefined
       if (kpi) lastKpi.value = kpi
     }
-
-    // Resolve pending insight.response promises
-    if (topic === 'insight.response') {
-      const insight = msg.payload?.recordDetails?.insight
-      if (insight) {
-        const entry = pending.get('insight.request')
-        if (entry) {
-          clearTimeout(entry.timeoutId)
-          pending.delete('insight.request')
-          const text = _formatInsightResponse(insight)
-          entry.resolve(text)
-        }
-      }
-    }
-
-    // Resolve pending llm.response promises
-    if (topic === 'llm.response') {
-      const resp = msg.payload?.recordDetails?.response
-      if (resp) {
-        const entry = pending.get('llm.freeform')
-        if (entry) {
-          clearTimeout(entry.timeoutId)
-          pending.delete('llm.freeform')
-          entry.resolve(resp.text ?? '')
-        }
-      }
-    }
-
-    // Broadcast to all registered handlers
     handlers.forEach(h => h(msg))
   }
 
@@ -256,12 +221,6 @@ export const useUiBuilderStore = defineStore('uibuilder', () => {
   }
 
   function disconnect(): void {
-    // Cancel all pending requests
-    for (const [key, entry] of pending.entries()) {
-      clearTimeout(entry.timeoutId)
-      entry.reject(new Error('UIBuilder disconnected'))
-      pending.delete(key)
-    }
     if (uib) {
       try { uib.disconnect?.() } catch { /* ignore */ }
     }

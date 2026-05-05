@@ -45,18 +45,10 @@ const liveMeterCount = ref(0)
 const livePvRecords = ref<{ timestamp: string; pvPower_kW: number; irradiance_w_m2: number }[]>([])
 const livePriceRecords = ref<{ timestamp: string; priceEurPerKwh: number }[]>([])
 
-// UIBUILDER is initialised once at app boot in main.ts. Here we only wire up
-// the per-view subscriptions when the connection is live.
+// UIBUILDER is initialised once at app boot in main.ts. Per-view KPI updates
+// arrive through the store's reactive `lastKpi` ref (kept in sync by the
+// store's message dispatcher); no per-view subscription is needed.
 onMounted(async () => {
-  if (uib.connected) {
-    const unsubscribe = uib.onMessage((msg) => {
-      if (msg.topic === 'kpi.update' && uib.lastKpi) {
-        // KPI state is already updated in the store; nothing extra needed here
-      }
-    })
-    onUnmounted(unsubscribe)
-  }
-
   // Fetch live simulation data for KPIs and charts
   try {
     const [metersResp, pvResp, priceResp] = await Promise.all([

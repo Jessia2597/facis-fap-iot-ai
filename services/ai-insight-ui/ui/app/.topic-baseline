@@ -1,1 +1,0 @@
-src/views/AiAssistantView.vue:53:      if (msg.topic === 'kpi.update' && uib.lastKpi) {
