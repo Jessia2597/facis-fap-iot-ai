@@ -16,24 +16,6 @@ Service endpoints:
 - ReDoc: `http://localhost:8080/redoc`
 - Health: `http://localhost:8080/api/v1/health`
 
-## Local development setup (Docker Compose, dev-only)
-
-> Production runs on Kubernetes via the Helm chart in `helm/` and the ORCE
-> flows in `orce/`. The compose file below lives in `dev/` and is not a
-> FACIS deliverable (TDR §9.1.1). See `dev/README.md`.
-
-```bash
-cd services/ai-insight-service
-cp .env.example .env
-docker compose -f dev/docker-compose.yml up --build
-```
-
-Stop services:
-
-```bash
-docker compose -f dev/docker-compose.yml down
-```
-
 ## Running Tests
 
 Run full test suite:

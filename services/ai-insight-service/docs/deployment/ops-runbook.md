@@ -188,59 +188,22 @@ helm install facis-ai-insight ./facis-ai-insight -n facis -f values-cluster.yaml
 
 ---
 
-## 3. Docker Compose for Dev/Demo
+## 3. Local Development
 
-> **TDR notice:** Docker Compose is **not part of any FACIS deliverable**
-> (TDR §9.1.1). Production runs on Kubernetes via the Helm chart in `helm/`
-> and the ORCE flows in `orce/`. The compose file lives at `dev/docker-compose.yml`
-> and all commands below assume CWD is the service root (`services/ai-insight-service/`)
-> with the `-f dev/docker-compose.yml` flag — set
-> `alias dc='docker compose -f dev/docker-compose.yml'` for shorter forms.
-
-### 3.1 Local Development Stack
-
-The compose file at `dev/docker-compose.yml` runs the service with Redis for caching and Trino connectivity:
-
-| Service | Image | Ports | Purpose |
-|---------|-------|-------|---------|
-| ai-insight | Built from Dockerfile | 8080 | AI Insight Service |
-| redis | redis:latest | 6379 | Response caching backend |
-
-```bash
-# Start the full stack
-docker compose up -d
-
-# Start with rebuild
-docker compose up -d --build
-
-# View logs (all services)
-docker compose logs -f
-
-# View logs (service only)
-docker compose logs -f ai-insight
-
-# Stop the stack
-docker compose down
-
-# Stop and remove volumes
-docker compose down -v
-```
-
-### 3.2 Useful Docker Compose Commands
-
-```bash
-# Check service health
-docker compose ps
-
-# Restart a single service
-docker compose restart ai-insight
-
-# Execute command inside running container
-docker compose exec ai-insight python -c "from src import config; print('OK')"
-
-# View Redis cache state
-docker compose exec redis redis-cli KEYS "ai-insight:*"
-```
+> **TDR §9.1.1:** Docker Compose is not part of any FACIS deliverable. The
+> previous `dev/docker-compose.yml` path has been removed to align with the
+> TDR. Local development runs the service directly:
+>
+> ```bash
+> cd services/ai-insight-service
+> cp .env.example .env
+> pip install -e ".[dev]"
+> python -m src.main
+> ```
+>
+> Production runs on Kubernetes (Helm chart at `helm/`) and ORCE flows
+> (`orce/`). See `../guides/setup.md` for the full local-development
+> workflow and section 4 below for Helm value reference.
 
 ---
 
@@ -536,16 +499,10 @@ Configuration is applied with this priority (highest first):
 ### 6.6 Viewing Logs
 
 ```bash
-# Docker Compose
-docker compose logs -f ai-insight         # AI Insight Service only
-docker compose logs -f ai-insight redis   # AI Insight + Redis
-docker compose logs --since 5m ai-insight # Last 5 minutes
-docker compose logs -f --tail 100         # Last 100 lines, follow
-
-# Kubernetes
 kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service -f
 kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service --since=5m
 kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service --previous  # Crashed pod
+kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service --tail=100 -f
 ```
 
 ---
@@ -559,8 +516,6 @@ kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service --previous  #
 **Check logs:**
 ```bash
 kubectl logs -n facis <pod-name> --previous
-# or
-docker compose logs ai-insight
 ```
 
 **Common causes:**
@@ -588,7 +543,7 @@ curl -X POST https://your-llm-endpoint/v1/chat/completions \
   -d '{"model": "gpt-4.1-mini", "messages": [{"role": "user", "content": "test"}]}'
 
 # Check service logs for retry attempts
-docker compose logs ai-insight 2>&1 | grep -i "llm\|retry\|timeout"
+kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service 2>&1 | grep -i "llm\|retry\|timeout"
 ```
 
 **Common causes:**
@@ -682,23 +637,21 @@ done
 **Diagnosis:**
 ```bash
 # Check Redis is running and healthy
-docker compose ps redis
-# or
 kubectl get pods -n facis -l app=redis
 
-# Test Redis connection manually
-docker compose exec redis redis-cli ping
+# Test Redis connection (in-cluster)
+kubectl exec -n facis -it deploy/redis -- redis-cli ping
 # Expected: PONG
 
 # Check cache keys
-docker compose exec redis redis-cli KEYS "ai-insight:*"
+kubectl exec -n facis -it deploy/redis -- redis-cli KEYS "ai-insight:*"
 ```
 
 **Common causes:**
 
 | Cause | Fix |
 |-------|-----|
-| Redis not running | Start Redis: `docker compose up -d redis` or check K8s pod. |
+| Redis not running | Check K8s pod status: `kubectl get pods -n facis -l app=redis`. |
 | Redis URL misconfigured | Verify `cache.redisUrl` format: `redis://host:port/db`. Include password if needed. |
 | Redis disabled | If caching is not needed, set `cache.enabled: false` in Helm values. |
 | Connection timeout | Increase `cache.connectTimeoutSeconds` (default 1.0) if Redis is slow. |
@@ -807,16 +760,14 @@ ENVIRONMENT VARIABLES (AI_INSIGHT_ prefix, __ nesting)
 HELM INSTALL
   helm install facis-ai-insight ./helm/facis-ai-insight -n facis --create-namespace
 
-DOCKER COMPOSE
-  docker compose up -d                    # Start local stack
-  docker compose logs -f ai-insight       # Follow logs
-  docker compose down -v                  # Stop and clean
+LOCAL DEV (no Docker Compose — TDR §9.1.1)
+  cd services/ai-insight-service && cp .env.example .env && python -m src.main
 
 TROUBLESHOOTING
   kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service -f
   kubectl describe pod -n facis <pod>
   curl http://localhost:8080/api/v1/health
-  docker compose exec redis redis-cli KEYS "ai-insight:*"
+  kubectl exec -n facis -it deploy/redis -- redis-cli KEYS "ai-insight:*"
 ```
 
 ---
