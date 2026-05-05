@@ -22,6 +22,31 @@
   --color-warning:       #F59E0B;  /* warnings */
   --color-danger:        #EF4444;  /* errors */
 
+  /* §14.1b — Tint variants. Anchor for status badges, chart fills,
+     soft surfaces, dark text overlays. Every legitimate "tint of X"
+     across views must come from this set; raw hex is banned by lint. */
+  --color-success-light:  #D1FAE5;  /* emerald-100 — soft surface */
+  --color-success-soft:   #DCFCE7;  /* emerald-50  — hover/badge bg */
+  --color-success-dark:   #15803D;  /* emerald-700 — text on light */
+
+  --color-warning-light:  #FEF3C7;  /* amber-100 — badge bg */
+  --color-warning-soft:   #FEF9E7;  /* amber-50  — hover bg */
+  --color-warning-dark:   #92400E;  /* amber-900 — text on light */
+
+  --color-danger-light:   #FEE2E2;  /* red-100 — badge bg */
+  --color-danger-soft:    #FEF2F2;  /* red-50  — hover bg */
+  --color-danger-dark:    #991B1B;  /* red-900 — text on light */
+
+  --color-info-light:     #DBEAFE;  /* blue-100 — badge bg */
+  --color-info-soft:      #EFF6FF;  /* blue-50  — hover bg */
+  --color-info-dark:      #1D4ED8;  /* blue-700 — text on light */
+
+  --color-neutral-fg:     #475569;  /* slate-600 — offline/dim text */
+  --color-neutral-bg:     #F1F5F9;  /* slate-100 — offline/dim bg */
+  --color-text-soft:      #9CA3AF;  /* gray-400 — softer than --color-muted */
+  --color-border-strong:  #D1D5DB;  /* gray-300 — outline / strong divider */
+  --color-surface-2:      #F3F4F6;  /* gray-100 — subtle tier between canvas and surface */
+
   /* §14.2 — Geometry and spacing */
   --radius-shell:   20px;   /* main container */
   --radius-control: 8px;    /* buttons, inputs, panels */
@@ -47,6 +72,33 @@
   --motion-fast: 0.20s ease-in-out;
   --motion-slow: 0.40s ease-in-out;
 
+  /* §14.5 — Status palette. Six semantic groups consumed by StatusBadge
+     and any component that renders status-driven foreground/background
+     pairs. These derive from the §14.1b tints so a single change to
+     the underlying tint cascades everywhere. */
+  --status-healthy-fg:  var(--color-success-dark);
+  --status-healthy-bg:  var(--color-success-soft);
+  --status-warning-fg:  var(--color-warning-dark);
+  --status-warning-bg:  var(--color-warning-light);
+  --status-error-fg:    var(--color-danger-dark);
+  --status-error-bg:    var(--color-danger-light);
+  --status-offline-fg:  var(--color-neutral-fg);
+  --status-offline-bg:  var(--color-neutral-bg);
+  --status-info-fg:     var(--color-info-dark);
+  --status-info-bg:     var(--color-info-light);
+  --status-neutral-fg:  var(--color-muted);
+  --status-neutral-bg:  var(--color-neutral-bg);
+
+  /* §14.6 — Chart series. Anchor for Chart.js dataset colors. Charts
+     are the legitimate place where multiple distinct accents are needed;
+     codify them centrally so every chart picks from this single set. */
+  --chart-series-1: var(--color-primary);    /* #005FFF — primary blue */
+  --chart-series-2: var(--color-secondary);  /* #3B82F6 — info blue */
+  --chart-series-3: var(--color-success);    /* #10B981 — success green */
+  --chart-series-4: var(--color-warning);    /* #F59E0B — warning amber */
+  --chart-series-5: var(--color-danger);     /* #EF4444 — danger red */
+  --chart-series-6: #8B5CF6;                 /* violet-500 — non-primary chip accent */
+
   /* ───────────────────────────────────────────────────────────
    * Legacy --facis-* aliases. The codebase pre-Phase-6 used these names;
    * they're retained as forwarders so we don't have to touch every view.
@@ -57,21 +109,21 @@
   --facis-primary-light:  var(--color-primary-soft);
   --facis-bg:             var(--color-canvas);
   --facis-surface:        var(--color-surface);
-  --facis-surface-2:      #F3F4F6;  /* subtle surface tier between canvas and surface */
+  --facis-surface-2:      var(--color-surface-2);
   --facis-text:           var(--color-text);
   --facis-text-secondary: var(--color-muted);
-  --facis-text-muted:     #9CA3AF;  /* gray-400 — softer than the standard muted */
+  --facis-text-muted:     var(--color-text-soft);
   --facis-border:         var(--color-border);
-  --facis-border-strong:  #D1D5DB;  /* gray-300 — outline / strong divider */
+  --facis-border-strong:  var(--color-border-strong);
   --facis-success:        var(--color-success);
-  --facis-success-light:  #D1FAE5;  /* emerald-100 */
+  --facis-success-light:  var(--color-success-light);
   --facis-warning:        var(--color-warning);
-  --facis-warning-light:  #FEF3C7;
+  --facis-warning-light:  var(--color-warning-light);
   --facis-error:          var(--color-danger);
-  --facis-error-light:    #FEE2E2;
+  --facis-error-light:    var(--color-danger-light);
   --facis-info:           var(--color-secondary);
-  --facis-info-light:     #DBEAFE;
-  --facis-purple:         #8B5CF6;  /* legacy accent, retained for non-primary chips */
+  --facis-info-light:     var(--color-info-light);
+  --facis-purple:         var(--chart-series-6);  /* #8B5CF6 — kept for non-primary chips */
 
   --facis-radius:    var(--radius-control);
   --facis-radius-sm: var(--radius-small);
