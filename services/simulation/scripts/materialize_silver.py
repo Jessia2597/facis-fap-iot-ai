@@ -69,14 +69,15 @@ def ensure_watermark_table(conn, catalog: str, s3_bucket: str) -> None:
 
 def get_watermark(conn, catalog: str, table_name: str) -> str | None:
     """Return the last watermark timestamp for a table, or None."""
-    # table_name comes from the hardcoded SILVER_VIEWS dict — validated below
+    # table_name comes from the hardcoded SILVER_VIEWS dict — validated.
+    # Trino's python client does not support ? placeholder substitution
+    # against this Trino version, so we inline the validated identifier.
     if table_name not in SILVER_VIEWS:
         raise ValueError(f"Invalid table name: {table_name}")
     rows = execute(
         conn,
         f'SELECT last_watermark FROM "{catalog}".silver._watermarks'
-        f" WHERE table_name = ?",
-        params=(table_name,),
+        f" WHERE table_name = '{table_name}'",
     )
     if rows and rows[0][0]:
         return str(rows[0][0])
@@ -95,17 +96,19 @@ def update_watermark(conn, catalog: str, table_name: str) -> None:
         return
     max_ts = str(rows[0][0])
 
-    # Delete old watermark row, then insert new one
+    # Delete old watermark row, then insert new one. Trino's python client
+    # does not perform ? placeholder substitution against this server, so we
+    # inline values: table_name is validated against SILVER_VIEWS above and
+    # max_ts comes from MAX(ingestion_timestamp) which Trino emits as a
+    # safe TIMESTAMP literal-compatible string.
     execute(
         conn,
-        f'DELETE FROM "{catalog}".silver._watermarks WHERE table_name = ?',
-        params=(table_name,),
+        f'DELETE FROM "{catalog}".silver._watermarks WHERE table_name = \'{table_name}\'',
     )
     execute(
         conn,
         f'INSERT INTO "{catalog}".silver._watermarks'
-        f" VALUES (?, TIMESTAMP ?, CURRENT_TIMESTAMP)",
-        params=(table_name, max_ts),
+        f" VALUES ('{table_name}', TIMESTAMP '{max_ts}', CURRENT_TIMESTAMP)",
     )
     logger.info("  Watermark for %s updated to %s", table_name, max_ts)
 
