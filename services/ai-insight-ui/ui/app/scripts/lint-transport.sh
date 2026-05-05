@@ -41,7 +41,7 @@ fi
 # must trend down. Baseline is committed at .stylelint-baseline; CI fails on
 # regression. After Phase 2c the baseline file is deleted and any hex fails.
 HEX_BASELINE_FILE=".stylelint-baseline"
-HEX_NOW=$(grep -rEoh '#[0-9a-fA-F]{3,8}\b' src/views src/components --include='*.vue' --include='*.css' 2>/dev/null | wc -l | tr -d ' ')
+HEX_NOW=$( { grep -rEoh '#[0-9a-fA-F]{3,8}\b' src/views src/components --include='*.vue' --include='*.css' 2>/dev/null || true; } | wc -l | tr -d ' ')
 if [[ -f "$HEX_BASELINE_FILE" ]]; then
   HEX_BASELINE=$(cat "$HEX_BASELINE_FILE" | tr -d ' \n')
   echo "Hex literal count: $HEX_NOW (baseline $HEX_BASELINE)"
@@ -59,7 +59,7 @@ fi
 
 # Phase 3c guard: views and components must not import @/services/api.
 # (ESLint catches this too; this is a backstop for non-TS pathways.)
-API_IMPORT_VIOLATIONS=$(grep -rEn "from ['\"]@?/?(\.\./)*services/api['\"]" src/views src/components --include='*.vue' --include='*.ts' 2>/dev/null || true)
+API_IMPORT_VIOLATIONS=$( { grep -rEn "from ['\"]@?/?(\.\./)*services/api['\"]" src/views src/components --include='*.vue' --include='*.ts' 2>/dev/null || true; } )
 if [[ -n "$API_IMPORT_VIOLATIONS" ]]; then
   COUNT=$(echo "$API_IMPORT_VIOLATIONS" | wc -l | tr -d ' ')
   API_BASELINE_FILE=".api-import-baseline"
