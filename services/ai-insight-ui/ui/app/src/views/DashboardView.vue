@@ -8,6 +8,7 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useKpiStore } from '@/stores/kpi'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAppStore } from '@/services/state'
+import { useRelativeTime } from '@/composables/useRelativeTime'
 import { useRouter } from 'vue-router'
 import {
   getSimulationStatus,
@@ -136,9 +137,10 @@ onMounted(() => {
 // flows/tabs/5-KPI-Broadcast.json) — `state.model.kpi` is reactive and the
 // reducer in services/reducers.ts writes to it on every event. The remaining
 // eight come from sim-runtime REST and are unchanged.
+const liveKpiAgo = useRelativeTime(computed(() => app.state.model.kpi?.updatedAt ?? null))
 const platformKpis = computed(() => {
   const live = app.state.model.kpi
-  const liveTag = live ? 'Trino' : ''
+  const liveTag = live ? (liveKpiAgo.value ? `Trino · ${liveKpiAgo.value}` : 'Trino') : ''
   const liveNetGrid = live?.netGrid != null ? live.netGrid.toFixed(1) : '—'
   const livePvGen = live?.pvGeneration != null ? live.pvGeneration.toFixed(1) : '—'
   const liveCost = live?.dailyCost != null ? `€${live.dailyCost.toFixed(0)}` : '—'

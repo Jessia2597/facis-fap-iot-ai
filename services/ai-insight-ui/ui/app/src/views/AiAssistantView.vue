@@ -10,6 +10,7 @@ import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
 import { useInsightApi } from '@/composables/useInsightApi'
 import { useUiBuilderStore } from '@/stores/uibuilder'
 import { useAppStore } from '@/services/state'
+import { useRelativeTime } from '@/composables/useRelativeTime'
 import {
   getMeters, getMeterCurrent,
   getPVSystems, getPVCurrent,
@@ -141,12 +142,15 @@ const TIME_RANGE_OPTIONS = [
 
 // ─── KPI Cards ────────────────────────────────────────────────────────────────
 
+const liveKpiAgo = useRelativeTime(computed(() => app.state.model.kpi?.updatedAt ?? null))
 const kpis = computed(() => {
   // Server-broadcast KPIs (gold-layer Trino aggregates) take precedence when
   // present; the view falls back to sim-derived values otherwise so the panel
-  // is never empty before the first broadcast arrives.
+  // is never empty before the first broadcast arrives. The "Trino · Ns ago"
+  // tag advertises both source and freshness so users can spot stale data.
   const live = app.state.model.kpi
-  const liveLabel = live ? 'Trino' : (isLive.value ? 'Live' : '')
+  const trinoTag = live && liveKpiAgo.value ? `Trino · ${liveKpiAgo.value}` : (live ? 'Trino' : '')
+  const liveLabel = live ? trinoTag : (isLive.value ? 'Live' : '')
 
   const totalPower = Number(liveTotalPowerKw.value) || 0
   const pvPower = Number(livePvPowerKw.value) || 0
