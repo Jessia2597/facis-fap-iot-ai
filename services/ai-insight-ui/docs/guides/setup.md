@@ -61,25 +61,26 @@ curl -X POST http://localhost:1880/flows \
   -d @flows/flows.full.json
 ```
 
-### 3.2 Copy UI Files to UIBUILDER
+### 3.2 Build and Copy UI Files to UIBUILDER
 
 ```bash
-# Copy Vue SPA files to UIBUILDER source directory
-# (replace {uibuilder-path} with your ORCE container or local UIBUILDER path)
-cp -r ui/src/* /data/uibuilder/ai-insight/src/
+# Build the Vite SPA — outputs to ui/app/dist/
+npm --prefix ui/app install
+npm --prefix ui/app run build
+
+# Copy build output to UIBUILDER source directory
+cp -r ui/app/dist/* /data/uibuilder/ai-insight/src/
 
 # If using Docker, copy into the container:
-docker cp ui/src/. <orce-container-id>:/data/uibuilder/ai-insight/src/
+docker cp ui/app/dist/. <orce-container-id>:/data/uibuilder/ai-insight/src/
 ```
 
 Expected UIBUILDER structure after copy:
 
 ```
 /data/uibuilder/ai-insight/src/
-├── index.html          # Vue 3 SPA entry point
-├── index.js            # Vue app logic + UIBUILDER bindings
-├── index.css           # FACIS design system
-└── Facis-logo.svg      # Branding asset
+├── index.html          # Vite-emitted SPA entry point
+└── assets/             # Hashed JS / CSS bundles + Facis-logo.svg
 ```
 
 ### 3.3 Set ORCE Environment Variables
@@ -133,7 +134,7 @@ The app will be available at `http://localhost:3000` with automatic proxy to `ht
 
 Note: Keycloak authentication is configured to `https://identity.facis.cloud`. For local development, either:
 - Mock the Keycloak responses in the browser console, or
-- Update `ui/src/index.js` to point to a local Keycloak instance
+- Update `ui/app/src/auth.ts` to point to a local Keycloak instance
 
 ---
 
@@ -261,7 +262,7 @@ ai-insight-ui/
 
 **ORCE flows show errors** — Ensure all environment variables are set in ORCE's container. Check ORCE debug output: Node-RED editor → Debug messages panel.
 
-**Keycloak login hangs** — Verify Keycloak is reachable at `https://identity.facis.cloud`. If using local Keycloak, update the URL in `ui/src/index.js`.
+**Keycloak login hangs** — Verify Keycloak is reachable at `https://identity.facis.cloud`. If using local Keycloak, update the URL in `ui/app/src/auth.ts`.
 
 **Nginx container won't start** — Check that port 8080 is not in use. The Dockerfile configures Nginx to run as unprivileged user; ensure `/tmp` is writable in the container.
 

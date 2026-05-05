@@ -57,7 +57,7 @@ These are injected into `index.js` at build time by Vite. Check `ui/app/vite.con
 
 ### 2.3 Build-Time Loading
 
-In the browser, Keycloak is initialized with these variables (see `ui/src/index.js`):
+In the browser, Keycloak is initialized with these variables (see `ui/app/src/auth.ts`):
 
 ```javascript
 const keycloak = new Keycloak({
@@ -190,7 +190,7 @@ The **Tab 2 (LLM Router)** flow uses `msg.selectedProvider` to route requests to
 
 ### 5.1 Provider Routing
 
-The frontend selector (`selectedLLM` in `ui/src/index.js`) offers three providers:
+The frontend LLM selector (`ui/app/src/views/AiAssistantView.vue`) offers three providers:
 
 ```javascript
 llmProviders: [
@@ -431,7 +431,8 @@ These are injected as environment variables into the ORCE Deployment.
 
 - `ui/app/.env.example` — Template for Vite build variables
 - `ui/app/vite.config.ts` — Vite build config (references VITE_* variables)
-- `ui/src/index.js` — Keycloak initialization and Vue app
+- `ui/app/src/auth.ts` — Keycloak initialization
+- `ui/app/src/main.ts` — Vue app bootstrap
 - `helm/facis-ai-insight-ui/values.yaml` — Helm defaults
 - `helm/facis-ai-insight-ui/templates/secret.yaml` — Secret template
 - `helm/facis-ai-insight-ui/templates/configmap-flows.yaml` — Flows ConfigMap template
