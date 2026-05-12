@@ -448,7 +448,7 @@ function fmtRelative(iso: string | null | undefined): string {
               <div class="uc-card__actions">
                 <Button label="Overview" icon="pi pi-eye" size="small" outlined @click="router.push('/use-cases/smart-energy/overview')" />
                 <Button label="Assets" icon="pi pi-gauge" size="small" text @click="router.push('/use-cases/smart-energy/assets')" />
-                <Button label="Insights" icon="pi pi-lightbulb" size="small" text @click="router.push('/use-cases/smart-energy/insights')" />
+                <Button label="Ask AI" icon="pi pi-lightbulb" size="small" text @click="router.push('/ai-assistant')" />
               </div>
             </div>
           </div>

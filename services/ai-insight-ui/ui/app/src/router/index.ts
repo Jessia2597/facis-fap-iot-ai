@@ -24,6 +24,9 @@ const routes: RouteRecordRaw[] = [
   },
   // Login is handled by Keycloak (onLoad: 'login-required') — no custom login route needed
 
+  // Legacy / sensible-guess deep links — keep shared URLs and bookmarks working
+  { path: '/overview', redirect: '/dashboard' },
+
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   {
     path: '/dashboard',
@@ -51,6 +54,7 @@ const routes: RouteRecordRaw[] = [
           { path: 'assets/:id', name: 'EnergyAssetDetail', component: () => import('@/views/smart-energy/EnergyAssetDetailView.vue'), meta: { title: 'Asset Detail' } },
           { path: 'context', name: 'EnergyContext', component: () => import('@/views/smart-energy/EnergyContextView.vue'), meta: { title: 'Context Data' } },
           // 'insights' sub-route removed: EnergyInsightsView is fully history-driven and no /history endpoints exist on the simulation REST flow. AI Assistant + Analytics Overview cover the same surface.
+          { path: 'insights', redirect: { path: '/ai-assistant' } },
           { path: 'data-products', name: 'EnergyDataProducts', component: () => import('@/views/smart-energy/EnergyDataProductsView.vue'), meta: { title: 'Energy Data Products' } },
           { path: 'data-products/:id', name: 'EnergyDataProductDetail', component: () => import('@/views/smart-energy/EnergyDataProductDetailView.vue'), meta: { title: 'Data Product Detail' } }
         ]

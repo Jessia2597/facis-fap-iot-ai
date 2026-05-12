@@ -266,7 +266,7 @@ function fmtTs(iso: string): string {
     >
       <template #actions>
         <Button label="Assets" icon="pi pi-gauge" size="small" outlined @click="router.push('/use-cases/smart-energy/assets')" />
-        <Button label="AI Insights" icon="pi pi-lightbulb" size="small" outlined @click="router.push('/use-cases/smart-energy/insights')" />
+        <Button label="Ask AI" icon="pi pi-lightbulb" size="small" outlined @click="router.push('/ai-assistant')" />
         <Button icon="pi pi-refresh" size="small" text :loading="loading" @click="fetchData()" />
       </template>
     </PageHeader>
