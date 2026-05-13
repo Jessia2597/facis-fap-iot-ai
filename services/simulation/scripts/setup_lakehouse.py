@@ -113,13 +113,98 @@ def connect_trino(host: str, port: int, token: str, catalog: str) -> trino.dbapi
     return conn
 
 
-def execute(conn: trino.dbapi.Connection, sql: str) -> list:
+class AuthRefreshingSession:
+    """Trino connection wrapper that auto-refreshes the OIDC token on 401.
+
+    The materialize_silver / materialize_gold scripts run long enough during
+    backlog catch-up that the Keycloak access token (default 5 min TTL)
+    expires mid-run. The previous behaviour was to die with
+    `trino.exceptions.HttpError: error 401: Invalid credentials` and let
+    the next cron tick try again — leaving the silver→gold pipeline stuck
+    when the catch-up window exceeds the token TTL.
+
+    This session holds the auth + connection params, transparently refreshes
+    the token on 401, reconnects, and retries the query once. Callers see
+    the same `execute(sql)` / `cursor()` surface as a plain trino connection.
+    """
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        catalog: str,
+        keycloak_url: str,
+        username: str,
+        password: str,
+        client_secret: str,
+    ) -> None:
+        self._host = host
+        self._port = port
+        self._catalog = catalog
+        self._keycloak_url = keycloak_url
+        self._username = username
+        self._password = password
+        self._client_secret = client_secret
+        self.conn: trino.dbapi.Connection | None = None
+        self._refresh()
+
+    def _refresh(self) -> None:
+        token = get_oidc_token(
+            self._keycloak_url, self._username, self._password, self._client_secret
+        )
+        self.conn = connect_trino(self._host, self._port, token, self._catalog)
+
+    def execute(self, sql: str, params: tuple | None = None) -> list:
+        try:
+            return self._execute_once(sql, params)
+        except Exception as e:
+            if _is_trino_401(e):
+                logger.info("Trino 401 — refreshing OIDC token and retrying once")
+                self._refresh()
+                return self._execute_once(sql, params)
+            raise
+
+    def _execute_once(self, sql: str, params: tuple | None) -> list:
+        cur = self.conn.cursor()
+        if params is not None:
+            cur.execute(sql, params)
+        else:
+            cur.execute(sql)
+        return cur.fetchall()
+
+    def cursor(self):
+        # Compatibility shim for callers that still want a raw cursor.
+        return self.conn.cursor()
+
+
+def _is_trino_401(exc: Exception) -> bool:
+    """Return True if `exc` is a Trino 401 (token-expiry) error."""
+    if isinstance(exc, trino.exceptions.HttpError):
+        # The HttpError message format is "error 401: <body>" — match either
+        # the status code or the well-known body.
+        msg = str(exc)
+        return "401" in msg or "Invalid credentials" in msg
+    return False
+
+
+def execute(conn, sql: str, params: tuple | None = None) -> list:
+    """Execute SQL on either an `AuthRefreshingSession` or a raw Trino connection.
+
+    Backwards-compatible: existing callers pass a `trino.dbapi.Connection`
+    and get the same behaviour as before. New code that wants automatic
+    token refresh passes an `AuthRefreshingSession` instead.
+    """
+    if isinstance(conn, AuthRefreshingSession):
+        return conn.execute(sql, params)
     cur = conn.cursor()
-    cur.execute(sql)
+    if params is not None:
+        cur.execute(sql, params)
+    else:
+        cur.execute(sql)
     return cur.fetchall()
 
 
-def execute_ddl(conn: trino.dbapi.Connection, sql: str, description: str) -> bool:
+def execute_ddl(conn, sql: str, description: str) -> bool:
     """Execute a DDL statement with error handling. Returns True on success."""
     try:
         execute(conn, sql)
@@ -374,16 +459,55 @@ CREATE OR REPLACE VIEW "{catalog}".silver.city_event AS
 SELECT
     ingestion_timestamp,
     from_iso8601_timestamp(json_extract_scalar(raw_value, '$.timestamp')) AS event_timestamp,
-    json_extract_scalar(raw_value, '$.city_id')                      AS city_id,
-    json_extract_scalar(raw_value, '$.zone_id')                      AS zone_id,
-    COALESCE(json_extract_scalar(raw_value, '$.event_type'), 'unknown') AS event_type,
-    CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER)    AS severity,
+    json_extract_scalar(raw_value, '$.city_id')                            AS city_id,
+    json_extract_scalar(raw_value, '$.zone_id')                            AS zone_id,
+    COALESCE(json_extract_scalar(raw_value, '$.event_type'), 'unknown')    AS event_type,
+    -- Defensive severity parse: bronze rows are inconsistent — some carry
+    -- the numeric Severity enum value (1/2/3) the simulation source claims
+    -- to emit (services/simulation/src/models/smart_city/event.py), others
+    -- carry the enum NAME ('LOW'/'MEDIUM'/'HIGH'). The previous unconditional
+    -- CAST(... AS INTEGER) blew up on the first 'LOW' row and killed every
+    -- silver-materializer run. TRY_CAST tolerates numeric strings; the
+    -- CASE maps the documented names; anything else becomes NULL and is
+    -- ignored by AVG()/COUNT() downstream.
+    COALESCE(
+        TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
+        CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
+            WHEN 'LOW'      THEN 1
+            WHEN 'MEDIUM'   THEN 2
+            WHEN 'HIGH'     THEN 3
+            WHEN 'CRITICAL' THEN 4
+            ELSE NULL
+        END
+    )                                                                       AS severity,
     COALESCE(CAST(json_extract_scalar(raw_value, '$.active') AS BOOLEAN), false) AS active,
-    -- Derived: severity label
+    -- Derived: severity label. We re-evaluate the same COALESCE expression
+    -- inline rather than wrap the SELECT in a subquery, because
+    -- materialize_silver.build_insert_sql() appends the watermark filter
+    -- via "\\n  AND ingestion_timestamp > TIMESTAMP '...'" to the end of
+    -- this SELECT — that only works if the last clause is a WHERE.
     CASE
-        WHEN CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER) >= 4 THEN 'critical'
-        WHEN CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER) >= 3 THEN 'high'
-        WHEN CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER) >= 2 THEN 'medium'
+        WHEN COALESCE(
+                TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
+                CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
+                    WHEN 'LOW' THEN 1 WHEN 'MEDIUM' THEN 2
+                    WHEN 'HIGH' THEN 3 WHEN 'CRITICAL' THEN 4 ELSE NULL
+                END
+             ) >= 4 THEN 'critical'
+        WHEN COALESCE(
+                TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
+                CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
+                    WHEN 'LOW' THEN 1 WHEN 'MEDIUM' THEN 2
+                    WHEN 'HIGH' THEN 3 WHEN 'CRITICAL' THEN 4 ELSE NULL
+                END
+             ) >= 3 THEN 'high'
+        WHEN COALESCE(
+                TRY_CAST(json_extract_scalar(raw_value, '$.severity') AS INTEGER),
+                CASE UPPER(json_extract_scalar(raw_value, '$.severity'))
+                    WHEN 'LOW' THEN 1 WHEN 'MEDIUM' THEN 2
+                    WHEN 'HIGH' THEN 3 WHEN 'CRITICAL' THEN 4 ELSE NULL
+                END
+             ) >= 2 THEN 'medium'
         ELSE 'low'
     END AS severity_label,
     message_key

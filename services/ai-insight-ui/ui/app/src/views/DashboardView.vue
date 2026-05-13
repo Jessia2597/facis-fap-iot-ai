@@ -5,8 +5,9 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import PipelineFlow from '@/components/common/PipelineFlow.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { useKpiStore } from '@/stores/kpi'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useAppStore } from '@/services/state'
+import { useRelativeTime } from '@/composables/useRelativeTime'
 import { useRouter } from 'vue-router'
 import {
   getSimulationStatus,
@@ -19,10 +20,10 @@ import {
   type SimSimulationStatus,
   type SimHealth,
   type AiHealth
-} from '@/services/api'
+} from '@/services/dispatch'
 
-const kpi = useKpiStore()
 const notifications = useNotificationsStore()
+const app = useAppStore()
 const router = useRouter()
 
 // Live data from API
@@ -33,6 +34,12 @@ const simHealth = ref<SimHealth | null>(null)
 const aiHealth = ref<AiHealth | null>(null)
 const meterCount = ref<number | null>(null)
 const streetlightCount = ref<number | null>(null)
+// Wall-clock timestamp of the last successful fetchLiveData() — what the
+// "Last reading Nm ago" badge below renders. Distinct from
+// simStatus.simulation_time, which is the simulator's accelerated clock and
+// runs ahead of real time when acceleration > 1 (using it produces a
+// nonsensical negative "ago" value).
+const lastFetchedAt = ref<string | null>(null)
 
 interface DataProductRow {
   id: string
@@ -121,23 +128,63 @@ async function fetchLiveData(): Promise<void> {
     ]
   }
 
+  // Wall-clock fetch time — what the "Last reading" badges below render.
+  lastFetchedAt.value = new Date().toISOString()
   loading.value = false
 }
 
 onMounted(() => {
-  kpi.refresh()
   fetchLiveData()
 })
 
-// 8 platform KPI cards — all values from real API
-const platformKpis = computed(() => [
+// Platform KPI cards. The first three rows are gold-layer Trino aggregates
+// pushed live via the FAP §9 `kpi.update` event broadcast (see
+// flows/tabs/5-KPI-Broadcast.json) — `state.model.kpi` is reactive and the
+// reducer in services/reducers.ts writes to it on every event. The remaining
+// eight come from sim-runtime REST and are unchanged.
+const liveKpiAgo = useRelativeTime(computed(() => app.state.model.kpi?.updatedAt ?? null))
+const platformKpis = computed(() => {
+  const live = app.state.model.kpi
+  const liveTag = live ? (liveKpiAgo.value ? `Trino · ${liveKpiAgo.value}` : 'Trino') : ''
+  const liveNetGrid = live?.netGrid != null ? live.netGrid.toFixed(1) : '—'
+  const livePvGen = live?.pvGeneration != null ? live.pvGeneration.toFixed(1) : '—'
+  const liveCost = live?.dailyCost != null ? `€${live.dailyCost.toFixed(0)}` : '—'
+
+  return [
+  {
+    label: 'Net Grid (24h avg)',
+    value: liveNetGrid,
+    unit: 'kW',
+    trend: 'stable' as const,
+    trendValue: liveTag,
+    icon: 'pi-arrow-down-left',
+    color: 'var(--color-secondary)'
+  },
+  {
+    label: 'PV Generation (24h avg)',
+    value: livePvGen,
+    unit: 'kW',
+    trend: 'up' as const,
+    trendValue: liveTag,
+    icon: 'pi-sun',
+    color: 'var(--color-warning)'
+  },
+  {
+    label: 'Daily Cost (24h)',
+    value: liveCost,
+    unit: '',
+    trend: 'down' as const,
+    trendValue: liveTag,
+    icon: 'pi-euro',
+    color: 'var(--color-success)'
+  },
   {
     label: 'Energy Meters',
     value: meterCount.value !== null ? meterCount.value : '—',
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-database',
-    color: '#3b82f6'
+    color: 'var(--color-secondary)'
   },
   {
     label: 'Streetlights',
@@ -145,16 +192,16 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-map',
-    color: '#8b5cf6'
+    color: 'var(--chart-series-6)'
   },
-  { label: 'Open Alerts', value: notifications.openAlerts.length, unit: '', trend: 'down' as const, icon: 'pi-bell', color: '#f59e0b' },
+  { label: 'Open Alerts', value: notifications.openAlerts.length, unit: '', trend: 'down' as const, icon: 'pi-bell', color: 'var(--color-warning)' },
   {
     label: 'Data Sources',
     value: (meterCount.value ?? 0) + (streetlightCount.value ?? 0),
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-check-circle',
-    color: '#22c55e'
+    color: 'var(--color-success)'
   },
   {
     label: 'Simulation Speed',
@@ -162,7 +209,7 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-bolt',
-    color: '#f59e0b'
+    color: 'var(--color-warning)'
   },
   {
     label: 'Simulation State',
@@ -170,7 +217,7 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-cog',
-    color: '#ef4444'
+    color: 'var(--color-danger)'
   },
   {
     label: 'Sim Service',
@@ -178,7 +225,7 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-server',
-    color: simHealth.value?.status === 'ok' ? '#22c55e' : '#f59e0b'
+    color: simHealth.value?.status === 'ok' ? 'var(--color-success)' : 'var(--color-warning)'
   },
   {
     label: 'AI Service',
@@ -186,21 +233,22 @@ const platformKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-microchip-ai',
-    color: aiHealth.value?.status === 'ok' ? '#22c55e' : '#f59e0b'
+    color: aiHealth.value?.status === 'ok' ? 'var(--color-success)' : 'var(--color-warning)'
   }
-])
+  ]
+})
 
 // Use-case summary cards — all from real API
 const energyCard = computed(() => ({
   health: (simHealth.value?.status === 'ok' ? 'healthy' : (simHealth.value ? 'warning' : 'healthy')) as string,
-  lastTimestamp: simStatus.value?.simulation_time ?? new Date().toISOString(),
+  lastTimestamp: lastFetchedAt.value,
   assetCount: meterCount.value !== null ? meterCount.value : '—',
   insightCount: notifications.openAlerts.filter(a => a.useCase === 'Smart Energy').length
 }))
 
 const cityCard = computed(() => ({
   health: 'healthy' as const,
-  lastTimestamp: simStatus.value?.simulation_time ?? new Date().toISOString(),
+  lastTimestamp: lastFetchedAt.value,
   assetCount: streetlightCount.value !== null ? streetlightCount.value : '—',
   insightCount: notifications.openAlerts.filter(a => a.useCase === 'Smart City').length
 }))
@@ -240,10 +288,10 @@ const platformHealth = computed(() => [
 ])
 
 const STATUS_COLOR: Record<string, string> = {
-  healthy: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  inactive: '#94a3b8'
+  healthy: 'var(--color-success)',
+  warning: 'var(--color-warning)',
+  error: 'var(--color-danger)',
+  inactive: 'var(--color-text-soft)'
 }
 
 // Recent alerts (last 5 from the notifications store)
@@ -256,8 +304,14 @@ function fmtTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
-function fmtRelative(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
+function fmtRelative(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return '—'
+  // Defensive clamp: any caller passing a future (or sub-second past)
+  // timestamp gets "just now" instead of a nonsensical negative duration.
+  const diff = Math.max(0, Date.now() - t)
+  if (diff < 60_000) return 'just now'
   const mins = Math.floor(diff / 60_000)
   if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
@@ -273,7 +327,7 @@ function fmtRelative(iso: string): string {
       subtitle="Real-time overview of FACIS IoT & AI demonstrator platform"
     >
       <template #actions>
-        <Button icon="pi pi-refresh" label="Refresh" size="small" outlined @click="kpi.refresh()" />
+        <Button icon="pi pi-refresh" label="Refresh" size="small" outlined @click="fetchLiveData()" />
         <Button icon="pi pi-chart-bar" label="Analytics" size="small" text @click="router.push('/analytics')" />
       </template>
     </PageHeader>
@@ -342,7 +396,7 @@ function fmtRelative(iso: string): string {
             :value="item.value"
             :unit="item.unit ?? ''"
             :trend="item.trend"
-            :trend-value="item.trendValue"
+            :trend-value="(item as any).trendValue"
             :icon="item.icon"
             :color="item.color"
           />
@@ -394,7 +448,7 @@ function fmtRelative(iso: string): string {
               <div class="uc-card__actions">
                 <Button label="Overview" icon="pi pi-eye" size="small" outlined @click="router.push('/use-cases/smart-energy/overview')" />
                 <Button label="Assets" icon="pi pi-gauge" size="small" text @click="router.push('/use-cases/smart-energy/assets')" />
-                <Button label="Insights" icon="pi pi-lightbulb" size="small" text @click="router.push('/use-cases/smart-energy/insights')" />
+                <Button label="Ask AI" icon="pi pi-lightbulb" size="small" text @click="router.push('/ai-assistant')" />
               </div>
             </div>
           </div>
@@ -491,11 +545,11 @@ function fmtRelative(iso: string): string {
               class="alert-row"
               @click="router.push(`/alerts/${alert.id}`)"
             >
-              <div class="alert-row__severity" :style="{ background: alert.severity === 'critical' ? '#fee2e2' : alert.severity === 'error' ? '#fee2e2' : alert.severity === 'warning' ? '#fef3c7' : '#dbeafe' }">
+              <div class="alert-row__severity" :style="{ background: alert.severity === 'critical' ? 'var(--color-danger-light)' : alert.severity === 'error' ? 'var(--color-danger-light)' : alert.severity === 'warning' ? 'var(--color-warning-light)' : 'var(--color-info-light)' }">
                 <i
                   class="pi"
                   :class="alert.severity === 'critical' || alert.severity === 'error' ? 'pi-times-circle' : alert.severity === 'warning' ? 'pi-exclamation-triangle' : 'pi-info-circle'"
-                  :style="{ color: alert.severity === 'critical' || alert.severity === 'error' ? '#ef4444' : alert.severity === 'warning' ? '#f59e0b' : '#3b82f6' }"
+                  :style="{ color: alert.severity === 'critical' || alert.severity === 'error' ? 'var(--color-danger)' : alert.severity === 'warning' ? 'var(--color-warning)' : 'var(--color-secondary)' }"
                 ></i>
               </div>
               <div class="alert-row__content">
@@ -510,39 +564,9 @@ function fmtRelative(iso: string): string {
           </div>
         </section>
 
-        <!-- Recent Data Products -->
-        <section class="dashboard__section">
-          <div class="section-title flex items-center justify-between">
-            <span>Recent Data Products</span>
-            <Button label="View all" icon="pi pi-arrow-right" icon-pos="right" text size="small" @click="router.push('/data-products/all')" />
-          </div>
-          <div class="products-stack">
-            <div
-              v-for="product in recentProducts"
-              :key="product.id"
-              class="product-row card"
-              @click="router.push(`/data-products/${product.id}`)"
-            >
-              <div class="product-row__icon">
-                <i class="pi pi-box"></i>
-              </div>
-              <div class="product-row__body">
-                <div class="product-row__name">{{ product.name }}</div>
-                <div class="product-row__meta">
-                  <span class="text-xs text-muted">v{{ product.version }}</span>
-                  <span class="text-xs text-muted">·</span>
-                  <span class="text-xs text-muted">{{ product.sourceCount }} sources</span>
-                  <span class="text-xs text-muted">·</span>
-                  <span class="text-xs text-muted">{{ fmtRelative(product.lastUpdated) }}</span>
-                </div>
-              </div>
-              <div class="product-row__badges">
-                <StatusBadge :status="product.apiStatus" size="sm" :show-dot="false" />
-                <StatusBadge :status="product.exportStatus" size="sm" :show-dot="false" />
-              </div>
-            </div>
-          </div>
-        </section>
+        <!-- "Recent Data Products" section removed: no /api/v1/data-products
+             backend exists. Per-domain product views still live under
+             /use-cases/smart-energy/data-products and /use-cases/smart-city/data-products. -->
 
       </div>
     </div>
@@ -579,12 +603,12 @@ function fmtRelative(iso: string): string {
   border-radius: 20px;
 }
 .sim-control__status--running {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--color-success-soft);
+  color: var(--color-success-dark);
 }
 .sim-control__status--stopped {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
 }
 .sim-control__dot {
   width: 8px;
@@ -622,10 +646,10 @@ function fmtRelative(iso: string): string {
   gap: 0.75rem;
   padding: 2rem;
   margin: 1.5rem;
-  border: 1px solid #fee2e2;
+  border: 1px solid var(--color-danger-light);
   border-radius: var(--facis-radius);
-  background: #fff5f5;
-  color: #991b1b;
+  background: var(--color-danger-soft);
+  color: var(--color-danger-dark);
   font-size: 0.875rem;
   text-align: center;
 }
@@ -687,14 +711,13 @@ function fmtRelative(iso: string): string {
 }
 
 .uc-card__icon--energy {
-  background: #fef3c718;
-  color: #f59e0b;
+  color: var(--color-warning);
   background-color: rgba(245, 158, 11, 0.12);
 }
 
 .uc-card__icon--city {
   background-color: rgba(59, 130, 246, 0.12);
-  color: #3b82f6;
+  color: var(--color-secondary);
 }
 
 .uc-card__info {

@@ -5,7 +5,7 @@
 /* Root token overrides */
 :root {
   --p-primary-color: var(--facis-primary);
-  --p-primary-contrast-color: #ffffff;
+  --p-primary-contrast-color: var(--color-surface);
   --p-surface-0: var(--facis-surface);
   --p-surface-50: var(--facis-bg);
   --p-surface-100: var(--facis-surface-2);

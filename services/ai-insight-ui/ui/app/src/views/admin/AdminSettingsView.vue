@@ -2,11 +2,12 @@
 import { ref, reactive, onMounted } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { getSimConfig, getSimulationStatus, getSimHealth, getAiHealth, startSimulation, pauseSimulation, resetSimulation } from '@/services/api'
+import { getSimConfig, getSimulationStatus, getSimHealth, getAiHealth, startSimulation, pauseSimulation, resetSimulation } from '@/services/dispatch'
 
 const isLive = ref(false)
 const simState = ref('unknown')
@@ -150,7 +151,7 @@ function saveSettings(): void {
       <div v-if="isLive" class="card card-body">
         <div class="section-label">Simulation Control — Live</div>
         <div class="sim-grid">
-          <div class="sim-row"><span class="sim-key">State</span><span class="env-badge" :style="{ background: simState === 'running' ? '#dcfce7' : '#fee2e2', color: simState === 'running' ? '#15803d' : '#991b1b' }">{{ simState }}</span></div>
+          <div class="sim-row"><span class="sim-key">State</span><span class="env-badge" :style="{ background: simState === 'running' ? 'var(--color-success-soft)' : 'var(--color-danger-light)', color: simState === 'running' ? 'var(--color-success-dark)' : 'var(--color-danger-dark)' }">{{ simState }}</span></div>
           <div class="sim-row"><span class="sim-key">Seed</span><code class="env-badge env-badge--blue">{{ simSeed }}</code></div>
           <div class="sim-row"><span class="sim-key">Acceleration</span><span>{{ simAcceleration }}×</span></div>
           <div class="sim-row"><span class="sim-key">Registered Meters</span><span>{{ registeredMeters }}</span></div>
@@ -263,11 +264,11 @@ function saveSettings(): void {
           </div>
           <div class="sf-row">
             <label class="sf-label">Request Timeout (s)</label>
-            <InputText v-model.number="apiConfig.timeout" type="number" class="sf-input sf-input--sm" />
+            <InputNumber v-model="apiConfig.timeout" :min="1" class="sf-input sf-input--sm" />
           </div>
           <div class="sf-row">
             <label class="sf-label">Max Retries</label>
-            <InputText v-model.number="apiConfig.retries" type="number" class="sf-input sf-input--sm" />
+            <InputNumber v-model="apiConfig.retries" :min="0" class="sf-input sf-input--sm" />
           </div>
           <div class="sf-divider"></div>
           <div class="sf-row">
@@ -336,8 +337,8 @@ function saveSettings(): void {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .sim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
 .sim-row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
@@ -408,8 +409,8 @@ function saveSettings(): void {
   border-radius: 20px;
 }
 
-.env-badge--blue  { background: #dbeafe; color: #1d4ed8; }
-.env-badge--green { background: #dcfce7; color: #15803d; }
+.env-badge--blue  { background: var(--color-info-light); color: var(--color-info-dark); }
+.env-badge--green { background: var(--color-success-soft); color: var(--color-success-dark); }
 
 /* Toggles */
 .toggles-grid { display: flex; flex-direction: column; gap: 0; }

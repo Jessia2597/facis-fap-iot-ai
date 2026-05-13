@@ -228,9 +228,9 @@ const filters = [
   border-radius: 20px;
 }
 
-.cc-status--linked    { background: #dcfce7; color: #15803d; }
+.cc-status--linked    { background: var(--color-success-soft); color: var(--color-success-dark); }
 .cc-status--unlinked  { background: var(--facis-surface-2); color: var(--facis-text-secondary); border: 1px solid var(--facis-border); }
-.cc-status--outdated  { background: var(--facis-warning-light); color: #92400e; }
+.cc-status--outdated  { background: var(--facis-warning-light); color: var(--color-warning-dark); }
 
 .cc-name {
   font-size: 0.8rem;

@@ -220,50 +220,23 @@ open http://localhost:8080/docs
 
 ---
 
-## 5. Docker Compose Deployment
+## 5. Local Development
 
-### 5.1 Local Stack with Docker Compose
+> **TDR §9.1.1:** Docker Compose is not part of any FACIS deliverable. The
+> previous `dev/docker-compose.yml` path has been removed. Local development
+> runs the service directly:
+>
+> ```bash
+> cd services/ai-insight-service
+> cp .env.example .env
+> pip install -e ".[dev]"
+> python -m src.main
+> ```
+>
+> See `../guides/setup.md` for the full local setup. Production deployment
+> is covered by section 6 below (Kubernetes + Helm).
 
-The `docker-compose.yml` starts the service and Redis for caching:
-
-```bash
-# Build and start all services
-docker compose up -d --build
-
-# Verify services are running
-docker compose ps
-
-# View service logs
-docker compose logs -f ai-insight
-```
-
-Expected services:
-
-```
-NAME                COMMAND             STATUS         PORTS
-facis-ai-insight    python -m src.main  Up (healthy)   0.0.0.0:8080->8080/tcp
-facis-ai-insight-redis  redis-server    Up (healthy)   0.0.0.0:6379->6379/tcp
-```
-
-### 5.2 Configure for Your Environment
-
-Edit the `.env` file before starting Docker Compose:
-
-```bash
-# Copy the example to .env
-cp .env.example .env
-
-# Edit with your LLM and Trino credentials
-nano .env
-```
-
-Then start Docker Compose:
-
-```bash
-docker compose up -d --build
-```
-
-### 5.3 Test Insight Endpoints
+### 5.1 Test Insight Endpoints (against a running local instance)
 
 ```bash
 # Energy summary
@@ -277,16 +250,6 @@ curl -X POST http://localhost:8080/api/v1/insights/energy-summary \
     "end_ts": "2026-04-05T00:00:00Z",
     "timezone": "UTC"
   }'
-```
-
-### 5.4 Stop Docker Compose Stack
-
-```bash
-# Stop all services
-docker compose down
-
-# Stop and remove volumes
-docker compose down -v
 ```
 
 ---
@@ -689,19 +652,16 @@ kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service | grep -i llm
 View service logs:
 
 ```bash
-# Docker Compose
-docker compose logs -f ai-insight
-
-# Kubernetes (live)
+# Live tail
 kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service -f
 
-# Kubernetes (last 100 lines)
+# Last 100 lines
 kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service --tail=100
 
-# Kubernetes (last 5 minutes)
+# Last 5 minutes
 kubectl logs -n facis -l app.kubernetes.io/name=ai-insight-service --since=5m
 
-# Kubernetes (from previous pod if crashed)
+# From previous pod if crashed
 kubectl logs -n facis <pod-name> --previous
 ```
 
@@ -721,20 +681,7 @@ kubectl logs -n facis <pod-name> --previous
 
 ## 10. Cleanup and Shutdown
 
-### 10.1 Docker Compose
-
-```bash
-# Stop all services
-docker compose down
-
-# Stop and remove data volumes
-docker compose down -v
-
-# Remove image
-docker compose down --rmi all
-```
-
-### 10.2 Kubernetes
+### 10.1 Kubernetes
 
 ```bash
 # Uninstall Helm release

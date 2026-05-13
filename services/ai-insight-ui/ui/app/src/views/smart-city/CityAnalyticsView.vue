@@ -7,7 +7,7 @@ import {
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
-import { getStreetlights, getStreetlightCurrent, getStreetlightHistory, getTrafficZones, getTrafficCurrent } from '@/services/api'
+import { getStreetlights, getStreetlightCurrent, getStreetlightHistory, getTrafficZones, getTrafficCurrent } from '@/services/dispatch'
 import { computeTrends, detectStreetlightAnomalies, extractStreetlightPowerW, extractTrafficIndex } from '@/services/analytics'
 import type { Anomaly } from '@/services/analytics'
 
@@ -78,7 +78,7 @@ async function fetchData(): Promise<void> {
     const firstLightId = lightsRes.streetlights[0].light_id
     const hist = await getStreetlightHistory(firstLightId)
     if (hist?.readings?.length) {
-      const trend = computeTrends(hist.readings, extractStreetlightPowerW)
+      const trend = computeTrends(hist.readings as unknown as Array<{ timestamp: string; [key: string]: unknown }>, extractStreetlightPowerW)
       historyLabels.value = trend.labels
       powerHistory.value  = trend.values
       baselinePower.value = trend.values.map(() => lightsRes.streetlights[0].rated_power_w)
@@ -133,18 +133,18 @@ const barOptions: ChartOptions<'bar'> = {
     tooltip: { backgroundColor: 'rgba(15,23,42,0.92)', bodyFont: { family: 'Inter', size: 12 }, padding: 10 }
   },
   scales: {
-    x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8' } },
-    y: { min: 0, max: 110, grid: { color: 'rgba(226,232,240,0.6)' }, ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8' } }
+    x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, color: 'var(--color-text-soft)' } },
+    y: { min: 0, max: 110, grid: { color: 'rgba(226,232,240,0.6)' }, ticks: { font: { family: 'Inter', size: 11 }, color: 'var(--color-text-soft)' } }
   }
 }
 
 const powerDatasets = computed(() => [
-  { label: 'Actual Power (W)', data: powerHistory.value, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.10)', fill: true, tension: 0.4 },
-  { label: 'Rated Power (W)', data: baselinePower.value, borderColor: '#94a3b8', backgroundColor: 'transparent', tension: 0.3 }
+  { label: 'Actual Power (W)', data: powerHistory.value, borderColor: 'var(--color-warning)', backgroundColor: 'rgba(245,158,11,0.10)', fill: true, tension: 0.4 },
+  { label: 'Rated Power (W)', data: baselinePower.value, borderColor: 'var(--color-text-soft)', backgroundColor: 'transparent', tension: 0.3 }
 ])
 
 function impactColor(level: string): string {
-  return level === 'high' ? '#ef4444' : level === 'medium' ? '#f59e0b' : '#3b82f6'
+  return level === 'high' ? 'var(--color-danger)' : level === 'medium' ? 'var(--color-warning)' : 'var(--color-secondary)'
 }
 </script>
 
@@ -168,12 +168,12 @@ function impactColor(level: string): string {
 
       <template v-else>
         <div class="grid-kpi">
-          <KpiCard label="Avg Dimming Level"    :value="avgDimming" unit="%" trend="stable" icon="pi-sliders-v" color="#3b82f6" />
-          <KpiCard label="Efficiency Score"     :value="efficiencyScore" unit="%" trend="stable" icon="pi-leaf" color="#22c55e" />
-          <KpiCard label="Total Power (W)"      :value="totalPowerW.toFixed(0)" unit="" trend="stable" icon="pi-bolt" color="#f59e0b" />
-          <KpiCard label="Inefficient Zones"    :value="inefficientZones" unit="" trend="stable" icon="pi-exclamation-triangle" color="#ef4444" />
-          <KpiCard label="Monitored Zones"      :value="zones.length" unit="" trend="stable" icon="pi-map" color="#22c55e" />
-          <KpiCard label="Anomalies Detected"   :value="anomalies.length" unit="" trend="stable" icon="pi-search" color="#8b5cf6" />
+          <KpiCard label="Avg Dimming Level"    :value="avgDimming" unit="%" trend="stable" icon="pi-sliders-v" color="var(--color-secondary)" />
+          <KpiCard label="Efficiency Score"     :value="efficiencyScore" unit="%" trend="stable" icon="pi-leaf" color="var(--color-success)" />
+          <KpiCard label="Total Power (W)"      :value="totalPowerW.toFixed(0)" unit="" trend="stable" icon="pi-bolt" color="var(--color-warning)" />
+          <KpiCard label="Inefficient Zones"    :value="inefficientZones" unit="" trend="stable" icon="pi-exclamation-triangle" color="var(--color-danger)" />
+          <KpiCard label="Monitored Zones"      :value="zones.length" unit="" trend="stable" icon="pi-map" color="var(--color-success)" />
+          <KpiCard label="Anomalies Detected"   :value="anomalies.length" unit="" trend="stable" icon="pi-search" color="var(--chart-series-6)" />
         </div>
 
         <div v-if="!zones.length" class="card card-body empty-state">
@@ -204,7 +204,7 @@ function impactColor(level: string): string {
             <div class="section-title" style="margin-bottom:1rem">Statistical Anomalies Detected (>2σ)</div>
             <div class="anomaly-list">
               <div v-for="a in anomalies.slice(0, 8)" :key="a.id" class="anomaly-row">
-                <span class="anm-severity" :style="{ color: a.severity === 'critical' ? '#ef4444' : '#f59e0b' }">{{ a.severity.toUpperCase() }}</span>
+                <span class="anm-severity" :style="{ color: a.severity === 'critical' ? 'var(--color-danger)' : 'var(--color-warning)' }">{{ a.severity.toUpperCase() }}</span>
                 <div class="anm-info">
                   <span class="anm-text">{{ a.explanation }}</span>
                   <span class="anm-time">{{ new Date(a.timestamp).toLocaleTimeString('en-GB') }}</span>
@@ -224,7 +224,7 @@ function impactColor(level: string): string {
               <div v-for="z in zones" :key="z.zoneId" class="zone-table__row">
                 <span class="zone-id">{{ z.zoneId }}</span>
                 <span>{{ z.lightCount }}</span>
-                <span :style="{ color: z.avgDimmingLevel > 85 ? '#ef4444' : 'inherit' }">{{ z.avgDimmingLevel }}%</span>
+                <span :style="{ color: z.avgDimmingLevel > 85 ? 'var(--color-danger)' : 'inherit' }">{{ z.avgDimmingLevel }}%</span>
                 <span>{{ z.avgPowerW.toFixed(0) }}</span>
                 <span>{{ (z.trafficIndex * 100).toFixed(0) }}%</span>
                 <span :class="z.status === 'healthy' ? 'status-ok' : z.status === 'warning' ? 'status-warn' : 'status-err'">{{ z.status }}</span>
@@ -238,8 +238,8 @@ function impactColor(level: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state, .empty-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 3rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 
@@ -249,7 +249,7 @@ function impactColor(level: string): string {
 .section-title { font-size: 0.9rem; font-weight: 600; color: var(--facis-text); }
 .section-subtitle { font-size: 0.78rem; color: var(--facis-text-secondary); margin-top: 0.2rem; }
 .legend-note { font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 20px; }
-.legend-note--red { background: #fee2e2; color: #991b1b; }
+.legend-note--red { background: var(--color-danger-light); color: var(--color-danger-dark); }
 
 .anomaly-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .anomaly-row { display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0.75rem; background: var(--facis-surface-2); border-radius: var(--facis-radius-sm); }

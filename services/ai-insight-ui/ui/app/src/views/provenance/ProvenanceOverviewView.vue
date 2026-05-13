@@ -5,7 +5,7 @@ import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
 import Button from 'primevue/button'
-import { getMeters, getPVSystems, getStreetlights, getTrafficZones, getLoads } from '@/services/api'
+import { getMeters, getPVSystems, getStreetlights, getTrafficZones, getLoads } from '@/services/dispatch'
 
 const isLive = ref(false)
 const error = ref(false)
@@ -56,17 +56,17 @@ const chartLabels = computed(() => Array.from({ length: 7 }, (_, i) => {
 const chartData = computed(() => Array.from({ length: 7 }, () => totalSources.value * 24 * 3))
 
 const kpis = computed(() => [
-  { label: 'Tracked Objects', value: trackedObjects.value > 0 ? trackedObjects.value.toLocaleString('en-GB') : '—', unit: '', trend: 'up' as const, trendValue: '+47', icon: 'pi-objects-column', color: '#3b82f6' },
-  { label: 'Active Transformations', value: totalSources.value > 0 ? 4 : '—', unit: '', trend: 'stable' as const, icon: 'pi-sitemap', color: '#8b5cf6' },
-  { label: 'Validation Pass Rate', value: totalSources.value > 0 ? 97.6 : '—', unit: totalSources.value > 0 ? '%' : '', trend: 'up' as const, trendValue: '+0.3%', icon: 'pi-check-circle', color: '#22c55e' },
-  { label: 'Linked Data Products', value: totalSources.value > 0 ? 6 : '—', unit: '', trend: 'stable' as const, icon: 'pi-box', color: '#f59e0b' }
+  { label: 'Tracked Objects', value: trackedObjects.value > 0 ? trackedObjects.value.toLocaleString('en-GB') : '—', unit: '', trend: 'up' as const, trendValue: '+47', icon: 'pi-objects-column', color: 'var(--color-secondary)' },
+  { label: 'Active Transformations', value: totalSources.value > 0 ? 4 : '—', unit: '', trend: 'stable' as const, icon: 'pi-sitemap', color: 'var(--chart-series-6)' },
+  { label: 'Validation Pass Rate', value: totalSources.value > 0 ? 97.6 : '—', unit: totalSources.value > 0 ? '%' : '', trend: 'up' as const, trendValue: '+0.3%', icon: 'pi-check-circle', color: 'var(--color-success)' },
+  { label: 'Linked Data Products', value: totalSources.value > 0 ? 6 : '—', unit: '', trend: 'stable' as const, icon: 'pi-box', color: 'var(--color-warning)' }
 ])
 
 // Transformation history chart
 const chartDatasets = computed(() => [{
   label: 'Transformations / day',
   data: chartData.value,
-  borderColor: '#3b82f6',
+  borderColor: 'var(--color-secondary)',
   backgroundColor: 'rgba(59,130,246,0.08)',
   fill: true,
   tension: 0.4
@@ -197,12 +197,12 @@ function formatRelative(ts: string): string {
 <style scoped>
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 
@@ -376,9 +376,9 @@ function formatRelative(ts: string): string {
   text-align: right;
 }
 
-.vcb-value--pass { color: #15803d; }
-.vcb-value--warn { color: #92400e; }
-.vcb-value--fail { color: #991b1b; }
+.vcb-value--pass { color: var(--color-success-dark); }
+.vcb-value--warn { color: var(--color-warning-dark); }
+.vcb-value--fail { color: var(--color-danger-dark); }
 
 .vcb-count {
   font-size: 0.75rem;

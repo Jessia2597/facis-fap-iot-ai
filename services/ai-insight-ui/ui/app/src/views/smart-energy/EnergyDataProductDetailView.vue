@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DetailTabs from '@/components/common/DetailTabs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getMeters, getMeterCurrent, getPVSystems, getPVCurrent, getSimHealth } from '@/services/api'
+import { getMeters, getMeterCurrent, getPVSystems, getPVCurrent, getSimHealth } from '@/services/dispatch'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,7 +53,12 @@ const product = computed(() => ({
   version: '2.1.0',
   sourceCount: meterCount.value + pvCount.value,
   apiStatus: simStatus.value === 'ok' ? 'available' : 'maintenance',
-  description: 'Harmonised energy metering and PV generation data from simulation API.'
+  description: 'Harmonised energy metering and PV generation data from simulation API.',
+  category: 'Energy',
+  useCase: 'Smart Energy',
+  semanticScope: 'energy.metering.harmonised.v2',
+  exportStatus: simStatus.value === 'ok' ? 'available' : 'unavailable',
+  lastUpdated: new Date().toISOString(),
 }))
 
 const tabs = [
@@ -238,7 +243,7 @@ function fmtTs(iso: string): string {
                 <span>
                   <span
                     class="req-badge"
-                    :style="{ color: f.required ? '#15803d' : '#94a3b8', background: f.required ? '#dcfce7' : '#f1f5f9' }"
+                    :style="{ color: f.required ? 'var(--color-success-dark)' : 'var(--color-text-soft)', background: f.required ? 'var(--color-success-soft)' : 'var(--color-neutral-bg)' }"
                   >{{ f.required ? 'Required' : 'Optional' }}</span>
                 </span>
                 <span style="font-size: 0.786rem; color: var(--facis-text-secondary)">{{ f.description }}</span>
@@ -269,7 +274,7 @@ function fmtTs(iso: string): string {
                 <span style="font-size: 0.786rem">{{ src.contribution }}</span>
                 <div class="quality-cell">
                   <div class="quality-bar">
-                    <div class="quality-bar__fill" :style="{ width: `${src.quality}%`, background: src.quality > 90 ? '#22c55e' : src.quality > 70 ? '#f59e0b' : '#ef4444' }"></div>
+                    <div class="quality-bar__fill" :style="{ width: `${src.quality}%`, background: src.quality > 90 ? 'var(--color-success)' : src.quality > 70 ? 'var(--color-warning)' : 'var(--color-danger)' }"></div>
                   </div>
                   <span style="font-size:0.75rem;font-weight:600">{{ src.quality }}%</span>
                 </div>
@@ -427,7 +432,7 @@ function fmtTs(iso: string): string {
                 class="audit-entry"
               >
                 <div class="audit-entry__timeline">
-                  <div class="audit-dot" :style="{ background: entry.result === 'success' ? '#22c55e' : entry.result === 'warning' ? '#f59e0b' : '#ef4444' }"></div>
+                  <div class="audit-dot" :style="{ background: entry.result === 'success' ? 'var(--color-success)' : entry.result === 'warning' ? 'var(--color-warning)' : 'var(--color-danger)' }"></div>
                   <div class="audit-line"></div>
                 </div>
                 <div class="audit-entry__body">
@@ -502,7 +507,7 @@ function fmtTs(iso: string): string {
 }
 
 .code-pill--gray { background: var(--facis-surface-2); color: var(--facis-text-secondary); }
-.code-pill--blue { background: rgba(59,130,246,0.1); color: #1d4ed8; }
+.code-pill--blue { background: rgba(59,130,246,0.1); color: var(--color-info-dark); }
 
 .desc-text {
   font-size: 0.875rem;
@@ -531,7 +536,7 @@ function fmtTs(iso: string): string {
   padding: 0.2rem 0.6rem;
   border-radius: 4px;
   background: rgba(34,197,94,0.1);
-  color: #15803d;
+  color: var(--color-success-dark);
 }
 
 .schema-table {
@@ -690,8 +695,8 @@ function fmtTs(iso: string): string {
   font-size: 0.786rem;
   line-height: 1.65;
   color: var(--facis-text);
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--color-text);
+  color: var(--color-border);
   padding: 1.25rem;
   border-radius: var(--facis-radius);
   overflow-x: auto;
@@ -724,7 +729,7 @@ function fmtTs(iso: string): string {
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   background: rgba(34,197,94,0.15);
-  color: #15803d;
+  color: var(--color-success-dark);
 }
 
 .api-endpoint {
@@ -755,7 +760,7 @@ function fmtTs(iso: string): string {
 .param-type {
   font-family: var(--facis-font-mono);
   font-size: 0.75rem;
-  color: #8b5cf6;
+  color: var(--chart-series-6);
   min-width: 120px;
 }
 
@@ -843,7 +848,7 @@ function fmtTs(iso: string): string {
   border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: var(--facis-radius);
   font-size: 0.857rem;
-  color: #92400e;
+  color: var(--color-warning-dark);
   margin-bottom: 1.25rem;
   line-height: 1.5;
 }

@@ -5,7 +5,7 @@ import Dialog from 'primevue/dialog'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getSimHealth, getAiHealth } from '@/services/api'
+import { getSimHealth, getAiHealth } from '@/services/dispatch'
 
 const isLive    = ref(false)
 const error     = ref(false)
@@ -281,7 +281,7 @@ function logClass(line: string): string {
 }
 
 .logs-panel {
-  background: #0f172a;
+  background: var(--color-text);
   border-radius: var(--facis-radius-sm);
   padding: 1rem;
   max-height: 340px;
@@ -298,17 +298,17 @@ function logClass(line: string): string {
   line-height: 1.5;
 }
 
-.log-line--info  { color: #94a3b8; }
-.log-line--warn  { color: #fbbf24; }
-.log-line--error { color: #f87171; }
+.log-line--info  { color: var(--color-text-soft); }
+.log-line--warn  { color: var(--color-warning); }
+.log-line--error { color: var(--color-danger); }
 
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

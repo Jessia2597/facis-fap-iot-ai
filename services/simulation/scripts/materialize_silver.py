@@ -35,10 +35,9 @@ from setup_lakehouse import (
     DEFAULT_CATALOG,
     DEFAULT_S3_BUCKET,
     SILVER_VIEWS,
-    connect_trino,
+    AuthRefreshingSession,
     execute,
     execute_ddl,
-    get_oidc_token,
     load_env_file,
     resolve_credentials,
 )
@@ -69,15 +68,20 @@ def ensure_watermark_table(conn, catalog: str, s3_bucket: str) -> None:
 
 
 def get_watermark(conn, catalog: str, table_name: str) -> str | None:
-    """Return the last watermark timestamp for a table, or None."""
-    # table_name comes from the hardcoded SILVER_VIEWS dict — validated below
+    """Return the most recently recorded watermark timestamp for a table,
+    or None.  We pick the row with the latest `updated_at` because the
+    table is append-only (see update_watermark below) — multiple rows may
+    exist per table_name, oldest first."""
+    # table_name comes from the hardcoded SILVER_VIEWS dict — validated.
+    # Trino's python client does not support ? placeholder substitution
+    # against this Trino version, so we inline the validated identifier.
     if table_name not in SILVER_VIEWS:
         raise ValueError(f"Invalid table name: {table_name}")
     rows = execute(
         conn,
         f'SELECT last_watermark FROM "{catalog}".silver._watermarks'
-        f" WHERE table_name = ?",
-        params=(table_name,),
+        f" WHERE table_name = '{table_name}'"
+        f" ORDER BY updated_at DESC LIMIT 1",
     )
     if rows and rows[0][0]:
         return str(rows[0][0])
@@ -96,17 +100,21 @@ def update_watermark(conn, catalog: str, table_name: str) -> None:
         return
     max_ts = str(rows[0][0])
 
-    # Delete old watermark row, then insert new one
-    execute(
-        conn,
-        f'DELETE FROM "{catalog}".silver._watermarks WHERE table_name = ?',
-        params=(table_name,),
-    )
+    # Append a new watermark row.  We deliberately DO NOT delete previous
+    # rows for this table_name: Iceberg's DELETE + INSERT in two separate
+    # statements creates a race where the INSERT's commit conflicts with
+    # the DELETE's positional-delete file (ICEBERG_COMMIT_ERROR: "Found
+    # new conflicting delete files that can apply to records matching
+    # ref(name=\"table_name\")...", observed 2026-05-05 on a backlog
+    # catch-up run).  Append-only sidesteps the race entirely; get_watermark
+    # picks the latest row via ORDER BY updated_at DESC LIMIT 1.  At
+    # 9 tables × every 10 minutes = ~50k rows/year — trivially small.
+    # table_name is validated against SILVER_VIEWS; max_ts is a TIMESTAMP
+    # literal from Trino's MAX().
     execute(
         conn,
         f'INSERT INTO "{catalog}".silver._watermarks'
-        f" VALUES (?, TIMESTAMP ?, CURRENT_TIMESTAMP)",
-        params=(table_name, max_ts),
+        f" VALUES ('{table_name}', TIMESTAMP '{max_ts}', CURRENT_TIMESTAMP)",
     )
     logger.info("  Watermark for %s updated to %s", table_name, max_ts)
 
@@ -250,8 +258,13 @@ def main() -> None:
         resolve_credentials(args)
     )
 
-    token = get_oidc_token(keycloak_url, username, password, client_secret)
-    conn = connect_trino(trino_host, trino_port, token, catalog)
+    # AuthRefreshingSession handles 401-on-token-expiry transparently. Long
+    # backlog catch-up runs (post-HMS-zombie outage 2026-05-02) commonly
+    # exceed the 5-minute Keycloak token TTL; the session refreshes + retries.
+    conn = AuthRefreshingSession(
+        trino_host, trino_port, catalog,
+        keycloak_url, username, password, client_secret,
+    )
 
     materialize_all(conn, catalog, s3_bucket, args.tables, args.full_refresh, args.dry_run)
 

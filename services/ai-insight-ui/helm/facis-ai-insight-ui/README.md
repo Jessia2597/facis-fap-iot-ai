@@ -61,9 +61,8 @@ mkdir -p $CHART/files/ui
 cp facis-fap-iot-ai/services/ai-insight-ui/flows/flows.full.json \
    $CHART/files/flows.full.json
 
-cp facis-fap-iot-ai/services/ai-insight-ui/ui/src/index.html \
-   facis-fap-iot-ai/services/ai-insight-ui/ui/src/index.js \
-   facis-fap-iot-ai/services/ai-insight-ui/ui/src/index.css \
+npm --prefix facis-fap-iot-ai/services/ai-insight-ui/ui/app run build
+cp -r facis-fap-iot-ai/services/ai-insight-ui/ui/app/dist/. \
    $CHART/files/ui/
 
 helm package $CHART

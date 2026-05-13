@@ -1,0 +1,270 @@
+[
+  {
+    "id": "tab_aiui_deploy",
+    "type": "tab",
+    "label": "AI Insight UI — Deploy",
+    "disabled": false,
+    "info": "Standard FAP deploy endpoint for the AI Insight UI bundle.\n\nReceives a built Vite SPA (zip) at POST /api/v1/aiInsight/deploy, persists it,\nextracts it into /data/uibuilder/aiInsight/src/, and runs a defensive sed to\nensure asset paths resolve under the served URL (/orce/aiInsight/...). The\nsed pattern is a no-op when Vite was built with `base: '/orce/aiInsight/'`\n(which is the source-of-truth default in vite.config.ts).\n\nAuth: Bearer token validated against env var FACIS_DEPLOY_TOKEN. Operators set\nthe token via Helm values or `kubectl set env` and provide it in CI as\n$FACIS_DEPLOY_TOKEN.\n\nFAP Guideline reference: pattern adapted from the reference example flow at\nguidelines and examples/flows.json (Atlas workspace root)."
+  },
+  {
+    "id": "node_deploy_in",
+    "type": "http in",
+    "z": "tab_aiui_deploy",
+    "name": "POST /api/v1/aiInsight/deploy",
+    "url": "/api/v1/aiInsight/deploy",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 180,
+    "y": 100,
+    "wires": [
+      [
+        "fn_deploy_auth"
+      ]
+    ]
+  },
+  {
+    "id": "fn_deploy_auth",
+    "type": "function",
+    "z": "tab_aiui_deploy",
+    "name": "validate bearer token",
+    "func": "const expected = env.get('FACIS_DEPLOY_TOKEN');\nif (!expected) {\n    node.error('FACIS_DEPLOY_TOKEN env var is not set on the orce pod', msg);\n    msg.statusCode = 500;\n    msg.payload = { ok: false, error: 'deploy endpoint not configured' };\n    return [null, msg];\n}\nconst h = (msg.req && msg.req.headers && msg.req.headers.authorization) || '';\nconst presented = h.startsWith('Bearer ') ? h.slice(7) : '';\nif (presented !== expected) {\n    msg.statusCode = 401;\n    msg.payload = { ok: false, error: 'unauthorized' };\n    return [null, msg];\n}\nmsg.uibuildername = 'aiInsight';\nreturn [msg, null];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 100,
+    "wires": [
+      [
+        "fn_deploy_writebuf"
+      ],
+      [
+        "node_deploy_response"
+      ]
+    ]
+  },
+  {
+    "id": "fn_deploy_writebuf",
+    "type": "function",
+    "z": "tab_aiui_deploy",
+    "name": "write upload data",
+    "func": "let buf = null;\nif (Buffer.isBuffer(msg.payload)) {\n    buf = msg.payload;\n} else if (msg.req && msg.req.rawBody && Buffer.isBuffer(msg.req.rawBody)) {\n    buf = msg.req.rawBody;\n} else if (typeof msg.payload === 'string') {\n    buf = Buffer.from(msg.payload, 'binary');\n    node.warn('Payload arrived as string; converted using latin1. Prefer application/zip.');\n} else {\n    node.error('Payload is not Buffer/String and no rawBody present', msg);\n    msg.statusCode = 400;\n    msg.payload = { ok: false, error: 'expected application/zip body' };\n    return [null, msg];\n}\nif (buf.length < 4 || buf[0] !== 0x50 || buf[1] !== 0x4B) {\n    node.warn('Payload does not start with PK (ZIP). Check Content-Type / middleware.');\n}\nmsg.payload = buf;\nmsg.filename = '/data/uibuilder/aiInsight-bundle.zip';\nreturn [msg, null];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 200,
+    "wires": [
+      [
+        "node_deploy_filewrite"
+      ],
+      [
+        "node_deploy_response"
+      ]
+    ]
+  },
+  {
+    "id": "node_deploy_filewrite",
+    "type": "file",
+    "z": "tab_aiui_deploy",
+    "name": "persist bundle.zip",
+    "filename": "filename",
+    "filenameType": "msg",
+    "appendNewline": false,
+    "createDir": true,
+    "overwriteFile": "true",
+    "encoding": "setbymsg",
+    "x": 760,
+    "y": 200,
+    "wires": [
+      [
+        "fn_deploy_unzip_cmd"
+      ]
+    ]
+  },
+  {
+    "id": "fn_deploy_unzip_cmd",
+    "type": "function",
+    "z": "tab_aiui_deploy",
+    "name": "build unzip command",
+    "func": "const name = msg.uibuildername;\nmsg.command =\n    `sh -c 'set -e; ZIP=\"/data/uibuilder/aiInsight-bundle.zip\"; ` +\n    `DST=\"/data/uibuilder/${name}/src\"; ` +\n    `TMP=\"$(mktemp -d)\"; ` +\n    `mkdir -p \"$DST\"; ` +\n    `unzip -q -o \"$ZIP\" -d \"$TMP\"; ` +\n    `SRC=\"$TMP/dist\"; [ -d \"$SRC\" ] || SRC=\"$TMP\"; ` +\n    `rm -rf \"$DST\"/*; ` +\n    `cp -a \"$SRC\"/. \"$DST\"/; ` +\n    `chmod -R u+rw,g+rw,o+rw \"$DST\"; ` +\n    `rm -rf \"$TMP\"'`;\nmsg._stage = 'unzip';\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 200,
+    "wires": [
+      [
+        "node_deploy_unzip"
+      ]
+    ]
+  },
+  {
+    "id": "node_deploy_unzip",
+    "type": "exec",
+    "z": "tab_aiui_deploy",
+    "command": "",
+    "addpay": "command",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "",
+    "winHide": false,
+    "oldrc": false,
+    "name": "exec unzip",
+    "x": 1320,
+    "y": 200,
+    "wires": [
+      [],
+      [],
+      [
+        "switch_unzip_rc"
+      ]
+    ]
+  },
+  {
+    "id": "switch_unzip_rc",
+    "type": "switch",
+    "z": "tab_aiui_deploy",
+    "name": "rc==0?",
+    "property": "payload.code",
+    "propertyType": "msg",
+    "rules": [
+      {"t": "eq", "v": "0", "vt": "num"},
+      {"t": "else"}
+    ],
+    "checkall": "false",
+    "repair": false,
+    "outputs": 2,
+    "x": 180,
+    "y": 320,
+    "wires": [
+      [
+        "fn_deploy_rewrite_cmd"
+      ],
+      [
+        "fn_deploy_error"
+      ]
+    ]
+  },
+  {
+    "id": "fn_deploy_rewrite_cmd",
+    "type": "function",
+    "z": "tab_aiui_deploy",
+    "name": "build asset-path rewrite",
+    "func": "const name = msg.uibuildername;\nconst file = `/data/uibuilder/${name}/src/index.html`;\n// Defensive: rewrite bare `/assets/` to `/orce/<name>/assets/`. No-op when\n// the bundle was built with `base: '/orce/aiInsight/'` (the default in\n// vite.config.ts) since asset URLs already include the prefix.\nmsg.command =\n    `sh -c '[ -f \"${file}\" ] || { echo \"index.html not found: ${file}\" >&2; exit 1; }; ` +\n    `sed -E -i \"s#(src|href)=\\\\\\\"/assets/#\\\\\\\\1=\\\\\\\"/orce/${name}/assets/#g\" \"${file}\"'`;\nmsg._stage = 'rewrite';\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 320,
+    "wires": [
+      [
+        "node_deploy_rewrite"
+      ]
+    ]
+  },
+  {
+    "id": "node_deploy_rewrite",
+    "type": "exec",
+    "z": "tab_aiui_deploy",
+    "command": "",
+    "addpay": "command",
+    "append": "",
+    "useSpawn": "false",
+    "timer": "",
+    "winHide": false,
+    "oldrc": false,
+    "name": "exec rewrite",
+    "x": 760,
+    "y": 320,
+    "wires": [
+      [],
+      [],
+      [
+        "switch_rewrite_rc"
+      ]
+    ]
+  },
+  {
+    "id": "switch_rewrite_rc",
+    "type": "switch",
+    "z": "tab_aiui_deploy",
+    "name": "rc==0?",
+    "property": "payload.code",
+    "propertyType": "msg",
+    "rules": [
+      {"t": "eq", "v": "0", "vt": "num"},
+      {"t": "else"}
+    ],
+    "checkall": "false",
+    "repair": false,
+    "outputs": 2,
+    "x": 920,
+    "y": 320,
+    "wires": [
+      [
+        "fn_deploy_ok"
+      ],
+      [
+        "fn_deploy_error"
+      ]
+    ]
+  },
+  {
+    "id": "fn_deploy_ok",
+    "type": "function",
+    "z": "tab_aiui_deploy",
+    "name": "200 OK",
+    "func": "msg.statusCode = 200;\nmsg.headers = { 'Content-Type': 'application/json' };\nmsg.payload = { ok: true, target: '/data/uibuilder/aiInsight/src' };\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 320,
+    "wires": [
+      [
+        "node_deploy_response"
+      ]
+    ]
+  },
+  {
+    "id": "fn_deploy_error",
+    "type": "function",
+    "z": "tab_aiui_deploy",
+    "name": "500 error",
+    "func": "msg.statusCode = 500;\nmsg.headers = { 'Content-Type': 'application/json' };\nconst stage = msg._stage || 'deploy';\nconst rc = (msg.payload && typeof msg.payload === 'object') ? msg.payload : {};\nconst detail = `${stage} exited with code ${rc.code ?? '?'} signal ${rc.signal ?? '—'}`;\nmsg.payload = { ok: false, error: `${stage} step failed`, detail };\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1060,
+    "y": 400,
+    "wires": [
+      [
+        "node_deploy_response"
+      ]
+    ]
+  },
+  {
+    "id": "node_deploy_response",
+    "type": "http response",
+    "z": "tab_aiui_deploy",
+    "name": "HTTP response",
+    "statusCode": "",
+    "headers": {},
+    "x": 1320,
+    "y": 320,
+    "wires": []
+  }
+]

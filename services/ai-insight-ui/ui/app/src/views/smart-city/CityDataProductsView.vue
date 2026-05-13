@@ -4,27 +4,44 @@ import { useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getStreetlights, getTrafficZones, getCityEvents, getSimHealth } from '@/services/api'
+import { submit } from '@/services/transport'
+
+interface RealProduct {
+  id: string; table_name: string; name: string; domain: string;
+  semanticScope: string | null; description: string | null;
+  version: string; apiStatus: string; lastUpdated: string; sourceTable: string
+}
+type DecoratedProduct = RealProduct & {
+  exportStatus: string;
+  zoneScope: string;
+  schema: string[];
+  exportFormats: string[];
+  owner: string;
+}
 
 const router = useRouter()
-const loading       = ref(true)
-const isLive        = ref(false)
-const lightCount    = ref(0)
-const zoneCount     = ref(0)
-const eventZoneCount = ref(0)
-const simHealthy    = ref(false)
+const loading = ref(true)
+const isLive = ref(false)
+const products = ref<DecoratedProduct[]>([])
 
 async function fetchData(): Promise<void> {
   loading.value = true
   try {
-    const [lightsRes, trafficRes, eventsRes, health] = await Promise.all([
-      getStreetlights(), getTrafficZones(), getCityEvents(), getSimHealth()
-    ])
-    lightCount.value     = lightsRes?.count ?? 0
-    zoneCount.value      = trafficRes?.count ?? 0
-    eventZoneCount.value = eventsRes?.count ?? 0
-    simHealthy.value     = health?.status === 'ok' || health?.status === 'healthy'
-    isLive.value = true
+    const r = await submit<unknown, { products: RealProduct[]; count: number }>('data-products.city.list', {})
+    if (r.ok && r.data?.products) {
+      products.value = r.data.products.map(p => ({
+        ...p,
+        exportStatus: p.apiStatus === 'available' ? 'ready' : 'pending',
+        zoneScope: 'City-wide',  // gold tables are city-wide aggregates
+        // Schema (column list) is fetched lazily via data-products.detail. The
+        // list view shows table_name as a single-line marker; the detail view
+        // shows the real columns.
+        schema: [p.table_name],
+        exportFormats: ['JSON', 'CSV', 'Parquet'],
+        owner: 'City Platform Team',
+      }))
+      isLive.value = true
+    }
   } catch {
     // leave defaults
   } finally {
@@ -34,44 +51,9 @@ async function fetchData(): Promise<void> {
 
 onMounted(() => fetchData())
 
-const products = computed(() => {
-  const now = new Date().toISOString()
-  const available = simHealthy.value ? 'available' : 'maintenance'
-  return [
-    {
-      id: 'scdp-001', name: 'Streetlight Telemetry Stream', semanticScope: 'SAREF4CITY / W3C SSN',
-      description: `Real-time dimming levels, power draw, and zone assignment from ${lightCount.value} streetlights — 30s resolution`,
-      apiStatus: available, exportStatus: 'ready', version: 'v1.2.0', zoneScope: `${zoneCount.value} zones`,
-      schema: ['light_id', 'zone_id', 'dimming_level_pct', 'power_w', 'timestamp'],
-      exportFormats: ['JSON', 'Parquet', 'CSV'], owner: 'City Platform Team', lastUpdated: now
-    },
-    {
-      id: 'scdp-002', name: 'Traffic Flow Timeseries', semanticScope: 'ITS / DATEX II',
-      description: `Hourly traffic index from ${zoneCount.value} monitoring zones — suitable for adaptive lighting correlation`,
-      apiStatus: available, exportStatus: 'ready', version: 'v1.0.0', zoneScope: `${zoneCount.value} zones`,
-      schema: ['zone_id', 'traffic_index', 'timestamp'],
-      exportFormats: ['JSON', 'CSV'], owner: 'Traffic Analytics', lastUpdated: now
-    },
-    {
-      id: 'scdp-003', name: 'City Event Feed', semanticScope: 'NGSI-LD / FIWARE',
-      description: `Active event stream from ${eventZoneCount.value} zones — severity-classified incidents with lifecycle tracking`,
-      apiStatus: available, exportStatus: 'pending', version: 'v0.9.0', zoneScope: `${eventZoneCount.value} zones`,
-      schema: ['zone_id', 'event_type', 'severity', 'active', 'timestamp'],
-      exportFormats: ['JSON'], owner: 'Safety & Ops', lastUpdated: now
-    },
-    {
-      id: 'scdp-004', name: 'City Visibility & Fog Index', semanticScope: 'WMO / ISO 19157',
-      description: 'Dawn/dusk transitions, fog index, and visibility metrics for context-aware lighting decisions',
-      apiStatus: available, exportStatus: 'ready', version: 'v1.0.0', zoneScope: 'City-wide',
-      schema: ['fog_index', 'visibility', 'sunrise_time', 'sunset_time', 'timestamp'],
-      exportFormats: ['JSON', 'CSV'], owner: 'City Platform Team', lastUpdated: now
-    }
-  ]
-})
-
 const availableCount = computed(() => products.value.filter(p => p.apiStatus === 'available').length)
 const exportReadyCount = computed(() => products.value.filter(p => p.exportStatus === 'ready').length)
-const totalSchemaFields = computed(() => products.value.reduce((s, p) => s + p.schema.length, 0))
+const totalSchemaFields = computed(() => products.value.length)
 
 function formatDate(ts: string): string {
   try { return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }
@@ -99,12 +81,12 @@ function formatDate(ts: string): string {
 
       <template v-else>
         <div class="grid-kpi" style="grid-template-columns: repeat(auto-fill, minmax(175px,1fr))">
-          <KpiCard label="Total Products"  :value="products.length"    trend="stable" icon="pi-box" color="#3b82f6" />
-          <KpiCard label="API Available"   :value="availableCount"     trend="stable" icon="pi-check-circle" color="#22c55e" />
-          <KpiCard label="Export Ready"    :value="exportReadyCount"   trend="stable" icon="pi-download" color="#8b5cf6" />
-          <KpiCard label="Schema Fields"   :value="totalSchemaFields"  trend="stable" icon="pi-list" color="#0ea5e9" />
-          <KpiCard label="Light Sources"   :value="lightCount"         trend="stable" icon="pi-lightbulb" color="#f59e0b" />
-          <KpiCard label="Monitored Zones" :value="zoneCount"          trend="stable" icon="pi-map" color="#7c3aed" />
+          <KpiCard label="Total Products"  :value="products.length"    trend="stable" icon="pi-box" color="var(--color-secondary)" />
+          <KpiCard label="API Available"   :value="availableCount"     trend="stable" icon="pi-check-circle" color="var(--color-success)" />
+          <KpiCard label="Export Ready"    :value="exportReadyCount"   trend="stable" icon="pi-download" color="var(--chart-series-6)" />
+          <KpiCard label="Schema Fields"   :value="totalSchemaFields"  trend="stable" icon="pi-list" color="var(--color-secondary)" />
+          <KpiCard label="Catalogued Tables" :value="totalSchemaFields" trend="stable" icon="pi-lightbulb" color="var(--color-warning)" />
+          <KpiCard label="Available"          :value="availableCount"   trend="stable" icon="pi-map" color="var(--chart-series-6)" />
         </div>
 
         <div class="product-cards">
@@ -142,8 +124,8 @@ function formatDate(ts: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .view-page { display: flex; flex-direction: column; }
@@ -152,10 +134,10 @@ function formatDate(ts: string): string {
 .product-card { background: var(--facis-surface); border: 1px solid var(--facis-border); border-radius: var(--facis-radius); box-shadow: var(--facis-shadow); padding: 1.125rem; display: flex; flex-direction: column; gap: 0.6rem; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; }
 .product-card:hover { box-shadow: var(--facis-shadow-md); border-color: var(--facis-primary); }
 .product-card__header { display: flex; align-items: center; justify-content: space-between; }
-.product-card__icon { width: 38px; height: 38px; border-radius: var(--facis-radius-sm); background: #f3e8ff; color: #7c3aed; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+.product-card__icon { width: 38px; height: 38px; border-radius: var(--facis-radius-sm); background: var(--color-info-light); color: var(--chart-series-6); display: flex; align-items: center; justify-content: center; font-size: 1rem; }
 .product-card__statuses { display: flex; gap: 0.4rem; }
 .product-card__name { font-size: 0.9rem; font-weight: 700; color: var(--facis-text); }
-.product-card__scope { font-size: 0.75rem; color: #7c3aed; font-weight: 500; }
+.product-card__scope { font-size: 0.75rem; color: var(--chart-series-6); font-weight: 500; }
 .product-card__desc { font-size: 0.78rem; color: var(--facis-text-secondary); line-height: 1.55; flex: 1; }
 .product-card__meta { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .meta-chip { font-size: 0.7rem; font-weight: 500; padding: 0.18rem 0.5rem; border-radius: 20px; background: var(--facis-surface-2); border: 1px solid var(--facis-border); color: var(--facis-text-secondary); }

@@ -109,7 +109,7 @@ For detailed flow diagrams and cross-tab wiring, see `docs/flow-architecture.md`
 
 ## 4. Frontend Components
 
-The Vue 3 SPA (`ui/src/index.js` + `ui/app/src/`) comprises:
+The Vue 3 SPA (`ui/app/src/`) comprises:
 
 ### 4.1 Keycloak Authentication
 

@@ -1,0 +1,21 @@
+
+Running 14 tests using 1 worker
+
+  ✓   1 test/e2e/cluster-smoke.spec.ts:79:3 › SmartCity overview (24.2s)
+  ✓   2 test/e2e/cluster-smoke.spec.ts:79:3 › SmartCity zones (25.3s)
+  ✓   3 test/e2e/cluster-smoke.spec.ts:79:3 › SmartCity zone detail (25.7s)
+  ✓   4 test/e2e/cluster-smoke.spec.ts:79:3 › SmartCity context (28.8s)
+  ✓   5 test/e2e/cluster-smoke.spec.ts:79:3 › Analytics trends (25.3s)
+  ✓   6 test/e2e/cluster-smoke.spec.ts:79:3 › Analytics correlations (24.5s)
+  ✓   7 test/e2e/cluster-smoke.spec.ts:79:3 › Analytics anomalies (25.8s)
+  ✓   8 test/e2e/cluster-smoke.spec.ts:79:3 › Analytics recommendations (25.2s)
+  ✓   9 test/e2e/cluster-smoke.spec.ts:79:3 › Data Sources all (25.5s)
+  ✓  10 test/e2e/cluster-smoke.spec.ts:79:3 › Data Products all (25.3s)
+  ✓  11 test/e2e/cluster-smoke.spec.ts:79:3 › Provenance overview (24.8s)
+  ✓  12 test/e2e/cluster-smoke.spec.ts:79:3 › Integrations overview (24.5s)
+  ✓  13 test/e2e/cluster-smoke.spec.ts:79:3 › Schemas local (25.6s)
+  ✓  14 test/e2e/cluster-smoke.spec.ts:79:3 › Dashboard (25.2s)
+
+  Slow test file: test/e2e/cluster-smoke.spec.ts (5.9m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  14 passed (6.1m)

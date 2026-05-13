@@ -44,12 +44,11 @@ Configured in `.github/dependabot.yml` for weekly updates to:
 
 ### Development
 
-Local development uses Docker Compose (for dev purposes only):
-
-```bash
-cd services/simulation
-docker compose up
-```
+Local development runs services under **Helm + Kubernetes** the same way
+production does (see Production below). Docker Compose is **not** part of
+any FACIS deliverable per TDR §9.1.1; the simulation service no longer
+ships any `docker-compose*.yml`. For background on the migration see
+[`services/simulation/docs/orce-runtime/migration-guide.md`](../services/simulation/docs/orce-runtime/migration-guide.md).
 
 ### Production (Kubernetes)
 

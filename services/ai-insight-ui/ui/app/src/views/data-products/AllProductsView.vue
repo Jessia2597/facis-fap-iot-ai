@@ -5,66 +5,67 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import { computed, ref, onMounted } from 'vue'
-import { getMeters, getPVSystems, getStreetlights, getTrafficZones, getSimHealth } from '@/services/api'
+import { submit } from '@/services/transport'
+
+interface RealProduct {
+  id: string
+  table_name: string
+  name: string
+  domain: string
+  semanticScope: string | null
+  description: string | null
+  version: string
+  apiStatus: string
+  lastUpdated: string
+  sourceTable: string
+}
 
 const router = useRouter()
 const loading = ref(true)
 const error = ref(false)
 const isLive = ref(false)
-const meterCount = ref(0)
-const pvCount = ref(0)
-const streetlightCount = ref(0)
-const trafficCount = ref(0)
+const products = ref<Array<RealProduct & { category: string; useCase: string; sourceCount: number; exportStatus: string }>>([])
+
+// Real catalogue from data-products.list (gold.information_schema.tables).
+// Domain → category/useCase mapping is purely cosmetic; everything else is the
+// raw API response.
+function decorate(p: RealProduct) {
+  const useCase = p.domain === 'energy' ? 'Smart Energy' : p.domain === 'city' ? 'Smart City' : 'Platform'
+  return {
+    ...p,
+    category: p.domain === 'city' ? 'smart-city' : p.domain,
+    useCase,
+    sourceCount: 1,           // exactly one gold table backs each product
+    exportStatus: 'ready',
+  }
+}
 
 async function fetchData(): Promise<void> {
   loading.value = true
   error.value = false
-  const [m, pv, lights, traffic, health] = await Promise.all([
-    getMeters(), getPVSystems(), getStreetlights(), getTrafficZones(), getSimHealth()
-  ])
-
-  if (!m && !pv && !lights && !traffic) {
+  try {
+    const r = await submit<unknown, { products: RealProduct[]; count: number }>('data-products.list', {})
+    if (r.ok && r.data?.products) {
+      products.value = r.data.products.map(decorate)
+      isLive.value = true
+    } else {
+      error.value = true
+    }
+  } catch {
     error.value = true
+  } finally {
     loading.value = false
-    return
   }
-
-  meterCount.value = m?.count ?? 0
-  pvCount.value = pv?.count ?? 0
-  streetlightCount.value = lights?.count ?? 0
-  trafficCount.value = traffic?.count ?? 0
-  isLive.value = (health?.status === 'ok' || health?.status === 'healthy')
-  loading.value = false
 }
 
 onMounted(fetchData)
-
-// Derive catalogue from real source counts
-const totalRealSources = computed(() => meterCount.value + pvCount.value + streetlightCount.value + trafficCount.value + 1)
-
-// Build product catalogue from real API data
-const products = computed(() => {
-  const energyProducts = meterCount.value > 0 || pvCount.value > 0 ? [
-    { id: 'dp-001', name: 'Energy Consumption Timeseries', category: 'energy', useCase: 'Smart Energy', semanticScope: 'Energy Metering', version: '2.1.0', sourceCount: meterCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-    { id: 'dp-002', name: 'PV Generation Forecast', category: 'energy', useCase: 'Smart Energy', semanticScope: 'PV Systems', version: '1.3.0', sourceCount: pvCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-    { id: 'dp-005', name: 'Energy Flexibility Profile', category: 'energy', useCase: 'Smart Energy', semanticScope: 'Flexible Loads', version: '0.9.0', sourceCount: meterCount.value, apiStatus: 'available', exportStatus: 'processing', lastUpdated: new Date().toISOString() }
-  ] : []
-  const cityProducts = streetlightCount.value > 0 || trafficCount.value > 0 ? [
-    { id: 'dp-003', name: 'Smart Lighting Status', category: 'smart-city', useCase: 'Smart City', semanticScope: 'Public Lighting', version: '1.0.1', sourceCount: streetlightCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-    { id: 'dp-004', name: 'Urban Traffic Index', category: 'smart-city', useCase: 'Smart City', semanticScope: 'Urban Mobility', version: '1.1.0', sourceCount: trafficCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() }
-  ] : []
-  const crossProducts = (meterCount.value > 0 || streetlightCount.value > 0) ? [
-    { id: 'dp-006', name: 'Cross-Domain Sustainability KPIs', category: 'cross-domain', useCase: 'Platform', semanticScope: 'Sustainability', version: '0.5.0', sourceCount: meterCount.value + streetlightCount.value, apiStatus: 'available', exportStatus: 'processing', lastUpdated: new Date().toISOString() }
-  ] : []
-  return [...energyProducts, ...cityProducts, ...crossProducts]
-})
 
 const stats = computed(() => ({
   total: products.value.length,
   available: products.value.filter(p => p.apiStatus === 'available').length,
   energy: products.value.filter(p => p.category === 'energy').length,
   city: products.value.filter(p => p.category === 'smart-city').length,
-  crossDomain: products.value.filter(p => p.category === 'cross-domain').length
+  crossDomain: products.value.filter(p => p.category === 'unclassified').length
 }))
 
 const columns = [
@@ -103,7 +104,7 @@ const filters = [
       <Button label="Retry" size="small" @click="fetchData()" />
     </div>
     <div v-else-if="isLive && !loading" class="live-banner">
-      <span class="live-dot"></span> {{ totalRealSources }} real data sources confirmed via live API
+      <span class="live-dot"></span> {{ products.length }} data products discovered in gold layer
     </div>
 
     <div class="view-body">
@@ -114,35 +115,35 @@ const filters = [
           :value="stats.total"
           trend="stable"
           icon="pi-box"
-          color="#005fff"
+          color="var(--color-primary)"
         />
         <KpiCard
           label="API Available"
           :value="stats.available"
           trend="stable"
           icon="pi-check-circle"
-          color="#22c55e"
+          color="var(--color-success)"
         />
         <KpiCard
           label="Energy Products"
           :value="stats.energy"
           trend="stable"
           icon="pi-bolt"
-          color="#f59e0b"
+          color="var(--color-warning)"
         />
         <KpiCard
           label="Smart City Products"
           :value="stats.city"
           trend="stable"
           icon="pi-map"
-          color="#8b5cf6"
+          color="var(--chart-series-6)"
         />
         <KpiCard
           label="Cross-Domain"
           :value="stats.crossDomain"
           trend="stable"
           icon="pi-link"
-          color="#06b6d4"
+          color="var(--color-secondary)"
         />
       </div>
 
@@ -174,15 +175,15 @@ const filters = [
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 .view-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

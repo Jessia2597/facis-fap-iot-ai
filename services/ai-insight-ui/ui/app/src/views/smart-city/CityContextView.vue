@@ -21,7 +21,7 @@ import {
   type SimEventHistoryReading,
   type SimCityWeatherCurrent,
   type SimCityWeatherHistoryReading
-} from '@/services/api'
+} from '@/services/dispatch'
 
 // ─── Live data state ──────────────────────────────────────────────────────────
 const isLive = ref(false)
@@ -113,7 +113,7 @@ const liveTrafficChartLabels = computed(() => {
 const trafficChartDatasets = computed(() => [{
   label: 'Traffic Index (×100)',
   data: liveTrafficChartData.value,
-  borderColor: '#f59e0b',
+  borderColor: 'var(--color-warning)',
   backgroundColor: 'rgba(245,158,11,0.08)',
   fill: true
 }])
@@ -175,14 +175,14 @@ const visibilityChartDatasets = computed(() => [
   {
     label: 'Visibility (km)',
     data: liveWeatherHistory.value.map(r => r.visibility),
-    borderColor: '#0ea5e9',
+    borderColor: 'var(--color-secondary)',
     backgroundColor: 'rgba(14,165,233,0.08)',
     fill: true
   },
   {
     label: 'Fog Index (%)',
     data: liveWeatherHistory.value.map(r => r.fog_index * 100),
-    borderColor: '#94a3b8',
+    borderColor: 'var(--color-text-soft)',
     backgroundColor: 'transparent'
   }
 ])
@@ -266,7 +266,7 @@ function eventSeverityBadge(s: string): string {
       <div class="context-section">
         <div class="context-section__header">
           <div class="context-section__title-group">
-            <div class="context-section__dot" style="background: #8b5cf6;"></div>
+            <div class="context-section__dot" style="background: var(--chart-series-6);"></div>
             <h2 class="context-section__title">Motion / Presence</h2>
           </div>
           <span class="section-tag">PIR Sensors + Computer Vision</span>
@@ -281,17 +281,17 @@ function eventSeverityBadge(s: string): string {
       <div class="context-section">
         <div class="context-section__header">
           <div class="context-section__title-group">
-            <div class="context-section__dot" style="background: #f59e0b;"></div>
+            <div class="context-section__dot" style="background: var(--color-warning);"></div>
             <h2 class="context-section__title">Traffic / Incidents</h2>
           </div>
           <span class="section-tag">Camera Array + Traffic API</span>
         </div>
 
         <div class="kpi-row">
-          <KpiCard label="Traffic Zones" :value="trafficRows.length" unit="" trend="stable" icon="pi-car" color="#f59e0b" />
-          <KpiCard label="Active Incidents" :value="activeIncidentsCount" unit="" trend="up" trend-value="+1" icon="pi-exclamation-triangle" color="#ef4444" />
-          <KpiCard label="Congested Zones" :value="congestedZones" unit="" trend="stable" icon="pi-map" color="#ef4444" />
-          <KpiCard :label="isLive ? 'Avg Traffic Index' : 'Avg Vehicle Count'" :value="avgTrafficIndex" :unit="isLive ? '' : '/hr'" trend="stable" icon="pi-gauge" color="#0ea5e9" />
+          <KpiCard label="Traffic Zones" :value="trafficRows.length" unit="" trend="stable" icon="pi-car" color="var(--color-warning)" />
+          <KpiCard label="Active Incidents" :value="activeIncidentsCount" unit="" trend="up" trend-value="+1" icon="pi-exclamation-triangle" color="var(--color-danger)" />
+          <KpiCard label="Congested Zones" :value="congestedZones" unit="" trend="stable" icon="pi-map" color="var(--color-danger)" />
+          <KpiCard :label="isLive ? 'Avg Traffic Index' : 'Avg Vehicle Count'" :value="avgTrafficIndex" :unit="isLive ? '' : '/hr'" trend="stable" icon="pi-gauge" color="var(--color-secondary)" />
         </div>
 
         <div class="card card-body">
@@ -330,7 +330,7 @@ function eventSeverityBadge(s: string): string {
       <div class="context-section">
         <div class="context-section__header">
           <div class="context-section__title-group">
-            <div class="context-section__dot" style="background: #ef4444;"></div>
+            <div class="context-section__dot" style="background: var(--color-danger);"></div>
             <h2 class="context-section__title">Noise Indicators</h2>
           </div>
           <span class="section-tag">Environmental Acoustic Sensors</span>
@@ -345,17 +345,17 @@ function eventSeverityBadge(s: string): string {
       <div class="context-section">
         <div class="context-section__header">
           <div class="context-section__title-group">
-            <div class="context-section__dot" style="background: #0ea5e9;"></div>
+            <div class="context-section__dot" style="background: var(--color-secondary);"></div>
             <h2 class="context-section__title">Weather</h2>
           </div>
           <span class="section-tag">Weather Station HQ · OpenWeatherMap</span>
         </div>
 
         <div class="kpi-row">
-          <KpiCard label="Visibility" :value="currentVisibility" unit="" trend="stable" icon="pi-eye" color="#0ea5e9" />
-          <KpiCard label="Fog Index" :value="currentFogIndex" unit="" trend="stable" icon="pi-cloud" color="#94a3b8" />
-          <KpiCard label="Today's Sunrise" :value="todaySunrise" unit="" trend="stable" icon="pi-sun" color="#f59e0b" />
-          <KpiCard label="Today's Sunset" :value="todaySunset" unit="" trend="stable" icon="pi-moon" color="#8b5cf6" />
+          <KpiCard label="Visibility" :value="currentVisibility" unit="" trend="stable" icon="pi-eye" color="var(--color-secondary)" />
+          <KpiCard label="Fog Index" :value="currentFogIndex" unit="" trend="stable" icon="pi-cloud" color="var(--color-text-soft)" />
+          <KpiCard label="Today's Sunrise" :value="todaySunrise" unit="" trend="stable" icon="pi-sun" color="var(--color-warning)" />
+          <KpiCard label="Today's Sunset" :value="todaySunset" unit="" trend="stable" icon="pi-moon" color="var(--chart-series-6)" />
         </div>
 
         <div class="card card-body">
@@ -376,15 +376,15 @@ function eventSeverityBadge(s: string): string {
       <div class="context-section">
         <div class="context-section__header">
           <div class="context-section__title-group">
-            <div class="context-section__dot" style="background: #f59e0b;"></div>
+            <div class="context-section__dot" style="background: var(--color-warning);"></div>
             <h2 class="context-section__title">Sunrise / Sunset</h2>
           </div>
           <span class="section-tag">Astronomical Calculator · Astral lib</span>
         </div>
 
         <div class="kpi-row">
-          <KpiCard label="Today's Sunrise" :value="todaySunrise" unit="" trend="stable" icon="pi-sun" color="#f59e0b" />
-          <KpiCard label="Today's Sunset" :value="todaySunset" unit="" trend="stable" icon="pi-moon" color="#8b5cf6" />
+          <KpiCard label="Today's Sunrise" :value="todaySunrise" unit="" trend="stable" icon="pi-sun" color="var(--color-warning)" />
+          <KpiCard label="Today's Sunset" :value="todaySunset" unit="" trend="stable" icon="pi-moon" color="var(--chart-series-6)" />
         </div>
       </div>
 
@@ -401,8 +401,8 @@ function eventSeverityBadge(s: string): string {
   font-size: 0.8rem; font-weight: 500; padding: 0.5rem 1rem;
   border-radius: var(--facis-radius-sm); border: 1px solid; flex-wrap: wrap;
 }
-.data-banner--loading { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; }
-.data-banner--live { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.data-banner--loading { background: var(--color-primary-soft); border-color: var(--color-info-light); color: var(--color-info-dark); }
+.data-banner--live { background: var(--color-success-soft); border-color: var(--color-success-light); color: var(--color-success-dark); }
 .banner-extra { opacity: 0.8; font-weight: 400; }
 
 /* Context section wrapper */
@@ -428,9 +428,9 @@ function eventSeverityBadge(s: string): string {
 
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 .no-data-msg {
   display: flex; align-items: center; gap: 0.5rem;

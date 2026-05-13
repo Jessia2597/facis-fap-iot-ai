@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: facis-ingress-aiinsight-legacy-redirect
+  namespace: orce
+  annotations:
+    # Permanent 301 redirect from the legacy /aiInsight/* path to the
+    # canonical /orce/aiInsight/* path. UIBUILDER's editor "Open" button
+    # builds its href from `${window.origin}/${httpNodeRoot}${node.url}`,
+    # which produces /aiInsight (httpNodeRoot is '/' — see settings.js).
+    # Without this redirect, clicking Open lands on the legacy path; the
+    # SPA then loads but its router base is /orce/aiInsight/ which double-
+    # appends the path on Keycloak callback (→ /orce/aiInsight/aiInsight/).
+    nginx.ingress.kubernetes.io/permanent-redirect: https://fap-iotai.facis.cloud/orce/aiInsight/
+    nginx.ingress.kubernetes.io/permanent-redirect-code: "301"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: fap-iotai.facis.cloud
+      http:
+        paths:
+          - path: /aiInsight
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+  tls:
+    - hosts:
+        - fap-iotai.facis.cloud
+      secretName: facis-wild

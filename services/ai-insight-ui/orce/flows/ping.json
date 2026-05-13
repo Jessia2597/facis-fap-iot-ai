@@ -1,0 +1,45 @@
+[
+  {
+    "id": "tab_aiui_ping",
+    "type": "tab",
+    "label": "AI Insight UI — Ping",
+    "disabled": false,
+    "info": "Boot ping subflow per FAP General Guideline §18 step 4 (\"verify browser to backend transport with a ping test\"). Receives FAP §9 command envelopes with action='ping' from the UI tab's route-outbound function and replies with a FAP §9 result envelope { ok: true, data: { pong: true, serverTs: <ms> } }. Used by services/ai-insight-ui/scripts/smoke-uibuilder-ping.mjs as the post-deploy CI gate. Phase 3's dispatcher will absorb this into the central switch."
+  },
+  {
+    "id": "link-from-ui-ping",
+    "type": "link in",
+    "z": "tab_aiui_ping",
+    "name": "← from UI (ping)",
+    "links": ["link-to-ping"],
+    "x": 120,
+    "y": 100,
+    "wires": [["fn_ping_reply"]]
+  },
+  {
+    "id": "fn_ping_reply",
+    "type": "function",
+    "z": "tab_aiui_ping",
+    "name": "build ping result envelope",
+    "func": "// FAP §9: produce a result for the dispatcher's fn_build_response to wrap.\n// data.serverTs lets the smoke-uibuilder-ping.mjs test measure roundtrip\n// latency. _socketId is preserved automatically by Node-RED for routing back\n// to the requesting client through merge-session-send.\nmsg._result = {\n    ok: true,\n    data: { pong: true, serverTs: Date.now() }\n};\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 100,
+    "wires": [["link-response-ping"]]
+  },
+  {
+    "id": "link-response-ping",
+    "type": "link out",
+    "z": "tab_aiui_ping",
+    "name": "→ Response to UI (ping)",
+    "mode": "link",
+    "links": ["link-from-response"],
+    "x": 660,
+    "y": 100,
+    "wires": []
+  }
+]

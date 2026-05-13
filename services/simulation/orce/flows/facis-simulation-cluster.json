@@ -9,6 +9,7 @@
     {
         "id": "kafka-broker-config",
         "type": "kafka-broker",
+        "z": "",
         "name": "FACIS Kafka Cluster",
         "broker": "kafka-broker-default-0.kafka-broker-default-headless.stackable.svc.cluster.local:9093",
         "clientid": "facis-orce",

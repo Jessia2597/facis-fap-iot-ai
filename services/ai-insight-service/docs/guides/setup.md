@@ -16,20 +16,6 @@ Service endpoints:
 - ReDoc: `http://localhost:8080/redoc`
 - Health: `http://localhost:8080/api/v1/health`
 
-## Docker Compose Setup
-
-```bash
-cd services/ai-insight-service
-cp .env.example .env
-docker compose up --build
-```
-
-Stop services:
-
-```bash
-docker compose down
-```
-
 ## Running Tests
 
 Run full test suite:

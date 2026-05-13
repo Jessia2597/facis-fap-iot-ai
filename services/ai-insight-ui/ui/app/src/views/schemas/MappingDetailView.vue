@@ -9,7 +9,7 @@ import {
   getMeters, getMeterCurrent,
   getPVSystems, getPVCurrent,
   getWeatherStations, getWeatherCurrent
-} from '@/services/api'
+} from '@/services/dispatch'
 
 const route = useRoute()
 const isLive = ref(false)
@@ -125,17 +125,17 @@ const mapping = computed(() => MAPPINGS.find(m => m.id === route.params['id']) ?
 
 const STRATEGY_CONFIG: Record<string, { color: string; bg: string; label: string; icon: string; desc: string }> = {
   deterministic: {
-    color: '#1d4ed8', bg: '#dbeafe', label: 'Deterministic',
+    color: 'var(--color-info-dark)', bg: 'var(--color-info-light)', label: 'Deterministic',
     icon: 'pi-code',
     desc: 'Field-to-field rules are statically defined with explicit transformation logic. Each remote field maps to exactly one local field via a rule. No runtime AI inference — 100% reproducible, auditable transformations.'
   },
   'ai-driven': {
-    color: '#7c3aed', bg: '#ede9fe', label: 'AI-Driven',
+    color: 'var(--chart-series-6)', bg: 'var(--color-info-light)', label: 'AI-Driven',
     icon: 'pi-sparkles',
     desc: 'An LLM-assisted pipeline analyses source payloads at ingest time and infers field mappings using semantic similarity. Confidence scores are attached to each mapped field. High-confidence mappings auto-apply; low-confidence requires human review.'
   },
   hybrid: {
-    color: '#0f766e', bg: '#ccfbf1', label: 'Hybrid',
+    color: 'var(--color-success-dark)', bg: 'var(--color-success-light)', label: 'Hybrid',
     icon: 'pi-sitemap',
     desc: 'Core fields use deterministic rules for guaranteed consistency. Optional or unpredictable fields leverage AI-driven inference. The strategy blends auditability with flexibility for schemas that evolve frequently.'
   }
@@ -433,8 +433,8 @@ function formatDate(iso: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 
@@ -483,8 +483,8 @@ function formatDate(iso: string): string {
 }
 
 .ds-schema-icon--local {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--color-success-soft);
+  color: var(--color-success-dark);
 }
 
 .ds-schema-info {
@@ -603,9 +603,9 @@ function formatDate(iso: string): string {
   border: 1px solid;
 }
 
-.validation-result--valid   { background: #f0fdf4; border-color: #86efac; }
-.validation-result--warning { background: #fffbeb; border-color: #fde68a; }
-.validation-result--invalid { background: #fff1f2; border-color: #fca5a5; }
+.validation-result--valid   { background: var(--color-success-soft); border-color: var(--color-success-light); }
+.validation-result--warning { background: var(--color-warning-soft); border-color: var(--color-warning-light); }
+.validation-result--invalid { background: var(--color-danger-soft); border-color: var(--color-danger-light); }
 
 .vr-icon {
   font-size: 1.25rem;
@@ -613,9 +613,9 @@ function formatDate(iso: string): string {
   margin-top: 0.1rem;
 }
 
-.validation-result--valid   .vr-icon { color: #15803d; }
-.validation-result--warning .vr-icon { color: #92400e; }
-.validation-result--invalid .vr-icon { color: #991b1b; }
+.validation-result--valid   .vr-icon { color: var(--color-success-dark); }
+.validation-result--warning .vr-icon { color: var(--color-warning-dark); }
+.validation-result--invalid .vr-icon { color: var(--color-danger-dark); }
 
 .vr-title {
   font-weight: 600;
@@ -661,9 +661,9 @@ function formatDate(iso: string): string {
   margin-top: 0.1rem;
 }
 
-.ar-severity--info    { background: #dbeafe; color: #1d4ed8; }
-.ar-severity--warning { background: var(--facis-warning-light); color: #92400e; }
-.ar-severity--error   { background: var(--facis-error-light); color: #991b1b; }
+.ar-severity--info    { background: var(--color-info-light); color: var(--color-info-dark); }
+.ar-severity--warning { background: var(--facis-warning-light); color: var(--color-warning-dark); }
+.ar-severity--error   { background: var(--facis-error-light); color: var(--color-danger-dark); }
 
 .ar-body {
   flex: 1;

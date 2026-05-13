@@ -30,20 +30,6 @@ API docs:
 - `http://localhost:8080/docs`
 - `http://localhost:8080/redoc`
 
-## Quick Start (Docker Compose)
-
-```bash
-cd services/ai-insight-service
-cp .env.example .env
-docker compose up --build
-```
-
-Stop:
-
-```bash
-docker compose down
-```
-
 ## Documentation
 
 - [Documentation hub](docs/README.md)

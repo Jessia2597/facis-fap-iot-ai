@@ -1,0 +1,225 @@
+[
+    {
+        "id": "tab_aiui_kpi_broadcast",
+        "type": "tab",
+        "label": "AI Insight UI \u2014 KPI Broadcast",
+        "disabled": false,
+        "info": "Scheduled FAP \u00a79 event broadcast of gold-layer Trino KPI aggregates.\n\nFires every 60s (after a 10s startup delay), fetches a Keycloak token, runs the kpi-summary SQL against gold.net_grid_hourly, builds an EventEnvelope { type:'event', event:'kpi.update', data:{netGrid,pvGeneration,dailyCost,updatedAt,dataAsOf} }, and broadcasts to every connected UIBUILDER client via link-broadcast \u2192 dispatcher's link-from-broadcast \u2192 merge-session-send (no _socketId = fan-out). Replaces the legacy msg.data.topic = 'kpi.update' emission that previously rode along with on-demand trino.query responses (removed from format-trino-result on 2026-05-05).\n\nTrino / Keycloak failures are swallowed by the catch node; they log a warning and skip the cycle so a single outage does not stop the schedule.\n\nTLS: the http-request nodes use the `aiinsight-tls-noverify` tls-config (defined as the second array element in this file). Trino + Keycloak inside the cluster present self-signed certs from secret-operator, so `verifyservercert` is false. Long-term the cluster CA should be plumbed into a verifying tls-config and we should switch to it."
+    },
+    {
+        "id": "aiinsight-tls-noverify",
+        "type": "tls-config",
+        "z": "",
+        "name": "AI Insight TLS (no-verify, internal stackable)",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "servername": "",
+        "verifyservercert": false,
+        "alpnprotocol": ""
+    },
+    {
+        "id": "kpi_broadcast_inject",
+        "type": "inject",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "every 60s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "10",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 100,
+        "wires": [
+            [
+                "kpi_broadcast_prepare_auth"
+            ]
+        ]
+    },
+    {
+        "id": "kpi_broadcast_prepare_auth",
+        "type": "function",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "Prepare Keycloak Auth",
+        "func": "// Build the same Keycloak token request as tab-trino-query's prepare-trino-auth.\n// This is the broadcast path \u2014 no msg._req or msg.data to forward; the result\n// goes straight to a fan-out broadcast (no requestId).\n//\n// Env vars: prefer the cluster's AI_INSIGHT_TRINO__OIDC_* (the actual injected\n// names per the helm chart), fall back to FACIS_* for older naming.\nconst formEncode = (pairs) => Object.entries(pairs)\n    .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))\n    .join('&');\n\nconst tokenUrl = env.get('AI_INSIGHT_TRINO__OIDC_TOKEN_URL') || env.get('FACIS_KEYCLOAK_URL') || 'https://identity.facis.cloud/realms/facis/protocol/openid-connect/token';\nconst clientId = env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_ID') || env.get('FACIS_OIDC_CLIENT_ID') || 'OIDC';\nconst clientSecret = env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_SECRET') || env.get('FACIS_OIDC_CLIENT_SECRET') || '';\nconst username = env.get('AI_INSIGHT_TRINO__OIDC_USERNAME') || env.get('FACIS_TRINO_USER') || 'test';\nconst password = env.get('AI_INSIGHT_TRINO__OIDC_PASSWORD') || env.get('FACIS_TRINO_PASSWORD') || '';\nconst scope = env.get('AI_INSIGHT_TRINO__OIDC_SCOPE') || 'openid';\n\nmsg.url = tokenUrl;\nmsg.method = 'POST';\nmsg.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };\nmsg.payload = formEncode({\n    grant_type: 'password',\n    client_id: clientId,\n    client_secret: clientSecret,\n    username,\n    password,\n    scope,\n});\n\nreturn msg;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 100,
+        "wires": [
+            [
+                "kpi_broadcast_token_request"
+            ]
+        ]
+    },
+    {
+        "id": "kpi_broadcast_token_request",
+        "type": "http request",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "Keycloak Token",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "aiinsight-tls-noverify",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": true,
+        "x": 600,
+        "y": 100,
+        "wires": [
+            [
+                "kpi_broadcast_execute_sql"
+            ]
+        ]
+    },
+    {
+        "id": "kpi_broadcast_execute_sql",
+        "type": "function",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "Execute kpi-summary SQL",
+        "func": "const token = msg.payload?.access_token;\nif (!token) {\n    node.warn('KPI broadcast: failed to fetch Keycloak token; skipping cycle');\n    return null;\n}\n\nconst trinoHost = env.get('AI_INSIGHT_TRINO__HOST') || env.get('FACIS_TRINO_HOST') || '212.132.83.150';\nconst trinoPort = env.get('AI_INSIGHT_TRINO__PORT') || env.get('FACIS_TRINO_PORT') || '8443';\nconst trinoUser = env.get('AI_INSIGHT_TRINO__USER') || env.get('FACIS_TRINO_USER') || 'test';\nconst trinoCatalog = env.get('AI_INSIGHT_TRINO__CATALOG') || 'fap-iotai-stackable';\nconst trinoSchema  = env.get('AI_INSIGHT_TRINO__TARGET_SCHEMA') || env.get('AI_INSIGHT_TRINO__SCHEMA') || 'gold';\nconst tableNetGrid = env.get('AI_INSIGHT_TRINO__TABLE_NET_GRID_HOURLY') || 'net_grid_hourly';\n\n// Anchor the 24h window on the LATEST hour present in gold, not on wall-clock\n// NOW. The simulator runs at 60x acceleration, so its emitted timestamps\n// diverge from real time fast \u2014 a `WHERE hour >= NOW() - 24h` window misses\n// every gold row whenever sim_time has drifted past the wall-clock NOW \u00b1 24h\n// band. MAX(hour) is what 'right now' means in this dataset; using it keeps\n// the broadcast meaningful regardless of how long the sim has been running\n// or how far ahead/behind sim time has wandered.\nconst sql = `SELECT \\n    AVG(net_grid_kw) AS avg_net_grid,\\n    AVG(avg_generation_kw) AS avg_pv_generation,\\n    SUM(estimated_hourly_cost_eur) AS total_cost,\\n    CAST((SELECT MAX(hour) FROM ${trinoSchema}.${tableNetGrid}) AS VARCHAR) AS data_as_of\\nFROM ${trinoSchema}.${tableNetGrid}\\nWHERE hour > (SELECT MAX(hour) FROM ${trinoSchema}.${tableNetGrid}) - INTERVAL '24' HOUR\\n  AND hour <= (SELECT MAX(hour) FROM ${trinoSchema}.${tableNetGrid})`;\n\n// Trino's /v1/statement returns a paginated chain (queued \u2192 planning \u2192 running\n// \u2192 finished, follow nextUri at each step). Headers must persist across pages,\n// so stash them under msg._trinoNextHeaders for the collect-pages loop below.\nmsg._trinoNextHeaders = {\n    'Authorization': 'Bearer ' + token,\n    'X-Trino-User': trinoUser,\n    'X-Trino-Catalog': trinoCatalog,\n    'X-Trino-Schema': trinoSchema\n};\nmsg.url = `https://${trinoHost}:${trinoPort}/v1/statement`;\nmsg.method = 'POST';\nmsg.headers = Object.assign({ 'Content-Type': 'text/plain' }, msg._trinoNextHeaders);\nmsg.payload = sql;\nmsg._trinoRows = [];\nmsg._trinoColumns = [];\n\nreturn msg;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 100,
+        "wires": [
+            [
+                "kpi_broadcast_trino_request"
+            ]
+        ]
+    },
+    {
+        "id": "kpi_broadcast_trino_request",
+        "type": "http request",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "Trino REST API",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "aiinsight-tls-noverify",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": true,
+        "x": 1050,
+        "y": 100,
+        "wires": [
+            [
+                "kpi_broadcast_collect_pages"
+            ]
+        ]
+    },
+    {
+        "id": "kpi_broadcast_collect_pages",
+        "type": "function",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "Collect Trino pages",
+        "func": "// Trino /v1/statement is paginated: each response has nextUri until the\n// query reaches FINISHED. Accumulate rows across pages, looping back to\n// the http-request via output 1. When body.nextUri is absent, emit on\n// output 2 with msg.trinoRows fully populated.\nconst status = Number(msg.statusCode || 0);\nif (status >= 400) {\n    node.warn('KPI broadcast: Trino HTTP ' + status + '; skipping cycle');\n    return null;\n}\nconst body = msg.payload || {};\nif (Array.isArray(body.columns) && body.columns.length > 0 && (!Array.isArray(msg._trinoColumns) || msg._trinoColumns.length === 0)) {\n    msg._trinoColumns = body.columns.map((c) => c.name);\n}\nconst columns = msg._trinoColumns || [];\nconst rows = msg._trinoRows || [];\nconst data = Array.isArray(body.data) ? body.data : [];\nfor (const row of data) {\n    if (!Array.isArray(row)) continue;\n    const mapped = {};\n    for (let i = 0; i < columns.length; i++) mapped[columns[i]] = row[i];\n    rows.push(mapped);\n}\nmsg._trinoRows = rows;\n\nif (body.nextUri) {\n    // Loop back to the http-request node with GET on the nextUri.\n    msg.method = 'GET';\n    msg.url = String(body.nextUri);\n    msg.headers = Object.assign({}, msg._trinoNextHeaders || {});\n    msg.payload = '';\n    return [msg, null];\n}\n\n// Done \u2014 forward to build-event with rows.\nmsg.trinoRows = rows;\nreturn [null, msg];\n",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1290,
+        "y": 100,
+        "wires": [
+            [
+                "kpi_broadcast_trino_request"
+            ],
+            [
+                "kpi_broadcast_build_event"
+            ]
+        ]
+    },
+    {
+        "id": "kpi_broadcast_build_event",
+        "type": "function",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "Build kpi.update EventEnvelope",
+        "func": "// At this point msg.trinoRows is the fully-collected result of the\n// kpi-summary query (one row, three aggregates). Reshape into the\n// FAP \u00a79 EventEnvelope shape and broadcast.\nconst rows = Array.isArray(msg.trinoRows) ? msg.trinoRows : [];\nif (rows.length === 0) {\n    node.warn('KPI broadcast: Trino returned no rows; skipping cycle');\n    return null;\n}\nconst r = rows[0] || {};\n\n// Emit a fresh msg containing only the payload \u2014 no msg._req / msg._result /\n// msg._socketId leakage from the upstream HTTP request, so merge-session-send\n// fans out to all clients (broadcast). updatedAt lets the SPA show recency\n// (\"Trino \u00b7 Ns ago\") so users can spot stale data when the schedule hiccups.\n// dataAsOf is the latest `hour` present in the gold table at query time \u2014\n// distinct from updatedAt: it surfaces lakehouse-materializer staleness\n// (silver \u2192 gold runs every 6h via cron). When dataAsOf trails sim_time by\n// hours, the Trino aggregates are fresh-broadcast but stale-content; the SPA\n// can render a banner instead of silently showing old numbers.\nreturn {\n    payload: {\n        type: 'event',\n        event: 'kpi.update',\n        data: {\n            netGrid:      r.avg_net_grid      ?? null,\n            pvGeneration: r.avg_pv_generation ?? null,\n            dailyCost:    r.total_cost        ?? null,\n            updatedAt:    new Date().toISOString(),\n            dataAsOf:     r.data_as_of        ?? null\n        }\n    }\n};\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1530,
+        "y": 100,
+        "wires": [
+            [
+                "kpi_broadcast_link_out"
+            ]
+        ]
+    },
+    {
+        "id": "kpi_broadcast_link_out",
+        "type": "link out",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "\u2192 broadcast (kpi.update)",
+        "mode": "link",
+        "links": [
+            "link-from-broadcast"
+        ],
+        "x": 1770,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "kpi_broadcast_catch",
+        "type": "catch",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "swallow Trino/Keycloak errors",
+        "scope": [
+            "kpi_broadcast_token_request",
+            "kpi_broadcast_trino_request",
+            "kpi_broadcast_execute_sql",
+            "kpi_broadcast_build_event",
+            "kpi_broadcast_collect_pages"
+        ],
+        "uncaught": false,
+        "x": 380,
+        "y": 200,
+        "wires": [
+            [
+                "kpi_broadcast_log_error"
+            ]
+        ]
+    },
+    {
+        "id": "kpi_broadcast_log_error",
+        "type": "function",
+        "z": "tab_aiui_kpi_broadcast",
+        "name": "log + skip cycle",
+        "func": "// A single Trino/Keycloak hiccup must not stop the 60s schedule. Log and drop.\nconst err = msg.error || {};\nnode.warn('KPI broadcast cycle skipped: ' + (err.message || msg.payload || 'unknown error'));\nreturn null;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    }
+]

@@ -1,0 +1,98 @@
+[
+    {
+        "id": "tab_aiui_spa_fallback",
+        "type": "tab",
+        "label": "AI Insight UI — SPA Fallback",
+        "disabled": false,
+        "info": "SPA history-mode fallback for the AI Insight UI.\n\nVue Router uses createWebHistory(BASE_URL) so deep routes like\n  /orce/aiInsight/data-products/all\nlook like real URLs to the server. UIBUILDER's static-file middleware\nreturns a 404 for any path that isn't a real file under\n/data/uibuilder/aiInsight/src/, which breaks F5 / direct-link refresh\non any non-root SPA route.\n\nThis flow catches the GET /aiInsight/* requests UIBUILDER's static\nmiddleware didn't claim (Express middleware order: static runs first,\nfalls through with next() if file not found). It serves the SPA's\nindex.html from disk so the browser boots the SPA, then Vue Router\nresolves the path client-side.\n\nAsset-like paths (anything ending in .ext) get a clean 404 instead\nof the HTML — a missing JS bundle should not be served as HTML.\n\nNo SPA code change. No ingress change. Tab is independent of the\ndispatcher / data-products / etc. flow tabs."
+    },
+    {
+        "id": "http_in_spa_fallback",
+        "type": "http in",
+        "z": "tab_aiui_spa_fallback",
+        "name": "GET /aiInsight/*",
+        "url": "/aiInsight/*",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 180,
+        "y": 100,
+        "wires": [
+            [
+                "fn_spa_decide"
+            ]
+        ]
+    },
+    {
+        "id": "fn_spa_decide",
+        "type": "function",
+        "z": "tab_aiui_spa_fallback",
+        "name": "decide: 404 vs serve index",
+        "func": "const path = (msg.req && (msg.req.path || msg.req.url)) || '';\n\n// Asset-like requests (anything with a file extension) should not\n// masquerade as HTML. UIBUILDER's static would have served it if it\n// existed; if we got here it doesn't, so return a clean 404.\nif (/\\.[a-zA-Z0-9]+$/.test(path)) {\n    msg.statusCode = 404;\n    msg.headers = { 'Content-Type': 'text/plain; charset=utf-8' };\n    msg.payload = 'Not Found';\n    return [null, msg];\n}\n\n// Otherwise: route to the file reader, which will load index.html.\nmsg.filename = '/data/uibuilder/aiInsight/src/index.html';\nreturn [msg, null];\n",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 100,
+        "wires": [
+            [
+                "file_in_spa_index"
+            ],
+            [
+                "http_resp_spa_fallback"
+            ]
+        ]
+    },
+    {
+        "id": "file_in_spa_index",
+        "type": "file in",
+        "z": "tab_aiui_spa_fallback",
+        "name": "read index.html",
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": true,
+        "encoding": "utf8",
+        "allProps": false,
+        "x": 460,
+        "y": 180,
+        "wires": [
+            [
+                "fn_spa_set_html_headers"
+            ]
+        ]
+    },
+    {
+        "id": "fn_spa_set_html_headers",
+        "type": "function",
+        "z": "tab_aiui_spa_fallback",
+        "name": "set HTML headers",
+        "func": "// On read failure, file-in sets msg.error / no payload — surface as 503.\nif (typeof msg.payload !== 'string' || msg.payload.length === 0) {\n    msg.statusCode = 503;\n    msg.headers = { 'Content-Type': 'text/plain; charset=utf-8' };\n    msg.payload = 'SPA bundle not deployed';\n    return msg;\n}\nmsg.statusCode = 200;\nmsg.headers = {\n    'Content-Type': 'text/html; charset=utf-8',\n    'Cache-Control': 'no-cache, no-store, must-revalidate'\n};\nreturn msg;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 740,
+        "y": 180,
+        "wires": [
+            [
+                "http_resp_spa_fallback"
+            ]
+        ]
+    },
+    {
+        "id": "http_resp_spa_fallback",
+        "type": "http response",
+        "z": "tab_aiui_spa_fallback",
+        "name": "HTTP response",
+        "statusCode": "",
+        "headers": {},
+        "x": 920,
+        "y": 100,
+        "wires": []
+    }
+]

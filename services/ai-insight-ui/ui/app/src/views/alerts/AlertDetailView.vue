@@ -8,7 +8,7 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import { useNotificationsStore } from '@/stores/notifications'
-import { getMeterHistory, getMeters } from '@/services/api'
+import { getMeterHistory, getMeters } from '@/services/dispatch'
 import { detectAnomalies } from '@/services/analytics'
 import type { Anomaly } from '@/services/analytics'
 
@@ -25,7 +25,7 @@ onMounted(async () => {
     meterIdForSource.value = metersRes.meters[0].meter_id
     const hist = await getMeterHistory(metersRes.meters[0].meter_id)
     if (hist?.readings?.length) {
-      liveAnomalies.value = detectAnomalies(hist.readings, metersRes.meters[0].meter_id, 'active_power_kw', 'Smart Energy')
+      liveAnomalies.value = detectAnomalies(hist.readings as unknown as { [key: string]: unknown; timestamp: string }[], metersRes.meters[0].meter_id, 'active_power_kw', 'Smart Energy')
       isLive.value = true
     }
   }
@@ -50,13 +50,13 @@ const relatedSource = computed(() => {
 const statusTimeline = computed(() => {
   if (!alert.value) return []
   const items = [
-    { status: 'raised', label: 'Alert Raised', timestamp: alert.value.timestamp, actor: 'system', icon: 'pi-bell', color: '#ef4444' }
+    { status: 'raised', label: 'Alert Raised', timestamp: alert.value.timestamp, actor: 'system', icon: 'pi-bell', color: 'var(--color-danger)' }
   ]
   if (alert.value.status === 'acknowledged' || alert.value.status === 'resolved') {
-    items.push({ status: 'acknowledged', label: 'Acknowledged', timestamp: new Date(new Date(alert.value.timestamp).getTime() + 600000).toISOString(), actor: 'operator@facis.local', icon: 'pi-check', color: '#f59e0b' })
+    items.push({ status: 'acknowledged', label: 'Acknowledged', timestamp: new Date(new Date(alert.value.timestamp).getTime() + 600000).toISOString(), actor: 'operator@facis.local', icon: 'pi-check', color: 'var(--color-warning)' })
   }
   if (alert.value.status === 'resolved') {
-    items.push({ status: 'resolved', label: 'Resolved', timestamp: new Date(new Date(alert.value.timestamp).getTime() + 3600000).toISOString(), actor: 'operator@facis.local', icon: 'pi-check-circle', color: '#22c55e' })
+    items.push({ status: 'resolved', label: 'Resolved', timestamp: new Date(new Date(alert.value.timestamp).getTime() + 3600000).toISOString(), actor: 'operator@facis.local', icon: 'pi-check-circle', color: 'var(--color-success)' })
   }
   return items
 })
@@ -76,22 +76,10 @@ const relatedTransformations = computed(() => {
   ]
 })
 
-// Related data products
-const relatedProducts = computed(() => {
-  if (!alert.value) return []
-  if (alert.value.useCase === 'Smart Energy') {
-    return [
-      { id: 'dp-001', name: 'Energy Consumption Timeseries', version: '2.1.0', apiStatus: 'available' },
-      { id: 'dp-005', name: 'Energy Flexibility Profile', version: '0.9.0', apiStatus: 'available' }
-    ]
-  }
-  if (alert.value.useCase === 'Smart City') {
-    return [
-      { id: 'dp-003', name: 'Smart Lighting Status', version: '1.0.1', apiStatus: 'available' }
-    ]
-  }
-  return []
-})
+// Related data products: removed — there is no /api/v1/data-products backend
+// to look these up against. Returning [] hides the "Related Data Products"
+// card entirely (template guard already does v-if relatedProducts.length > 0).
+const relatedProducts = computed<Array<{ id: string; name: string; version: string; apiStatus: string }>>(() => [])
 
 // Audit entries from real API call log
 const auditHistory = computed(() => [
@@ -166,10 +154,10 @@ function severityClass(s: string): string {
 
       <!-- Summary KPIs -->
       <div class="grid-kpi" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))">
-        <KpiCard label="Severity" :value="alert?.severity ?? ''" trend="stable" icon="pi-exclamation-triangle" color="#ef4444" />
-        <KpiCard label="Status" :value="alert?.status ?? ''" trend="stable" icon="pi-circle" color="#005fff" />
-        <KpiCard label="Use Case" :value="alert?.useCase ?? ''" trend="stable" icon="pi-folder" color="#8b5cf6" />
-        <KpiCard label="Category" :value="alert?.category ?? ''" trend="stable" icon="pi-tag" color="#f59e0b" />
+        <KpiCard label="Severity" :value="alert?.severity ?? ''" trend="stable" icon="pi-exclamation-triangle" color="var(--color-danger)" />
+        <KpiCard label="Status" :value="alert?.status ?? ''" trend="stable" icon="pi-circle" color="var(--color-primary)" />
+        <KpiCard label="Use Case" :value="alert?.useCase ?? ''" trend="stable" icon="pi-folder" color="var(--chart-series-6)" />
+        <KpiCard label="Category" :value="alert?.category ?? ''" trend="stable" icon="pi-tag" color="var(--color-warning)" />
       </div>
 
       <div class="detail-grid">
@@ -241,7 +229,7 @@ function severityClass(s: string): string {
               <div v-for="(item, idx) in statusTimeline" :key="item.status" class="timeline-item">
                 <div class="tl-connector">
                   <div class="tl-dot" :style="{ background: item.color }">
-                    <i :class="`pi ${item.icon}`" style="font-size:0.65rem; color:#fff"></i>
+                    <i :class="`pi ${item.icon}`" style="font-size:0.65rem; color:var(--color-surface)"></i>
                   </div>
                   <div v-if="idx < statusTimeline.length - 1" class="tl-line" />
                 </div>
@@ -298,9 +286,9 @@ function severityClass(s: string): string {
 
 /* Severity banner */
 .severity-banner { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-radius: var(--facis-radius); border: 1px solid; flex-wrap: wrap; }
-.severity--critical { background: #fff1f2; border-color: #fecdd3; }
-.severity--warning  { background: #fffbeb; border-color: #fde68a; }
-.severity--info     { background: var(--facis-primary-light); border-color: #bfdbfe; }
+.severity--critical { background: var(--color-danger-soft); border-color: var(--color-danger-light); }
+.severity--warning  { background: var(--color-warning-soft); border-color: var(--color-warning-light); }
+.severity--info     { background: var(--facis-primary-light); border-color: var(--color-info-light); }
 .severity-banner__msg  { flex: 1; font-size: 0.875rem; color: var(--facis-text); line-height: 1.4; }
 .severity-banner__time { font-size: 0.78rem; color: var(--facis-text-muted); flex-shrink: 0; }
 

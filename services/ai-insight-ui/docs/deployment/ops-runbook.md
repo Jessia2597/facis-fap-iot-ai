@@ -1,5 +1,17 @@
 # Operations Runbook
 
+> **⚠ Superseded for production by [`orce-native-runbook.md`](./orce-native-runbook.md) (2026-04-29).**
+>
+> The IONOS production deployment is now ORCE-native: the Vue SPA runs
+> inside the existing ORCE pod via `node-red-contrib-uibuilder`. There is
+> no standalone Deployment / Service / Nginx sidecar in production. The
+> `kubectl cp` workflow described in §3 below has been replaced by an
+> init-container that extracts a ConfigMap-bundled gzipped tarball.
+>
+> Keep this runbook for: local development, the standalone-Nginx variant
+> of the Helm chart, and historical reference of the original deployment
+> design.
+
 **Service:** FACIS FAP IoT & AI — AI Insight UI
 **Audience:** DevOps and platform team
 **Version:** 0.1.0
@@ -252,7 +264,7 @@ In Node-RED, configure a UIBUILDER node:
    - **URL**: `aiInsight`
    - **Instance Name**: `aiInsight`
 4. Click "Create Instance" — this creates `/data/uibuilder/aiInsight/`
-5. Copy source files: `cp -r ui/src/* /data/uibuilder/aiInsight/src/`
+5. Build and copy source files: `npm --prefix ui/app run build && cp -r ui/app/dist/* /data/uibuilder/aiInsight/src/`
 6. Deploy and access: `http://localhost:1880/aiInsight/`
 
 ### 3.6 Configure Environment Variables
@@ -761,7 +773,8 @@ BUILD & PACKAGE
 LOCAL DEVELOPMENT
   cd ui/app && npm ci && npm run dev               # Start dev server on :5173
   curl -X POST http://localhost:1880/flows -d @flows/flows.full.json  # Import flows
-  cp -r ui/src/* /data/uibuilder/aiInsight/src/   # Copy to ORCE UIBUILDER
+  npm --prefix ui/app run build                    # Build Vite SPA → ui/app/dist
+  cp -r ui/app/dist/* /data/uibuilder/aiInsight/src/  # Copy build to ORCE UIBUILDER
 
 VERIFY DEPLOYMENT
   kubectl get configmap -n facis | grep ai-insight

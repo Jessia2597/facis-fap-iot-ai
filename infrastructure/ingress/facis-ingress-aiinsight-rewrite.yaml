@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: facis-ingress-aiinsight-rewrite
+  namespace: orce
+  annotations:
+    # Reverse-proxy /orce/aiInsight/<rest> → /aiInsight/<rest>
+    # at the Node-RED Express layer.
+    #
+    # UIBUILDER mounts the SPA under httpNodeRoot (default '/'), so the SPA
+    # serves at /aiInsight/. We expose it at /orce/aiInsight/ to match the
+    # standard FACIS URL scheme. httpNodeRoot itself cannot be set to /orce
+    # because that would break /api/v1/, /ai/, /dsp/ endpoints.
+    #
+    # The shared UIBUILDER client lib + Socket.IO endpoint at
+    # /uibuilder/vendor/* are routed by the plain Prefix rule on
+    # facis-ingress.yaml (no rewrite needed; the client lib uses absolute
+    # paths). DO NOT rewrite /orce/uibuilder/* here — it would mask the
+    # admin endpoints (/orce/uibuilder/uibindex, .../instance/<url>) which
+    # the editor uses for URL-conflict validation, breaking node config.
+    nginx.ingress.kubernetes.io/rewrite-target: /aiInsight/$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: fap-iotai.facis.cloud
+      http:
+        paths:
+          - path: /orce/aiInsight(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+  tls:
+    - hosts:
+        - fap-iotai.facis.cloud
+      secretName: facis-wild

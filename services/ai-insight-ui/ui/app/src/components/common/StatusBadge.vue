@@ -10,57 +10,48 @@ const props = withDefaults(defineProps<{
   showDot: true
 })
 
-type StatusConfig = { color: string; bg: string; label: string }
+type StatusGroup = 'healthy' | 'warning' | 'error' | 'offline' | 'info' | 'neutral'
 
-const STATUS_MAP: Record<string, StatusConfig> = {
-  healthy:      { color: '#15803d', bg: '#dcfce7', label: 'Healthy' },
-  active:       { color: '#15803d', bg: '#dcfce7', label: 'Active' },
-  online:       { color: '#15803d', bg: '#dcfce7', label: 'Online' },
-  success:      { color: '#15803d', bg: '#dcfce7', label: 'Success' },
-  valid:        { color: '#15803d', bg: '#dcfce7', label: 'Valid' },
-  resolved:     { color: '#15803d', bg: '#dcfce7', label: 'Resolved' },
-  available:    { color: '#15803d', bg: '#dcfce7', label: 'Available' },
-  ready:        { color: '#15803d', bg: '#dcfce7', label: 'Ready' },
+// String → semantic group. Each group resolves to one of the
+// --status-*-{fg,bg} token pairs declared in styles/tokens.css.
+const STATUS_GROUP: Record<string, StatusGroup> = {
+  healthy: 'healthy', active: 'healthy', online: 'healthy', success: 'healthy',
+  valid: 'healthy', resolved: 'healthy', available: 'healthy', ready: 'healthy',
 
-  warning:      { color: '#92400e', bg: '#fef3c7', label: 'Warning' },
-  dimmed:       { color: '#92400e', bg: '#fef3c7', label: 'Dimmed' },
-  partial:      { color: '#92400e', bg: '#fef3c7', label: 'Partial' },
-  maintenance:  { color: '#92400e', bg: '#fef3c7', label: 'Maintenance' },
-  acknowledged: { color: '#92400e', bg: '#fef3c7', label: 'Acknowledged' },
-  processing:   { color: '#92400e', bg: '#fef3c7', label: 'Processing' },
-  draft:        { color: '#92400e', bg: '#fef3c7', label: 'Draft' },
-  invited:      { color: '#92400e', bg: '#fef3c7', label: 'Invited' },
+  warning: 'warning', dimmed: 'warning', partial: 'warning', maintenance: 'warning',
+  acknowledged: 'warning', processing: 'warning', draft: 'warning', invited: 'warning',
 
-  error:        { color: '#991b1b', bg: '#fee2e2', label: 'Error' },
-  critical:     { color: '#991b1b', bg: '#fee2e2', label: 'Critical' },
-  fault:        { color: '#991b1b', bg: '#fee2e2', label: 'Fault' },
-  unavailable:  { color: '#991b1b', bg: '#fee2e2', label: 'Unavailable' },
-  invalid:      { color: '#991b1b', bg: '#fee2e2', label: 'Invalid' },
-  failure:      { color: '#991b1b', bg: '#fee2e2', label: 'Failure' },
+  error: 'error', critical: 'error', fault: 'error', unavailable: 'error',
+  invalid: 'error', failure: 'error',
 
-  offline:      { color: '#475569', bg: '#f1f5f9', label: 'Offline' },
-  inactive:     { color: '#475569', bg: '#f1f5f9', label: 'Inactive' },
-  off:          { color: '#475569', bg: '#f1f5f9', label: 'Off' },
-  deprecated:   { color: '#475569', bg: '#f1f5f9', label: 'Deprecated' },
+  offline: 'offline', inactive: 'offline', off: 'offline', deprecated: 'offline',
 
-  info:         { color: '#1d4ed8', bg: '#dbeafe', label: 'Info' },
-  open:         { color: '#1d4ed8', bg: '#dbeafe', label: 'Open' }
+  info: 'info', open: 'info',
 }
 
-const config = computed<StatusConfig>(() => {
-  const key = props.status?.toLowerCase() ?? ''
-  return STATUS_MAP[key] ?? { color: '#475569', bg: '#f1f5f9', label: props.status }
-})
+const STATUS_LABEL: Record<string, string> = {
+  healthy: 'Healthy', active: 'Active', online: 'Online', success: 'Success',
+  valid: 'Valid', resolved: 'Resolved', available: 'Available', ready: 'Ready',
+  warning: 'Warning', dimmed: 'Dimmed', partial: 'Partial', maintenance: 'Maintenance',
+  acknowledged: 'Acknowledged', processing: 'Processing', draft: 'Draft', invited: 'Invited',
+  error: 'Error', critical: 'Critical', fault: 'Fault', unavailable: 'Unavailable',
+  invalid: 'Invalid', failure: 'Failure',
+  offline: 'Offline', inactive: 'Inactive', off: 'Off', deprecated: 'Deprecated',
+  info: 'Info', open: 'Open',
+}
+
+const key = computed(() => props.status?.toLowerCase() ?? '')
+const group = computed<StatusGroup>(() => STATUS_GROUP[key.value] ?? 'neutral')
+const label = computed(() => STATUS_LABEL[key.value] ?? props.status)
 </script>
 
 <template>
   <span
     class="status-badge"
-    :class="`status-badge--${size}`"
-    :style="{ color: config.color, background: config.bg }"
+    :class="[`status-badge--${size}`, `status-badge--${group}`]"
   >
-    <span v-if="showDot" class="status-badge__dot" :style="{ background: config.color }"></span>
-    {{ config.label }}
+    <span v-if="showDot" class="status-badge__dot"></span>
+    {{ label }}
   </span>
 </template>
 
@@ -89,5 +80,13 @@ const config = computed<StatusConfig>(() => {
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
+  background: currentColor;
 }
+
+.status-badge--healthy { color: var(--status-healthy-fg); background: var(--status-healthy-bg); }
+.status-badge--warning { color: var(--status-warning-fg); background: var(--status-warning-bg); }
+.status-badge--error   { color: var(--status-error-fg);   background: var(--status-error-bg); }
+.status-badge--offline { color: var(--status-offline-fg); background: var(--status-offline-bg); }
+.status-badge--info    { color: var(--status-info-fg);    background: var(--status-info-bg); }
+.status-badge--neutral { color: var(--status-neutral-fg); background: var(--status-neutral-bg); }
 </style>

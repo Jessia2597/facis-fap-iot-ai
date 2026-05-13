@@ -10,33 +10,44 @@ import Checkbox from 'primevue/checkbox'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getSimHealth } from '@/services/api'
+import { getAdminUsers, getAdminRoles } from '@/services/dispatch'
+import { auth } from '@/auth'
 import type { User, UserRole } from '@/data/types'
 
-const BASE_USERS: User[] = [
-  { id: 'u-001', firstName: 'Alice',   lastName: 'Bergström',  email: 'a.bergstrom@facis.local',   role: 'admin',    lastActive: new Date(Date.now() - 600_000).toISOString(),      status: 'active' },
-  { id: 'u-002', firstName: 'Robert',  lastName: 'Müller',     email: 'r.muller@acme-energy.com',  role: 'operator', lastActive: new Date(Date.now() - 3_600_000).toISOString(),    status: 'active' },
-  { id: 'u-003', firstName: 'Priya',   lastName: 'Nair',       email: 'p.nair@facis.local',        role: 'analyst',  lastActive: new Date(Date.now() - 7_200_000).toISOString(),    status: 'active' },
-  { id: 'u-004', firstName: 'Jonas',   lastName: 'Eriksson',   email: 'j.eriksson@city.gov',       role: 'viewer',   lastActive: new Date(Date.now() - 86_400_000).toISOString(),   status: 'active' },
-  { id: 'u-005', firstName: 'Sofia',   lastName: 'Lindqvist',  email: 's.lindqvist@facis.local',   role: 'analyst',  lastActive: new Date(Date.now() - 172_800_000).toISOString(),  status: 'active' },
-  { id: 'u-006', firstName: 'Marcus',  lastName: 'Weber',      email: 'm.weber@integrator.eu',     role: 'operator', lastActive: new Date(Date.now() - 259_200_000).toISOString(),  status: 'active' },
-  { id: 'u-007', firstName: 'Lena',    lastName: 'Johansson',  email: 'l.johansson@city.gov',      role: 'viewer',   lastActive: '—',                                               status: 'invited' }
-]
-
-const users = ref<User[]>([...BASE_USERS])
+const users = ref<User[]>([])
 const isLive = ref(false)
 const currentUser = ref<{ email: string; role: string } | null>(null)
+const loadError = ref<string | null>(null)
+
+function deriveRole(_username: string, roleNames: string[]): UserRole {
+  if (roleNames.includes('admin')) return 'admin'
+  if (roleNames.includes('operator')) return 'operator'
+  if (roleNames.includes('analyst')) return 'analyst'
+  return 'viewer'
+}
 
 onMounted(async () => {
-  const health = await getSimHealth()
-  if (health?.status === 'ok' || health?.status === 'healthy') {
-    // Derive current user from session/auth context
-    const stored = sessionStorage.getItem('facis_user')
-    currentUser.value = stored
-      ? JSON.parse(stored)
-      : { email: 'admin@facis.local', role: 'admin' }
-    isLive.value = true
+  currentUser.value = auth.user ? { email: auth.user.email, role: auth.user.role } : null
+
+  // Phase-5 backend: /api/v1/admin/users (Keycloak proxy). Returns one entry per
+  // realm user. Roles are not embedded per-user in that payload (Keycloak's
+  // /users endpoint does not include role mappings). For now we coarse-classify
+  // by email domain — a per-user role lookup would require N+1 admin calls.
+  const [usersResp, _rolesResp] = await Promise.all([getAdminUsers(), getAdminRoles()])
+  if (!usersResp) {
+    loadError.value = 'Could not reach admin API'
+    return
   }
+  isLive.value = true
+  users.value = usersResp.users.map(u => ({
+    id: u.id,
+    firstName: u.firstName || u.username,
+    lastName: u.lastName || '',
+    email: u.email || '',
+    role: deriveRole(u.username, []),
+    lastActive: u.createdTimestamp ? new Date(u.createdTimestamp).toISOString() : '—',
+    status: u.enabled ? 'active' : 'invited'
+  }))
 })
 
 const columns = [
@@ -72,10 +83,10 @@ const SCOPE_OPTIONS = [
 ]
 
 const ROLE_COLORS: Record<UserRole, string> = {
-  admin:    '#ef4444',
-  operator: '#f59e0b',
-  analyst:  '#3b82f6',
-  viewer:   '#64748b'
+  admin:    'var(--color-danger)',
+  operator: 'var(--color-warning)',
+  analyst:  'var(--color-secondary)',
+  viewer:   'var(--color-neutral-fg)'
 }
 
 // ─── Invite Dialog ───────────────────────────────────────────────────────────
@@ -340,8 +351,8 @@ function saveManage(): void {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 

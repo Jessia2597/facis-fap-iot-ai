@@ -20,10 +20,10 @@ const props = withDefaults(defineProps<{
 })
 
 const STATUS_COLORS: Record<PipelineStep['status'], string> = {
-  healthy:  '#22c55e',
-  warning:  '#f59e0b',
-  error:    '#ef4444',
-  inactive: '#94a3b8'
+  healthy:  'var(--color-success)',
+  warning:  'var(--color-warning)',
+  error:    'var(--color-danger)',
+  inactive: 'var(--color-text-soft)'
 }
 </script>
 
@@ -44,7 +44,7 @@ const STATUS_COLORS: Record<PipelineStep['status'], string> = {
       </div>
       <div v-if="idx < steps.length - 1" class="pipeline-connector">
         <svg width="32" height="2" viewBox="0 0 32 2" fill="none">
-          <line x1="0" y1="1" x2="32" y2="1" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <line x1="0" y1="1" x2="32" y2="1" stroke="var(--color-border-strong)" stroke-width="1.5" stroke-dasharray="4 3"/>
         </svg>
         <i class="pi pi-chevron-right pipeline-connector__arrow"></i>
       </div>

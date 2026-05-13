@@ -31,15 +31,8 @@ const SEARCH_INDEX: SearchResult[] = [
   { label: 'Energy Overview', description: 'Live energy consumption and PV generation', path: '/use-cases/smart-energy/overview', icon: 'pi-bolt', category: 'Smart Energy' },
   { label: 'Energy Assets', description: 'Meters, PV systems and consumers', path: '/use-cases/smart-energy/assets', icon: 'pi-gauge', category: 'Smart Energy' },
   { label: 'Energy Context', description: 'Price, weather and environmental data', path: '/use-cases/smart-energy/context', icon: 'pi-cloud', category: 'Smart Energy' },
-  { label: 'AI Energy Insights', description: 'AI-generated anomaly detection and recommendations', path: '/use-cases/smart-energy/insights', icon: 'pi-sparkles', category: 'Smart Energy' },
   { label: 'Energy Data Products', description: 'Published energy data products', path: '/use-cases/smart-energy/data-products', icon: 'pi-box', category: 'Smart Energy' },
 
-  // Smart City
-  { label: 'City Overview', description: 'Smart city zones and lighting status', path: '/use-cases/smart-city/overview', icon: 'pi-map', category: 'Smart City' },
-  { label: 'Lighting Zones', description: 'All lighting zones and DALI status', path: '/use-cases/smart-city/zones', icon: 'pi-map-marker', category: 'Smart City' },
-  { label: 'City Context', description: 'Traffic, events and environmental context', path: '/use-cases/smart-city/context', icon: 'pi-cloud', category: 'Smart City' },
-  { label: 'City Analytics', description: 'Lighting efficiency and traffic analytics', path: '/use-cases/smart-city/analytics', icon: 'pi-chart-bar', category: 'Smart City' },
-  { label: 'City Data Products', description: 'Published smart city data products', path: '/use-cases/smart-city/data-products', icon: 'pi-box', category: 'Smart City' },
 
   // Data Sources
   { label: 'All Data Sources', description: 'MQTT, Modbus, REST and OPC-UA sources', path: '/data-sources/all', icon: 'pi-database', category: 'Data Sources' },
@@ -48,16 +41,9 @@ const SEARCH_INDEX: SearchResult[] = [
   { label: 'Raw Messages', description: 'Live raw telemetry message stream', path: '/data-sources/raw', icon: 'pi-code', category: 'Data Sources' },
 
   // Data Products
-  { label: 'All Data Products', description: 'All published data products', path: '/data-products/all', icon: 'pi-box', category: 'Data Products' },
-  { label: 'Energy Products', description: 'Energy domain data products', path: '/data-products/energy', icon: 'pi-bolt', category: 'Data Products' },
-  { label: 'City Products', description: 'Smart city domain data products', path: '/data-products/smart-city', icon: 'pi-building', category: 'Data Products' },
 
   // Analytics
   { label: 'Analytics Overview', description: 'Cross-domain analytics summary', path: '/analytics/overview', icon: 'pi-chart-bar', category: 'Analytics' },
-  { label: 'Trend Analysis', description: 'Time-series trend visualisations', path: '/analytics/trends', icon: 'pi-chart-line', category: 'Analytics' },
-  { label: 'Correlations', description: 'Cross-metric correlation analysis', path: '/analytics/correlations', icon: 'pi-sitemap', category: 'Analytics' },
-  { label: 'Anomaly Detection', description: 'Statistical anomaly alerts', path: '/analytics/anomalies', icon: 'pi-exclamation-triangle', category: 'Analytics' },
-  { label: 'Recommendations', description: 'AI-generated optimisation recommendations', path: '/analytics/recommendations', icon: 'pi-lightbulb', category: 'Analytics' },
 
   // Alerts
   { label: 'All Alerts', description: 'All platform alerts and events', path: '/alerts/all', icon: 'pi-bell', category: 'Alerts' },
@@ -99,6 +85,12 @@ const mobileOpen = ref(false)
 const expandedGroups = ref<Set<string>>(new Set(['Use Cases']))
 const notificationPanel = ref<InstanceType<typeof OverlayPanel> | null>(null)
 const userMenu = ref<InstanceType<typeof Menu> | null>(null)
+// Flyout for sidebar group items when the sidebar is in icon-only mode
+// (768–1279px). The group <button> is otherwise inert because its inline
+// expansion is gated on `!sidebarCollapsed`. Re-uses the same PrimeVue Menu
+// pattern as the user-menu popup.
+const collapsedFlyoutMenu = ref<InstanceType<typeof Menu> | null>(null)
+const collapsedFlyoutItems = ref<Array<{ label: string; icon: string; command: () => void }>>([])
 
 // ─── Search state ────────────────────────────────────────────────────────────
 const searchQuery = ref('')
@@ -148,15 +140,22 @@ router.beforeEach(() => { routeLoading.value = true })
 router.afterEach(() => { routeLoading.value = false })
 
 // Auto-collapse on small screens
-// < 1280px → icon-only mode (collapsed sidebar stays in layout)
-// < 768px  → overlay mode (sidebar slides over content, toggled by hamburger)
+// ≥ 1280px       → full sidebar (collapsed=false)
+// 768–1279px     → icon-only mode (collapsed sidebar stays in layout)
+// < 768px        → overlay mode: sidebar slides over content with FULL content
+//                  (collapsed=false), so submenus + labels remain accessible.
+//                  At this width, the slide-over CSS hides it off-canvas
+//                  (left: -280px) — visibility is governed by mobileOpen.
 const handleResize = () => {
-  if (window.innerWidth < 1280) {
+  const w = window.innerWidth
+  if (w < 768) {
+    sidebarCollapsed.value = false
+  } else if (w < 1280) {
     sidebarCollapsed.value = true
   } else {
     sidebarCollapsed.value = false
   }
-  if (window.innerWidth >= 768) {
+  if (w >= 768) {
     mobileOpen.value = false
   }
 }
@@ -189,11 +188,11 @@ const navItems: NavItem[] = [
   {
     label: 'Use Cases', icon: 'pi-briefcase', children: [
       { label: 'Smart Energy', icon: 'pi-bolt', to: '/use-cases/smart-energy/overview' },
-      { label: 'Smart City', icon: 'pi-map', to: '/use-cases/smart-city/overview' }
+      { label: 'Smart City',   icon: 'pi-building', to: '/use-cases/smart-city/overview' },
     ]
   },
-  { label: 'Data Sources', icon: 'pi-database', to: '/data-sources/all' },
-  { label: 'Data Products', icon: 'pi-box', to: '/data-products/all' },
+  { label: 'Data Sources',  icon: 'pi-database',     to: '/data-sources/all' },
+  { label: 'Data Products', icon: 'pi-box',          to: '/data-products/all' },
   { label: 'Analytics', icon: 'pi-chart-bar', to: '/analytics/overview' },
   { label: 'Alerts & Events', icon: 'pi-bell', to: '/alerts/all' },
   { label: 'Integrations', icon: 'pi-link', to: '/integrations/overview', roles: ['analyst', 'operator', 'admin'] },
@@ -223,6 +222,16 @@ function toggleGroup(label: string): void {
   } else {
     expandedGroups.value.add(label)
   }
+}
+
+function openCollapsedFlyout(item: NavItem, event: Event): void {
+  if (!item.children) return
+  collapsedFlyoutItems.value = item.children.map(c => ({
+    label: c.label,
+    icon: `pi ${c.icon}`,
+    command: () => { if (c.to) router.push(c.to) }
+  }))
+  collapsedFlyoutMenu.value?.toggle(event)
 }
 
 function navigate(to: string): void {
@@ -269,8 +278,9 @@ const breadcrumbs = computed(() =>
   <!-- Login / 404: render bare (no sidebar) -->
   <RouterView v-if="isLoginPage" />
 
-  <!-- Authenticated: full app layout with sidebar -->
-  <div v-else class="app-layout">
+  <!-- Authenticated: FAP §15 main shell wraps the split layout -->
+  <div v-else class="facis-shell">
+    <div class="app-layout">
     <!-- Mobile overlay -->
     <div
       v-if="mobileOpen"
@@ -307,7 +317,7 @@ const breadcrumbs = computed(() =>
               class="sidebar-item sidebar-item--group"
               :class="{ 'sidebar-item--active': isActive(item) }"
               :title="sidebarCollapsed ? item.label : undefined"
-              @click="!sidebarCollapsed && toggleGroup(item.label)"
+              @click="sidebarCollapsed ? openCollapsedFlyout(item, $event) : toggleGroup(item.label)"
             >
               <i :class="`pi ${item.icon} sidebar-item__icon`"></i>
               <span v-if="!sidebarCollapsed" class="sidebar-item__label">{{ item.label }}</span>
@@ -469,6 +479,7 @@ const breadcrumbs = computed(() =>
         </RouterView>
       </main>
     </div>
+    </div>
 
     <!-- Notification overlay panel -->
     <OverlayPanel ref="notificationPanel" class="notif-panel">
@@ -505,6 +516,9 @@ const breadcrumbs = computed(() =>
 
     <!-- User menu -->
     <Menu ref="userMenu" :model="userMenuItems" popup />
+
+    <!-- Sidebar group flyout (collapsed icon-only mode) -->
+    <Menu ref="collapsedFlyoutMenu" :model="collapsedFlyoutItems" popup />
   </div>
 </template>
 
@@ -557,11 +571,20 @@ const breadcrumbs = computed(() =>
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ─── Layout ──────────────────────────────────────── */
+/* The .app-layout sits INSIDE .facis-shell (FAP §15 main-shell). Its height
+ * is bounded by the shell rather than the full viewport so the cool-gray
+ * canvas frames the shell on top + bottom + left + right at desktop widths. */
 .app-layout {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - var(--space-4) * 2);
   overflow: hidden;
   position: relative;
+}
+
+@media (max-width: 1200px) {
+  .app-layout {
+    height: 100vh;
+  }
 }
 
 .app-mobile-overlay {
@@ -606,6 +629,23 @@ const breadcrumbs = computed(() =>
   height: 28px;
   width: auto;
   flex-shrink: 0;
+}
+
+/* Logo SVG is wide (~2.65:1). At full width 260px it fits comfortably; at
+ * collapsed 64px the natural ~74px width overflows the 32px content area
+ * (1rem horizontal padding) and gets clipped. Centre + scale-to-fit when
+ * the sidebar is in icon-only mode. */
+.app-sidebar--collapsed .sidebar-logo {
+  padding: 0.75rem 0.5rem;
+  justify-content: center;
+}
+
+.app-sidebar--collapsed .sidebar-logo__img {
+  height: auto;
+  max-height: 28px;
+  max-width: 100%;
+  width: auto;
+  flex-shrink: 1;
 }
 
 .sidebar-logo__text {
@@ -687,7 +727,7 @@ const breadcrumbs = computed(() =>
 
 .sidebar-item__badge {
   background: var(--facis-error);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 0.65rem;
   font-weight: 700;
   min-width: 18px;
@@ -800,7 +840,7 @@ const breadcrumbs = computed(() =>
   top: 4px;
   right: 4px;
   background: var(--facis-error);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 0.6rem;
   font-weight: 700;
   min-width: 16px;
@@ -868,7 +908,7 @@ const breadcrumbs = computed(() =>
   right: 0;
   height: 3px;
   z-index: 9999;
-  background: linear-gradient(90deg, var(--facis-primary), #60a5fa);
+  background: linear-gradient(90deg, var(--facis-primary), var(--color-secondary));
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0s;
@@ -951,7 +991,7 @@ const breadcrumbs = computed(() =>
 }
 
 .notif-item--unread:hover {
-  background: #d9e8ff;
+  background: var(--color-info-light);
 }
 
 .notif-item__severity {
@@ -964,7 +1004,7 @@ const breadcrumbs = computed(() =>
 .notif-item__severity--info     { background: var(--facis-info); }
 .notif-item__severity--warning  { background: var(--facis-warning); }
 .notif-item__severity--error    { background: var(--facis-error); }
-.notif-item__severity--critical { background: #7c0000; }
+.notif-item__severity--critical { background: var(--color-danger-dark); }
 
 .notif-item__body {
   display: flex;

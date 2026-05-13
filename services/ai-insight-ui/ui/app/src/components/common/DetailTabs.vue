@@ -36,7 +36,7 @@ function onTabChange(event: { index: number }): void {
 
 <template>
   <TabView :active-index="activeIndex" @tab-change="onTabChange">
-    <TabPanel v-for="(tab, idx) in tabs" :key="idx" :disabled="tab.disabled">
+    <TabPanel v-for="(tab, idx) in tabs" :key="idx" :value="String(idx)" :disabled="tab.disabled">
       <template #header>
         <span class="detail-tab__header">
           <i v-if="tab.icon" :class="`pi ${tab.icon}`"></i>

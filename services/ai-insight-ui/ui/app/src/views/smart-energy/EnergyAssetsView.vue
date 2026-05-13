@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getMeterCurrent, getLoads, type SimMeter, type SimDevice } from '@/services/api'
+import { getMeters, getMeterCurrent, getLoads, type SimMeter, type SimDevice } from '@/services/dispatch'
 
 const router = useRouter()
 
@@ -117,7 +117,7 @@ const summaryKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-gauge',
-    color: '#3b82f6'
+    color: 'var(--color-secondary)'
   },
   {
     label: 'Healthy',
@@ -125,7 +125,7 @@ const summaryKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-check-circle',
-    color: '#22c55e'
+    color: 'var(--color-success)'
   },
   {
     label: 'Warning',
@@ -133,7 +133,7 @@ const summaryKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-exclamation-triangle',
-    color: '#f59e0b'
+    color: 'var(--color-warning)'
   },
   {
     label: 'Error / Offline',
@@ -141,7 +141,7 @@ const summaryKpis = computed(() => [
     unit: '',
     trend: 'stable' as const,
     icon: 'pi-times-circle',
-    color: '#ef4444'
+    color: 'var(--color-danger)'
   },
   {
     label: 'Avg Data Quality',
@@ -152,7 +152,7 @@ const summaryKpis = computed(() => [
     trend: 'up' as const,
     trendValue: '+0.3%',
     icon: 'pi-check-circle',
-    color: '#22c55e'
+    color: 'var(--color-success)'
   }
 ])
 
@@ -239,10 +239,10 @@ function onRowSelect(row: Record<string, unknown>): void {
   gap: 0.75rem;
   padding: 2rem;
   margin: 1.5rem;
-  border: 1px solid #fee2e2;
+  border: 1px solid var(--color-danger-light);
   border-radius: var(--facis-radius);
-  background: #fff5f5;
-  color: #991b1b;
+  background: var(--color-danger-soft);
+  color: var(--color-danger-dark);
   font-size: 0.875rem;
   text-align: center;
 }
@@ -253,9 +253,9 @@ function onRowSelect(row: Record<string, unknown>): void {
   padding: 0.4rem 1.5rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--color-success-dark);
   background: rgba(34, 197, 94, 0.08);
   border-bottom: 1px solid rgba(34, 197, 94, 0.2);
 }
-.live-banner__dot { font-size: 0.5rem; color: #22c55e; }
+.live-banner__dot { font-size: 0.5rem; color: var(--color-success); }
 </style>

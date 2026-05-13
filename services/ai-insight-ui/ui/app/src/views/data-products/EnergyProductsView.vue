@@ -5,44 +5,35 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import DataTablePage from '@/components/common/DataTablePage.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getPVSystems, getLoads } from '@/services/api'
+import { submit } from '@/services/transport'
+
+interface RealProduct {
+  id: string; table_name: string; name: string; domain: string;
+  semanticScope: string | null; description: string | null;
+  version: string; apiStatus: string; lastUpdated: string; sourceTable: string
+}
 
 const router = useRouter()
 const loading = ref(true)
 const error = ref(false)
-const meterCount = ref(0)
-const pvCount = ref(0)
-const loadCount = ref(0)
+const products = ref<Array<RealProduct & { useCase: string; sourceCount: number; exportStatus: string }>>([])
 
 async function fetchData(): Promise<void> {
-  loading.value = true
-  error.value = false
-  const [m, pv, loads] = await Promise.all([getMeters(), getPVSystems(), getLoads()])
-
-  if (!m && !pv && !loads) {
-    error.value = true
-    loading.value = false
-    return
-  }
-
-  meterCount.value = m?.count ?? 0
-  pvCount.value = pv?.count ?? 0
-  loadCount.value = loads?.devices?.length ?? 0
-  loading.value = false
+  loading.value = true; error.value = false
+  try {
+    const r = await submit<unknown, { products: RealProduct[]; count: number }>('data-products.energy.list', {})
+    if (r.ok && r.data?.products) {
+      products.value = r.data.products.map(p => ({ ...p, useCase: 'Smart Energy', sourceCount: 1, exportStatus: 'ready' }))
+    } else { error.value = true }
+  } catch { error.value = true } finally { loading.value = false }
 }
 
 onMounted(fetchData)
 
-const products = computed(() => [
-  { id: 'dp-001', name: 'Energy Consumption Timeseries', useCase: 'Smart Energy', semanticScope: 'Energy Metering', version: '2.1.0', sourceCount: meterCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-  { id: 'dp-002', name: 'PV Generation Forecast', useCase: 'Smart Energy', semanticScope: 'PV Systems', version: '1.3.0', sourceCount: pvCount.value, apiStatus: 'available', exportStatus: 'ready', lastUpdated: new Date().toISOString() },
-  { id: 'dp-005', name: 'Energy Flexibility Profile', useCase: 'Smart Energy', semanticScope: 'Flexible Loads', version: '0.9.0', sourceCount: loadCount.value, apiStatus: 'available', exportStatus: 'processing', lastUpdated: new Date().toISOString() }
-].filter(p => p.sourceCount > 0))
-
 const stats = computed(() => ({
   total: products.value.length,
   available: products.value.filter(p => p.apiStatus === 'available').length,
-  totalSources: products.value.reduce((a, p) => a + p.sourceCount, 0)
+  totalSources: products.value.length
 }))
 
 const columns = [
@@ -83,9 +74,9 @@ const filters = [
 
     <div class="view-body">
       <div class="grid-kpi">
-        <KpiCard label="Energy Products" :value="stats.total" trend="stable" icon="pi-bolt" color="#f59e0b" />
-        <KpiCard label="API Available" :value="stats.available" trend="stable" icon="pi-check-circle" color="#22c55e" />
-        <KpiCard label="Contributing Sources" :value="stats.totalSources" trend="stable" icon="pi-database" color="#005fff" />
+        <KpiCard label="Energy Products" :value="stats.total" trend="stable" icon="pi-bolt" color="var(--color-warning)" />
+        <KpiCard label="API Available" :value="stats.available" trend="stable" icon="pi-check-circle" color="var(--color-success)" />
+        <KpiCard label="Contributing Sources" :value="stats.totalSources" trend="stable" icon="pi-database" color="var(--color-primary)" />
       </div>
 
       <DataTablePage
@@ -118,8 +109,8 @@ const filters = [
 .view-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .api-error {
   display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
-  padding: 2rem; margin: 1.5rem; border: 1px solid #fee2e2;
-  border-radius: var(--facis-radius); background: #fff5f5;
-  color: #991b1b; font-size: 0.875rem; text-align: center;
+  padding: 2rem; margin: 1.5rem; border: 1px solid var(--color-danger-light);
+  border-radius: var(--facis-radius); background: var(--color-danger-soft);
+  color: var(--color-danger-dark); font-size: 0.875rem; text-align: center;
 }
 </style>

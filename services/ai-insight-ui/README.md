@@ -37,10 +37,12 @@ ORCE Node-RED Flows
 - AI Insight Service running at `http://localhost:8080`
 - LLM API keys (OpenAI and/or Anthropic)
 
-### Deploy UI Files
-Copy `ui/src/` contents to UIBUILDER's source directory:
+### Build and Deploy UI Files
+Build the Vite SPA and copy the build output to UIBUILDER's source directory:
 ```bash
-cp -r ui/src/* /data/uibuilder/aiInsight/src/
+npm --prefix ui/app install
+npm --prefix ui/app run build
+cp -r ui/app/dist/* /data/uibuilder/aiInsight/src/
 ```
 
 ### Import Flows
@@ -82,9 +84,10 @@ kubectl create configmap ai-insight-ui-flows \
   -n facis
 ```
 
-3. Copy UI files to the ORCE pod:
+3. Build and copy UI files to the ORCE pod:
 ```bash
-kubectl cp ui/src/ facis/orce-pod:/data/uibuilder/aiInsight/src/
+npm --prefix ui/app run build
+kubectl cp ui/app/dist/. facis/orce-pod:/data/uibuilder/aiInsight/src/
 ```
 
 4. Import flows via ORCE admin API or restart ORCE with the ConfigMap mounted.
@@ -95,11 +98,17 @@ See `k8s/ai-insight-ui-configmap.yaml` for the full K8s manifests.
 
 ```
 ai-insight-ui/
-├── ui/src/
-│   ├── index.html       # Vue 3 SPA (204 lines)
-│   ├── index.js         # All Vue logic (652 lines)
-│   ├── index.css        # FACIS design system (1160 lines)
-│   └── Facis-logo.svg   # Branding
+├── ui/app/              # Vue 3 + Vite SPA (FAP §9 aligned)
+│   ├── src/
+│   │   ├── views/       # 50+ feature views (alerts, schemas, smart-city, etc.)
+│   │   ├── components/  # Shared components (StatusBadge, KpiCard, …)
+│   │   ├── services/    # transport.ts (FAP §9 submit), dispatch.ts wrappers
+│   │   ├── stores/      # Pinia stores (uibuilder, kpi, notifications)
+│   │   ├── styles/      # tokens.css (canonical design tokens) + shell.css
+│   │   ├── auth.ts      # Keycloak init
+│   │   └── main.ts      # Bootstrap (registerInboundHandler)
+│   ├── index.html
+│   └── vite.config.ts
 ├── flows/
 │   ├── flows.full.json  # Merged flow (40 nodes)
 │   └── tabs/            # Individual flow tabs

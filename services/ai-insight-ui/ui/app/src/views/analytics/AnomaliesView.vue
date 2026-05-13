@@ -7,7 +7,7 @@ import InputText from 'primevue/inputtext'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getMeters, getMeterHistory, getStreetlights, getStreetlightHistory } from '@/services/api'
+import { getMeters, getMeterHistory, getStreetlights, getStreetlightHistory } from '@/services/dispatch'
 import { detectAnomalies, detectStreetlightAnomalies, extractMeterPowerKw } from '@/services/analytics'
 import type { Anomaly } from '@/services/analytics'
 
@@ -30,7 +30,7 @@ async function fetchData(): Promise<void> {
     for (const meter of metersRes.meters.slice(0, 3)) {
       const hist = await getMeterHistory(meter.meter_id)
       if (hist?.readings?.length) {
-        const anoms = detectAnomalies(hist.readings, meter.meter_id, 'active_power_kw', 'Smart Energy')
+        const anoms = detectAnomalies(hist.readings as unknown as { [key: string]: unknown; timestamp: string }[], meter.meter_id, 'active_power_kw', 'Smart Energy')
         all.push(...anoms)
       }
     }
@@ -134,11 +134,11 @@ function deviationColor(a: Anomaly): string {
 
       <template v-else>
         <div class="grid-kpi">
-          <KpiCard label="Total Anomalies" :value="summary.total" trend="stable" icon="pi-chart-bar" color="#005fff" />
-          <KpiCard label="Critical" :value="summary.critical" trend="stable" icon="pi-times-circle" color="#ef4444" />
-          <KpiCard label="Warning"  :value="summary.warning"  trend="stable" icon="pi-exclamation-triangle" color="#f59e0b" />
-          <KpiCard label="Info"     :value="summary.info"     trend="stable" icon="pi-info-circle" color="#06b6d4" />
-          <KpiCard label="Energy"   :value="summary.energy"   trend="stable" icon="pi-bolt" color="#8b5cf6" />
+          <KpiCard label="Total Anomalies" :value="summary.total" trend="stable" icon="pi-chart-bar" color="var(--color-primary)" />
+          <KpiCard label="Critical" :value="summary.critical" trend="stable" icon="pi-times-circle" color="var(--color-danger)" />
+          <KpiCard label="Warning"  :value="summary.warning"  trend="stable" icon="pi-exclamation-triangle" color="var(--color-warning)" />
+          <KpiCard label="Info"     :value="summary.info"     trend="stable" icon="pi-info-circle" color="var(--color-secondary)" />
+          <KpiCard label="Energy"   :value="summary.energy"   trend="stable" icon="pi-bolt" color="var(--chart-series-6)" />
         </div>
 
         <div class="filter-bar">
@@ -240,8 +240,8 @@ function deviationColor(a: Anomaly): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state, .empty-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 3rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .empty-state { flex-direction: column; align-items: flex-start; background: var(--facis-surface); border: 1px solid var(--facis-border); border-radius: var(--facis-radius); padding: 1.5rem; }
@@ -261,8 +261,8 @@ function deviationColor(a: Anomaly): string {
 .filter-active-label { font-size: 0.75rem; font-weight: 600; color: var(--facis-primary); background: var(--facis-primary-light); padding: 0.15rem 0.5rem; border-radius: 3px; }
 .id-code { font-family: var(--facis-font-mono); font-size: 0.75rem; background: var(--facis-surface-2); padding: 0.1rem 0.35rem; border-radius: 3px; }
 .uc-badge { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; }
-.uc-badge--energy { background: #fef3c7; color: #92400e; }
-.uc-badge--city   { background: #f3e8ff; color: #7c3aed; }
+.uc-badge--energy { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.uc-badge--city   { background: var(--color-info-light); color: var(--chart-series-6); }
 .ts { font-size: 0.78rem; color: var(--facis-text-secondary); }
 .summary-text { font-size: 0.8rem; color: var(--facis-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .empty-row { padding: 2rem; text-align: center; color: var(--facis-text-secondary); font-size: 0.875rem; }

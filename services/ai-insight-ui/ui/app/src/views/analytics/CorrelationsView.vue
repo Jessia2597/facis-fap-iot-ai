@@ -7,7 +7,7 @@ import {
 } from 'chart.js'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getMeterHistory, getPriceHistory, getWeatherStations, getWeatherHistory, getPVSystems, getPVHistory } from '@/services/api'
+import { getMeters, getMeterHistory, getPriceHistory, getWeatherStations, getWeatherHistory, getPVSystems, getPVHistory } from '@/services/dispatch'
 import { computeCorrelations, extractMeterPowerKw } from '@/services/analytics'
 import type { CorrelationResult } from '@/services/analytics'
 
@@ -49,7 +49,7 @@ async function fetchData(): Promise<void> {
       firstPvId      ? getPVHistory(firstPvId) : Promise.resolve(null)
     ])
 
-    const meterPower = (mHist?.readings ?? []).map(r => extractMeterPowerKw(r as Record<string, unknown>))
+    const meterPower = (mHist?.readings ?? []).map(r => extractMeterPowerKw(r as unknown as Record<string, unknown>))
     const prices     = (priceHist?.prices ?? []).map(p => p.price_eur_per_kwh)
     const temps      = (wxHist?.readings ?? []).map(r => r.temperature_c)
     const ghi        = (wxHist?.readings ?? []).map(r => r.ghi_w_m2)
@@ -123,9 +123,9 @@ const strongCount  = computed(() => correlations.value.filter(c => c.strength ==
 const moderateCount = computed(() => correlations.value.filter(c => c.strength === 'moderate').length)
 
 function strengthColor(s: string): string {
-  if (s === 'strong') return '#22c55e'
-  if (s === 'moderate') return '#f59e0b'
-  return '#94a3b8'
+  if (s === 'strong') return 'var(--color-success)'
+  if (s === 'moderate') return 'var(--color-warning)'
+  return 'var(--color-text-soft)'
 }
 
 function buildScatterData(pair: CorrelationPair) {
@@ -141,9 +141,9 @@ function rBg(r: number): string {
 
 function rColor(r: number): string {
   const abs = Math.abs(r)
-  if (abs >= 0.8) return '#15803d'
-  if (abs >= 0.6) return '#92400e'
-  return '#475569'
+  if (abs >= 0.8) return 'var(--color-success-dark)'
+  if (abs >= 0.6) return 'var(--color-warning-dark)'
+  return 'var(--color-neutral-fg)'
 }
 
 const scatterOptions = computed<ChartOptions<'scatter'>>(() => ({
@@ -153,8 +153,8 @@ const scatterOptions = computed<ChartOptions<'scatter'>>(() => ({
     tooltip: { backgroundColor: 'rgba(15,23,42,0.92)', titleFont: { family: 'Inter', size: 11 }, bodyFont: { family: 'Inter', size: 11 }, padding: 8, cornerRadius: 6 }
   },
   scales: {
-    x: { grid: { color: 'rgba(226,232,240,0.6)' }, ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8' } },
-    y: { grid: { color: 'rgba(226,232,240,0.6)' }, ticks: { font: { family: 'Inter', size: 10 }, color: '#94a3b8' } }
+    x: { grid: { color: 'rgba(226,232,240,0.6)' }, ticks: { font: { family: 'Inter', size: 10 }, color: 'var(--color-text-soft)' } },
+    y: { grid: { color: 'rgba(226,232,240,0.6)' }, ticks: { font: { family: 'Inter', size: 10 }, color: 'var(--color-text-soft)' } }
   }
 }))
 </script>
@@ -179,10 +179,10 @@ const scatterOptions = computed<ChartOptions<'scatter'>>(() => ({
 
       <template v-else>
         <div class="grid-kpi">
-          <KpiCard label="Correlation Pairs" :value="correlations.length" trend="stable" icon="pi-link" color="#005fff" />
-          <KpiCard label="Strong Correlations" :value="strongCount" trend="stable" icon="pi-check-circle" color="#22c55e" />
-          <KpiCard label="Moderate Correlations" :value="moderateCount" trend="stable" icon="pi-minus-circle" color="#f59e0b" />
-          <KpiCard label="Avg |R| Value" :value="avgR" trend="stable" icon="pi-chart-scatter" color="#8b5cf6" />
+          <KpiCard label="Correlation Pairs" :value="correlations.length" trend="stable" icon="pi-link" color="var(--color-primary)" />
+          <KpiCard label="Strong Correlations" :value="strongCount" trend="stable" icon="pi-check-circle" color="var(--color-success)" />
+          <KpiCard label="Moderate Correlations" :value="moderateCount" trend="stable" icon="pi-minus-circle" color="var(--color-warning)" />
+          <KpiCard label="Avg |R| Value" :value="avgR" trend="stable" icon="pi-chart-scatter" color="var(--chart-series-6)" />
         </div>
 
         <div v-if="!correlations.length" class="card card-body empty-state">
@@ -232,8 +232,8 @@ const scatterOptions = computed<ChartOptions<'scatter'>>(() => ({
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .empty-state { display: flex; align-items: center; gap: 0.75rem; padding: 2rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
@@ -260,8 +260,8 @@ const scatterOptions = computed<ChartOptions<'scatter'>>(() => ({
 .corr-insight { display: flex; gap: 0.625rem; padding: 0.875rem 1.25rem; background: var(--facis-surface-2); border-top: 1px solid var(--facis-border); }
 .corr-insight__icon { color: var(--facis-primary); font-size: 0.85rem; flex-shrink: 0; padding-top: 0.1rem; }
 .corr-insight__text { font-size: 0.78rem; color: var(--facis-text-secondary); line-height: 1.5; }
-.method-note { display: flex; gap: 0.875rem; background: #f0f9ff; border: 1px solid #bae6fd; }
-.method-note__icon { color: #0284c7; font-size: 1rem; flex-shrink: 0; padding-top: 0.1rem; }
-.method-note__title { font-size: 0.875rem; font-weight: 600; color: #0c4a6e; margin-bottom: 0.3rem; }
-.method-note__text { font-size: 0.8rem; color: #0369a1; line-height: 1.5; }
+.method-note { display: flex; gap: 0.875rem; background: var(--color-primary-soft); border: 1px solid var(--color-info-light); }
+.method-note__icon { color: var(--color-info-dark); font-size: 1rem; flex-shrink: 0; padding-top: 0.1rem; }
+.method-note__title { font-size: 0.875rem; font-weight: 600; color: var(--color-info-dark); margin-bottom: 0.3rem; }
+.method-note__text { font-size: 0.8rem; color: var(--color-info-dark); line-height: 1.5; }
 </style>

@@ -4,6 +4,14 @@
 **Version:** 1.0
 **Date:** 07 March 2026
 
+> **TDR §9.1.1 — Docker Compose is not a FACIS deliverable.** Sections of
+> this guide that reference `docker compose` / `docker-compose.yml` document
+> the historical pre-2026-04-29 local stack, retained for background only.
+> The simulation service no longer ships any `docker-compose*.yml`. Use
+> Helm against a kind/minikube cluster for local dev — see the
+> [`orce-runtime migration guide`](../orce-runtime/migration-guide.md) for
+> the supported workflow and the rationale for the move.
+
 ---
 
 ## 1. Prerequisites

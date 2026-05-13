@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import PageHeader from '@/components/common/PageHeader.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { getMeters, getPVSystems, getWeatherStations, getLoads, getSimHealth } from '@/services/api'
+import { getMeters, getPVSystems, getWeatherStations, getLoads, getSimHealth } from '@/services/dispatch'
 
 const router = useRouter()
 const loading = ref(true)
@@ -72,10 +72,10 @@ const products = computed(() => {
 })
 
 const summaryKpis = computed(() => [
-  { label: 'Total Products', value: products.value.length, icon: 'pi-box', color: '#3b82f6', trend: 'stable' as const },
-  { label: 'API Available', value: products.value.filter(p => p.apiStatus === 'available').length, icon: 'pi-check-circle', color: '#22c55e', trend: 'stable' as const },
-  { label: 'Export Ready', value: products.value.filter(p => p.exportStatus === 'ready').length, icon: 'pi-download', color: '#22c55e', trend: 'stable' as const },
-  { label: 'Total Sources', value: products.value.reduce((s, p) => s + p.sourceCount, 0), icon: 'pi-database', color: '#8b5cf6', trend: 'stable' as const }
+  { label: 'Total Products', value: products.value.length, icon: 'pi-box', color: 'var(--color-secondary)', trend: 'stable' as const },
+  { label: 'API Available', value: products.value.filter(p => p.apiStatus === 'available').length, icon: 'pi-check-circle', color: 'var(--color-success)', trend: 'stable' as const },
+  { label: 'Export Ready', value: products.value.filter(p => p.exportStatus === 'ready').length, icon: 'pi-download', color: 'var(--color-success)', trend: 'stable' as const },
+  { label: 'Total Sources', value: products.value.reduce((s, p) => s + p.sourceCount, 0), icon: 'pi-database', color: 'var(--chart-series-6)', trend: 'stable' as const }
 ])
 
 function formatDate(ts: string): string {
@@ -137,8 +137,8 @@ function formatDate(ts: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .view-page { display: flex; flex-direction: column; }

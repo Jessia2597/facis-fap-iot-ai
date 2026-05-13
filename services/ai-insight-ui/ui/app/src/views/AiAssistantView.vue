@@ -9,11 +9,13 @@ import KpiCard from '@/components/common/KpiCard.vue'
 import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
 import { useInsightApi } from '@/composables/useInsightApi'
 import { useUiBuilderStore } from '@/stores/uibuilder'
+import { useAppStore } from '@/services/state'
+import { useRelativeTime } from '@/composables/useRelativeTime'
 import {
   getMeters, getMeterCurrent,
   getPVSystems, getPVCurrent,
   getPriceCurrent, getPriceHistory
-} from '@/services/api'
+} from '@/services/dispatch'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +37,7 @@ interface InsightCard {
 
 const { askAi } = useInsightApi()
 const uib = useUiBuilderStore()
+const app = useAppStore()
 
 // Live data from simulation API
 const isLive = ref(false)
@@ -45,20 +48,11 @@ const liveMeterCount = ref(0)
 const livePvRecords = ref<{ timestamp: string; pvPower_kW: number; irradiance_w_m2: number }[]>([])
 const livePriceRecords = ref<{ timestamp: string; priceEurPerKwh: number }[]>([])
 
-// Try to connect UIBUILDER on mount; gracefully falls back to demo mode
+// UIBUILDER is initialised once at app boot in main.ts. Server-side
+// kpi.update broadcasts arrive as FAP §9 events, get routed by the
+// transport reducer into `state.model.kpi`, and surface in the `kpis`
+// computed below. No per-view subscription is needed.
 onMounted(async () => {
-  await uib.init()
-
-  // If connected, watch for live KPI pushes from Node-RED
-  if (uib.connected) {
-    const unsubscribe = uib.onMessage((msg) => {
-      if (msg.topic === 'kpi.update' && uib.lastKpi) {
-        // KPI state is already updated in the store; nothing extra needed here
-      }
-    })
-    onUnmounted(unsubscribe)
-  }
-
   // Fetch live simulation data for KPIs and charts
   try {
     const [metersResp, pvResp, priceResp] = await Promise.all([
@@ -101,7 +95,7 @@ onMounted(async () => {
 
     // Fetch PV history for forecast chart
     if (pvResp && pvResp.count > 0) {
-      const { getPVHistory } = await import('@/services/api')
+      const { getPVHistory } = await import('@/services/dispatch')
       const pvHist = await getPVHistory(pvResp.systems[0].system_id)
       if (pvHist) {
         livePvRecords.value = pvHist.readings.map(r => ({
@@ -148,18 +142,31 @@ const TIME_RANGE_OPTIONS = [
 
 // ─── KPI Cards ────────────────────────────────────────────────────────────────
 
+const liveKpiAgo = useRelativeTime(computed(() => app.state.model.kpi?.updatedAt ?? null))
 const kpis = computed(() => {
+  // Server-broadcast KPIs (gold-layer Trino aggregates) take precedence when
+  // present; the view falls back to sim-derived values otherwise so the panel
+  // is never empty before the first broadcast arrives. The "Trino · Ns ago"
+  // tag advertises both source and freshness so users can spot stale data.
+  const live = app.state.model.kpi
+  const trinoTag = live && liveKpiAgo.value ? `Trino · ${liveKpiAgo.value}` : (live ? 'Trino' : '')
+  const liveLabel = live ? trinoTag : (isLive.value ? 'Live' : '')
+
   const totalPower = Number(liveTotalPowerKw.value) || 0
   const pvPower = Number(livePvPowerKw.value) || 0
   const price = Number(livePricePerKwh.value) || 0.12
-  const netGrid = Math.max(0, totalPower - pvPower)
-  const dailyCost = netGrid * 24 * price
+  const fallbackNetGrid = Math.max(0, totalPower - pvPower)
+  const fallbackDailyCost = fallbackNetGrid * 24 * price
+
+  const netGrid = live?.netGrid ?? fallbackNetGrid
+  const pvGen = live?.pvGeneration ?? pvPower
+  const dailyCost = live?.dailyCost ?? fallbackDailyCost
 
   return [
-    { label: 'Net Grid Import', value: netGrid.toFixed(1), unit: 'kW', trend: 'stable' as const, icon: 'pi-arrow-down-left', color: '#3b82f6' },
-    { label: 'PV Generation', value: pvPower.toFixed(1), unit: 'kW', trend: 'up' as const, trendValue: isLive.value ? 'Live' : '', icon: 'pi-sun', color: '#f59e0b' },
-    { label: 'Daily Cost Est.', value: `€${dailyCost.toFixed(0)}`, unit: '', trend: 'down' as const, trendValue: isLive.value ? 'Live' : '', icon: 'pi-euro', color: '#22c55e' },
-    { label: 'Anomalies (24h)', value: '--', unit: '', trend: 'stable' as const, icon: 'pi-exclamation-triangle', color: '#ef4444' }
+    { label: 'Net Grid Import', value: netGrid.toFixed(1), unit: 'kW', trend: 'stable' as const, trendValue: live ? liveLabel : '', icon: 'pi-arrow-down-left', color: 'var(--color-secondary)' },
+    { label: 'PV Generation', value: pvGen.toFixed(1), unit: 'kW', trend: 'up' as const, trendValue: liveLabel, icon: 'pi-sun', color: 'var(--color-warning)' },
+    { label: 'Daily Cost Est.', value: `€${dailyCost.toFixed(0)}`, unit: '', trend: 'down' as const, trendValue: liveLabel, icon: 'pi-euro', color: 'var(--color-success)' },
+    { label: 'Anomalies (24h)', value: '--', unit: '', trend: 'stable' as const, icon: 'pi-exclamation-triangle', color: 'var(--color-danger)' }
   ]
 })
 
@@ -185,8 +192,12 @@ async function generateLiveResponse(query: string): Promise<{ text: string; insi
   const dailyCost = netGrid * 24 * price
   const selfSufficiency = power > 0 ? ((pv / power) * 100).toFixed(1) : '0'
 
-  // Fetch fresh data for specific prompts
-  const { getMeterHistory, getPriceForecast, getStreetlights, getStreetlightCurrent, getTrafficZones, getTrafficCurrent, getCityEvents, getCityEventCurrent, getCityWeatherCurrent } = await import('@/services/api')
+  // Fetch fresh data for specific prompts. `getPriceForecast` (formerly
+  // expected to hit /api/v1/prices/forecast — that endpoint does not exist
+  // on the sim runtime) was deleted; the PV Forecast / Cost Optimisation
+  // handlers below use the meter-history rows from gold (which carry the
+  // hourly avg_price_eur_per_kwh column) for a recent-price profile instead.
+  const { getMeterHistory, getStreetlights, getStreetlightCurrent, getTrafficZones, getTrafficCurrent, getCityEvents, getCityEventCurrent, getCityWeatherCurrent } = await import('@/services/dispatch')
 
   const q = query.toLowerCase()
 
@@ -202,11 +213,18 @@ async function generateLiveResponse(query: string): Promise<{ text: string; insi
   }
 
   if (q.includes('pv') || q.includes('solar') || q.includes('forecast') || q.includes('irradiance')) {
-    const forecast = await getPriceForecast()
-    const fcPrices = forecast?.forecast ?? []
+    // Recent hourly price profile from gold.net_grid_hourly (carried by
+    // analytics.meters.history's row shape). No upstream forecast service
+    // is available, so we surface the last 24h of observed prices instead.
+    const hist = await getMeterHistory('meter-001')
+    const recentPrices: number[] = (hist?.readings ?? [])
+      .map((r: any) => Number(r?.avg_price_eur_per_kwh))
+      .filter((v: number) => Number.isFinite(v) && v > 0)
+    const minPrice = recentPrices.length ? Math.min(...recentPrices) : 0
+    const maxPrice = recentPrices.length ? Math.max(...recentPrices) : 0
     return {
-      text: `Current PV generation: **${pv.toFixed(1)} kW**. Based on the 24h price forecast (${fcPrices.length} data points), the optimal self-consumption window is during the highest-price hours. Current irradiance conditions suggest ${pv > 1 ? 'active generation' : 'low/no generation (nighttime or overcast)'}.\n\nPrice forecast range: **€${fcPrices.length > 0 ? Math.min(...fcPrices.map((p: any) => p.price_eur_per_kwh)).toFixed(3) : '?'}** to **€${fcPrices.length > 0 ? Math.max(...fcPrices.map((p: any) => p.price_eur_per_kwh)).toFixed(3) : '?'}/kWh**.`,
-      insightCard: { findings: [`Current PV output: ${pv.toFixed(1)} kW`, `${fcPrices.length} forecast price points available`, `Price range: €${fcPrices.length > 0 ? Math.min(...fcPrices.map((p: any) => p.price_eur_per_kwh)).toFixed(3) : '?'} – €${fcPrices.length > 0 ? Math.max(...fcPrices.map((p: any) => p.price_eur_per_kwh)).toFixed(3) : '?'}/kWh`], recommendations: [`${pv > 1 ? 'Maximise self-consumption during current generation window' : 'PV not generating — schedule loads for next solar window'}`, `Monitor forecast for optimal battery charging times`] }
+      text: `Current PV generation: **${pv.toFixed(1)} kW**. Recent 24h price profile (${recentPrices.length} hourly points): **€${minPrice.toFixed(3)}** to **€${maxPrice.toFixed(3)}/kWh**. Optimal self-consumption windows are the hours closest to the upper end of that range. Current irradiance conditions suggest ${pv > 1 ? 'active generation' : 'low/no generation (nighttime or overcast)'}.`,
+      insightCard: { findings: [`Current PV output: ${pv.toFixed(1)} kW`, `${recentPrices.length} hourly price points (last 24h)`, recentPrices.length ? `Price range: €${minPrice.toFixed(3)} – €${maxPrice.toFixed(3)}/kWh` : 'Price history unavailable'], recommendations: [`${pv > 1 ? 'Maximise self-consumption during current generation window' : 'PV not generating — schedule loads for next solar window'}`, `Shift deferrable load to hours nearest the recent price minimum`] }
     }
   }
 
@@ -240,15 +258,22 @@ async function generateLiveResponse(query: string): Promise<{ text: string; insi
   }
 
   if (q.includes('cost') || q.includes('saving') || q.includes('price') || q.includes('tariff') || q.includes('optimi')) {
-    const forecast = await getPriceForecast()
-    const fcPrices = forecast?.forecast ?? []
-    const minPrice = fcPrices.length > 0 ? Math.min(...fcPrices.map((p: any) => p.price_eur_per_kwh)) : 0
-    const maxPrice = fcPrices.length > 0 ? Math.max(...fcPrices.map((p: any) => p.price_eur_per_kwh)) : 0
+    // Use the recent 24h hourly price profile from gold.net_grid_hourly
+    // (rides along on the analytics.meters.history row shape) since no
+    // forward-looking price forecast service is wired up.
+    const hist = await getMeterHistory('meter-001')
+    const rows: any[] = hist?.readings ?? []
+    const priced = rows
+      .map((r: any) => ({ ts: r?.timestamp ?? r?.hour, p: Number(r?.avg_price_eur_per_kwh) }))
+      .filter((r) => Number.isFinite(r.p) && r.p > 0)
+    const minPrice = priced.length ? Math.min(...priced.map((p) => p.p)) : 0
+    const maxPrice = priced.length ? Math.max(...priced.map((p) => p.p)) : 0
     const savings = (maxPrice - minPrice) * netGrid * 24
-    const cheapHours = fcPrices.filter((p: any) => p.price_eur_per_kwh < (minPrice + maxPrice) / 2).map((p: any) => new Date(p.timestamp).getHours()).slice(0, 4)
+    const midPrice = (minPrice + maxPrice) / 2
+    const cheapHours = priced.filter((p) => p.p < midPrice).map((p) => new Date(p.ts).getUTCHours()).slice(0, 4)
     return {
-      text: `Analysing the ENTSO-E spot price forecast alongside your current load of **${netGrid.toFixed(1)} kW** net grid import:\n\n- Price range: **€${minPrice.toFixed(3)}/kWh** to **€${maxPrice.toFixed(3)}/kWh** (spread: €${(maxPrice - minPrice).toFixed(3)}/kWh)\n- Estimated savings from load shifting: **€${savings.toFixed(0)}/day**\n- Cheapest hours: **${cheapHours.map(h => `${h}:00`).join(', ')}**\n- Current rate: **€${price.toFixed(3)}/kWh** (${price > (minPrice + maxPrice) / 2 ? 'above average' : 'below average'})`,
-      insightCard: { findings: [`Current price: €${price.toFixed(3)}/kWh`, `24h range: €${minPrice.toFixed(3)} – €${maxPrice.toFixed(3)}/kWh`, `Net grid import: ${netGrid.toFixed(1)} kW`, `Estimated daily cost: €${dailyCost.toFixed(0)}`], recommendations: [`Shift deferrable loads to ${cheapHours.map(h => `${h}:00`).join(', ')}`, `Potential savings: €${savings.toFixed(0)}/day from load shifting`, `Current rate is ${price > (minPrice + maxPrice) / 2 ? 'above' : 'below'} average — ${price > (minPrice + maxPrice) / 2 ? 'defer non-essential loads' : 'good time to run high-power equipment'}`] }
+      text: `Recent 24h price observations (${priced.length} hourly points) alongside your current load of **${netGrid.toFixed(1)} kW** net grid import:\n\n- Price range: **€${minPrice.toFixed(3)}/kWh** to **€${maxPrice.toFixed(3)}/kWh** (spread: €${(maxPrice - minPrice).toFixed(3)}/kWh)\n- Estimated savings from load shifting: **€${savings.toFixed(0)}/day** at this spread\n- Cheapest hours observed: **${cheapHours.length ? cheapHours.map(h => `${h}:00`).join(', ') : '—'}**\n- Current rate: **€${price.toFixed(3)}/kWh** (${price > midPrice ? 'above the recent mid' : 'below the recent mid'})`,
+      insightCard: { findings: [`Current price: €${price.toFixed(3)}/kWh`, `24h range: €${minPrice.toFixed(3)} – €${maxPrice.toFixed(3)}/kWh`, `Net grid import: ${netGrid.toFixed(1)} kW`, `Estimated daily cost: €${dailyCost.toFixed(0)}`], recommendations: [`Shift deferrable loads to hours similar to ${cheapHours.length ? cheapHours.map(h => `${h}:00`).join(', ') : 'the cheapest historical band'}`, `Potential savings: €${savings.toFixed(0)}/day from load shifting at this spread`, `Current rate is ${price > midPrice ? 'above' : 'below'} the recent average — ${price > midPrice ? 'defer non-essential loads' : 'good time to run high-power equipment'}`] }
     }
   }
 
@@ -334,15 +359,18 @@ async function sendMessage(text?: string, promptKey?: string): Promise<void> {
     }
   } else {
     // ALL queries go through the AI Insight API (Trino + GPT-4.1-mini)
-    const { postInsightEnergySummary, postInsightAnomalyReport, postInsightCityStatus } = await import('@/services/api')
+    const { postInsightEnergySummary, postInsightAnomalyReport, postInsightCityStatus, getSimNow } = await import('@/services/dispatch')
 
-    // Use the frontend time range filter
-    const now = new Date()
+    // Anchor the time-range filter on the simulator's clock, not wall-clock.
+    // Gold tables are populated from sim-clock event timestamps; querying
+    // wall-clock NOW returns 0 rows whenever the sim runs at >1x acceleration.
+    const endIso = await getSimNow()
+    const endMs = new Date(endIso).getTime()
     const rangeMs = timeRange.value === '30d' ? 30 * 86_400_000
                   : timeRange.value === '7d'  ? 7 * 86_400_000
                   : 86_400_000
-    const startTs = new Date(now.getTime() - rangeMs).toISOString()
-    const endTs = now.toISOString()
+    const startTs = new Date(endMs - rangeMs).toISOString()
+    const endTs = endIso
 
     let aiResult: any = null
     const q = query.toLowerCase()
@@ -424,7 +452,7 @@ const forecastDatasets = computed(() => {
     {
       label: 'PV Power (kW)',
       data: slice.map(r => Math.round(r.pvPower_kW * 10) / 10),
-      borderColor: '#f59e0b',
+      borderColor: 'var(--color-warning)',
       backgroundColor: 'rgba(245,158,11,0.1)',
       fill: true,
       tension: 0.4
@@ -432,7 +460,7 @@ const forecastDatasets = computed(() => {
     {
       label: 'Irradiance (W/m² ÷10)',
       data: slice.map(r => Math.round(r.irradiance_w_m2 / 10) / 10),
-      borderColor: '#fbbf24',
+      borderColor: 'var(--color-warning)',
       tension: 0.4
     }
   ]
@@ -444,7 +472,7 @@ const costDatasets = computed(() => {
     {
       label: 'Price (€/kWh)',
       data: src.map(r => Math.round(r.priceEurPerKwh * 1000) / 1000),
-      borderColor: '#3b82f6',
+      borderColor: 'var(--color-secondary)',
       backgroundColor: 'rgba(59,130,246,0.07)',
       fill: true,
       tension: 0.4
@@ -874,7 +902,7 @@ const costLabels = computed(() => {
 }
 
 .chat-message__bubble--user .chat-message__content {
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .chat-message__content :deep(p) {
@@ -909,8 +937,8 @@ const costLabels = computed(() => {
   border-radius: var(--facis-radius-sm);
 }
 
-.ic-section--findings { background: #f8fafc; border: 1px solid var(--facis-border); }
-.ic-section--recs     { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.ic-section--findings { background: var(--color-neutral-bg); border: 1px solid var(--facis-border); }
+.ic-section--recs     { background: var(--color-success-soft); border: 1px solid var(--color-success-light); }
 
 .ic-title {
   font-size: 0.786rem;
@@ -924,7 +952,7 @@ const costLabels = computed(() => {
   gap: 0.3rem;
 }
 
-.ic-section--recs .ic-title { color: #15803d; }
+.ic-section--recs .ic-title { color: var(--color-success-dark); }
 
 .ic-list {
   list-style: none;
@@ -949,7 +977,7 @@ const costLabels = computed(() => {
   color: var(--facis-text-muted);
 }
 
-.ic-section--recs .ic-list li::before { color: #15803d; }
+.ic-section--recs .ic-list li::before { color: var(--color-success-dark); }
 
 /* Typing */
 .typing-avatar { animation: pulse 2s infinite; }
@@ -1082,12 +1110,12 @@ const costLabels = computed(() => {
 
 .uib-status--live {
   background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  color: var(--color-success-dark);
 }
 
 .uib-status--demo {
   background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
+  color: var(--color-warning-dark);
 }
 
 .uib-status__dot {
@@ -1098,13 +1126,13 @@ const costLabels = computed(() => {
 }
 
 .uib-status--live .uib-status__dot {
-  background: #22c55e;
+  background: var(--color-success);
   box-shadow: 0 0 0 2px rgba(34,197,94,0.3);
   animation: pulse-green 2s infinite;
 }
 
 .uib-status--demo .uib-status__dot {
-  background: #f59e0b;
+  background: var(--color-warning);
 }
 
 @keyframes pulse-green {

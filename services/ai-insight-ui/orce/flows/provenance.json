@@ -1,0 +1,67 @@
+[
+  {
+    "id": "tab_aiui_provenance",
+    "type": "tab",
+    "label": "AI Insight UI — Provenance",
+    "disabled": false,
+    "info": "Pure UIBUILDER provenance subflow per FAP §10. Two actions:\n  provenance.transfers — DSP data-transfer events from global.transfers\n  provenance.insights  — AI Insight outputs from global.ai_insight_outputs\nReturns msg._result for the dispatcher's fn_build_response to wrap into a §9 envelope."
+  },
+  {
+    "id": "link-from-ui-provenance",
+    "type": "link in",
+    "z": "tab_aiui_provenance",
+    "name": "← from UI (provenance)",
+    "links": ["link-to-provenance"],
+    "x": 140,
+    "y": 100,
+    "wires": [["switch_provenance_action"]]
+  },
+  {
+    "id": "switch_provenance_action",
+    "type": "function",
+    "z": "tab_aiui_provenance",
+    "name": "switch by action",
+    "func": "const action = msg._req && msg._req.action;\nif (action === 'provenance.transfers') return [msg, null, null];\nif (action === 'provenance.insights')  return [null, msg, null];\nmsg._result = { ok: false, errors: { action: 'provenance: unknown action: ' + action } };\nreturn [null, null, msg];\n",
+    "outputs": 3,
+    "x": 380,
+    "y": 100,
+    "wires": [
+      ["fn_prov_transfers_build"],
+      ["fn_prov_insights_build"],
+      ["link-response-provenance"]
+    ]
+  },
+  {
+    "id": "fn_prov_transfers_build",
+    "type": "function",
+    "z": "tab_aiui_provenance",
+    "name": "provenance.transfers",
+    "func": "const map = global.get('transfers') || {};\nlet rows = [];\nif (Array.isArray(map)) rows = map.slice();\nelse if (map && typeof map === 'object') rows = Object.values(map);\nrows.sort((a, b) => {\n  const ta = new Date((a && (a.created_at || a.updated_at || a.timestamp)) || 0).getTime();\n  const tb = new Date((b && (b.created_at || b.updated_at || b.timestamp)) || 0).getTime();\n  return tb - ta;\n});\nmsg._result = { ok: true, data: { transfers: rows, count: rows.length } };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 640,
+    "y": 60,
+    "wires": [["link-response-provenance"]]
+  },
+  {
+    "id": "fn_prov_insights_build",
+    "type": "function",
+    "z": "tab_aiui_provenance",
+    "name": "provenance.insights",
+    "func": "const byId = global.get('ai_insight_outputs') || {};\nlet rows = [];\nif (Array.isArray(byId)) rows = byId.slice();\nelse if (byId && typeof byId === 'object') rows = Object.values(byId);\nrows = rows.map((r) => ({\n    output_id:    r.output_id || r.id,\n    insight_type: r.insight_type || r.type || null,\n    created_at:   r.created_at || r.generated_at || r.timestamp || null,\n    user_roles:   r.user_roles || null,\n    asset_id:     r.asset_id || r.subject || null,\n    agreement_id: r.agreement_id || null,\n    hmac:         (r.signed_url || '').split('hmac=')[1] || null,\n    bytes:        r.bytes || null\n}));\nrows.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());\nmsg._result = { ok: true, data: { insights: rows, count: rows.length } };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 640,
+    "y": 140,
+    "wires": [["link-response-provenance"]]
+  },
+  {
+    "id": "link-response-provenance",
+    "type": "link out",
+    "z": "tab_aiui_provenance",
+    "name": "→ Response (provenance)",
+    "mode": "link",
+    "links": ["link-from-response"],
+    "x": 940,
+    "y": 100,
+    "wires": []
+  }
+]

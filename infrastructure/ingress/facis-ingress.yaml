@@ -1,0 +1,119 @@
+# SPA application-data audit (Phase 3.5):
+#   The 6 AI Insight UI Phase-5 features (alerts, data-sources, provenance,
+#   integrations, schemas, admin) no longer expose http in/response under
+#   /api/v1/* — they are pure UIBUILDER subflows (PRs 16d0300, 801ab28,
+#   1963fa8, c347144, ec4a800, a66ae36). The /api/v1 Ingress rule remains
+#   because it is also the entry for the simulation REST snapshots (meters,
+#   PV, weather, prices, loads) which are still HTTP. Likewise /api/ai is
+#   shared with the ai-insight-service backend.
+#   The standard FAP zip-POST deploy (/orce/backendtest/aiInsight) and the
+#   operator-only /orce/api/v1/_internal/* endpoints are covered by the
+#   /orce Prefix rule.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: facis-ingress
+  namespace: orce
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - fap-iotai.facis.cloud
+      secretName: facis-wild
+  rules:
+    - host: fap-iotai.facis.cloud
+      http:
+        paths:
+          - path: /orce
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          - path: /ai
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          - path: /dsp
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          - path: /api/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          # AI Insight: /api/ai/outputs/:id + the OpenAPI surfaces it ships
+          # (`/openapi.json`, `/docs`, `/redoc`) live at bare-root paths on the
+          # ORCE pod, so each needs its own Ingress entry.
+          - path: /api/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          - path: /redoc
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          # AI Insight UI is served by UIBUILDER at
+          # https://fap-iotai.facis.cloud/orce/aiInsight/ — covered by the
+          # `/orce` Prefix rule above. The bundle is populated onto
+          # /data/uibuilder/aiInsight/src by init-ai-ui-patch.yaml (bootstrap)
+          # and live updates flow through /orce/backendtest/aiInsight (PR-2.3).
+          # ORCE editor's theme CSS references /dynamicsrc/font/*.woff
+          # (Manrope, Poppins) at the bare-root path. Node-RED's static
+          # handler maps `/data > /`, so /dynamicsrc/* is served from
+          # /data/dynamicsrc/*. Without this Ingress entry the editor
+          # falls back to the system sans-serif and looks broken.
+          - path: /dynamicsrc
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880
+          # UIBUILDER's shared client library + Socket.IO endpoint:
+          #   - /uibuilder/vendor/uibuilder.module.js  (client lib)
+          #   - /uibuilder/vendor/socket.io/...        (Socket.IO transport)
+          # The SPA at /orce/aiInsight/ loads these via absolute paths
+          # (index.html), so a plain Prefix routes them with no rewrite.
+          # Avoids the WebSocket-upgrade quirks that nginx-ingress regex
+          # rewrites introduce.
+          - path: /uibuilder
+            pathType: Prefix
+            backend:
+              service:
+                name: orce
+                port:
+                  number: 1880

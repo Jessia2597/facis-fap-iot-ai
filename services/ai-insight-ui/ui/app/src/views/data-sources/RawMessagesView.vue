@@ -11,7 +11,7 @@ import {
   getMeters, getMeterCurrent, getPVSystems, getPVCurrent,
   getWeatherStations, getWeatherCurrent, getStreetlights, getStreetlightCurrent,
   getTrafficZones, getTrafficCurrent, getCityEvents, getCityEventCurrent
-} from '@/services/api'
+} from '@/services/dispatch'
 
 interface RawMessage {
   id: string
@@ -69,7 +69,7 @@ async function fetchData(): Promise<void> {
         parserStatus: 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -85,7 +85,7 @@ async function fetchData(): Promise<void> {
         parserStatus: 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -101,7 +101,7 @@ async function fetchData(): Promise<void> {
         parserStatus: 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -117,7 +117,7 @@ async function fetchData(): Promise<void> {
         parserStatus: 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -133,7 +133,7 @@ async function fetchData(): Promise<void> {
         parserStatus: curr.severity === 'high' ? 'warning' : 'success',
         validationStatus: 'valid',
         receivedAt: curr.timestamp,
-        payload: curr as Record<string, unknown>
+        payload: curr as unknown as Record<string, unknown>
       })
     }
 
@@ -273,8 +273,8 @@ function validationSeverity(status: string): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 .view-page { display: flex; flex-direction: column; }
@@ -292,5 +292,5 @@ function validationSeverity(status: string): string {
 .payload-meta { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.75rem; background: var(--facis-surface-2); border-radius: var(--facis-radius-sm); }
 .payload-meta__row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.82rem; }
 .payload-meta__key { font-weight: 600; color: var(--facis-text-secondary); min-width: 80px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.payload-pre { font-family: var(--facis-font-mono); font-size: 0.8rem; background: #0f172a; color: #94a3b8; padding: 1rem; border-radius: var(--facis-radius-sm); overflow: auto; max-height: 400px; line-height: 1.6; white-space: pre; }
+.payload-pre { font-family: var(--facis-font-mono); font-size: 0.8rem; background: var(--color-text); color: var(--color-text-soft); padding: 1rem; border-radius: var(--facis-radius-sm); overflow: auto; max-height: 400px; line-height: 1.6; white-space: pre; }
 </style>

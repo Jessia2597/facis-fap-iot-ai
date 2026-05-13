@@ -4,6 +4,13 @@
 **Version:** 1.0
 **Date:** 07 March 2026
 
+> **TDR §9.1.1 — Docker Compose is not a FACIS deliverable.** This document
+> retains a "Docker Compose Topology" section (§9) describing the historical
+> local-dev stack, kept as background for understanding the migration. The
+> simulation service no longer ships any `docker-compose*.yml`. Current
+> deployment uses Helm + Kubernetes; for migration context see
+> [`../orce-runtime/migration-guide.md`](../orce-runtime/migration-guide.md).
+
 ---
 
 ## 1. Overview

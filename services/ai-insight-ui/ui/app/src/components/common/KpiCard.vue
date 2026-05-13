@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<{
   unit: '',
   trend: 'stable',
   icon: 'pi-chart-line',
-  color: '#3b82f6',
+  color: 'var(--color-secondary)',
   loading: false
 })
 </script>

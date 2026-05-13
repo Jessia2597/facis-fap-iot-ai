@@ -115,9 +115,9 @@ const stats = computed(() => ({
   border-radius: 20px;
 }
 
-.json-compare__stat--added    { background: #dcfce7; color: #15803d; }
-.json-compare__stat--changed  { background: #fef3c7; color: #92400e; }
-.json-compare__stat--removed  { background: #fee2e2; color: #991b1b; }
+.json-compare__stat--added    { background: var(--color-success-soft); color: var(--color-success-dark); }
+.json-compare__stat--changed  { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.json-compare__stat--removed  { background: var(--color-danger-light); color: var(--color-danger-dark); }
 .json-compare__stat--unchanged { background: var(--facis-surface-2); color: var(--facis-text-secondary); }
 
 .json-compare__grid {
@@ -155,9 +155,9 @@ const stats = computed(() => ({
 
 .json-compare__row:last-child { border-bottom: none; }
 
-.json-compare__row--added    { background: #f0fdf4; }
-.json-compare__row--removed  { background: #fff1f2; }
-.json-compare__row--changed  { background: #fffbeb; }
+.json-compare__row--added    { background: var(--color-success-soft); }
+.json-compare__row--removed  { background: var(--color-danger-soft); }
+.json-compare__row--changed  { background: var(--color-warning-soft); }
 .json-compare__row--unchanged { background: transparent; }
 
 .json-compare__field {

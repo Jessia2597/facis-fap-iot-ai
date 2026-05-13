@@ -24,6 +24,9 @@ const routes: RouteRecordRaw[] = [
   },
   // Login is handled by Keycloak (onLoad: 'login-required') — no custom login route needed
 
+  // Legacy / sensible-guess deep links — keep shared URLs and bookmarks working
+  { path: '/overview', redirect: '/dashboard' },
+
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   {
     path: '/dashboard',
@@ -50,11 +53,17 @@ const routes: RouteRecordRaw[] = [
           { path: 'assets', name: 'EnergyAssets', component: () => import('@/views/smart-energy/EnergyAssetsView.vue'), meta: { title: 'Energy Assets' } },
           { path: 'assets/:id', name: 'EnergyAssetDetail', component: () => import('@/views/smart-energy/EnergyAssetDetailView.vue'), meta: { title: 'Asset Detail' } },
           { path: 'context', name: 'EnergyContext', component: () => import('@/views/smart-energy/EnergyContextView.vue'), meta: { title: 'Context Data' } },
-          { path: 'insights', name: 'EnergyInsights', component: () => import('@/views/smart-energy/EnergyInsightsView.vue'), meta: { title: 'AI Insights' } },
+          // 'insights' sub-route removed: EnergyInsightsView is fully history-driven and no /history endpoints exist on the simulation REST flow. AI Assistant + Analytics Overview cover the same surface.
+          { path: 'insights', redirect: { path: '/ai-assistant' } },
           { path: 'data-products', name: 'EnergyDataProducts', component: () => import('@/views/smart-energy/EnergyDataProductsView.vue'), meta: { title: 'Energy Data Products' } },
           { path: 'data-products/:id', name: 'EnergyDataProductDetail', component: () => import('@/views/smart-energy/EnergyDataProductDetailView.vue'), meta: { title: 'Data Product Detail' } }
         ]
       },
+      // Smart City — restored Phase 5.1 (PR-5). Backend served by the
+      // ai-insight-ui ORCE flow at services/ai-insight-ui/orce/flows/smart-city.json
+      // which synthesises streetlight/traffic/event/city-weather data
+      // deterministically from time-of-day. Replace the synthesizer with real
+      // simulation feeds when services/simulation/ adds them.
       {
         path: 'smart-city',
         name: 'SmartCity',
@@ -62,12 +71,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Smart City', requiresAuth: true, roles: ['viewer', 'analyst', 'operator', 'admin'] },
         children: [
           { path: '', redirect: 'overview' },
-          { path: 'overview', name: 'SmartCityOverview', component: () => import('@/views/smart-city/CityOverviewView.vue'), meta: { title: 'City Overview' } },
-          { path: 'zones', name: 'CityZones', component: () => import('@/views/smart-city/CityZonesView.vue'), meta: { title: 'Lighting Zones' } },
-          { path: 'zones/:id', name: 'CityZoneDetail', component: () => import('@/views/smart-city/CityZoneDetailView.vue'), meta: { title: 'Zone Detail' } },
-          { path: 'context', name: 'CityContext', component: () => import('@/views/smart-city/CityContextView.vue'), meta: { title: 'Context Data' } },
-          { path: 'analytics', name: 'CityAnalytics', component: () => import('@/views/smart-city/CityAnalyticsView.vue'), meta: { title: 'City Analytics' } },
-          { path: 'data-products', name: 'CityDataProducts', component: () => import('@/views/smart-city/CityDataProductsView.vue'), meta: { title: 'City Data Products' } },
+          { path: 'overview',          name: 'CityOverview',          component: () => import('@/views/smart-city/CityOverviewView.vue'),          meta: { title: 'City Overview' } },
+          { path: 'analytics',         name: 'CityAnalytics',         component: () => import('@/views/smart-city/CityAnalyticsView.vue'),         meta: { title: 'City Analytics' } },
+          { path: 'context',           name: 'CityContext',           component: () => import('@/views/smart-city/CityContextView.vue'),           meta: { title: 'Context Data' } },
+          { path: 'zones',             name: 'CityZones',             component: () => import('@/views/smart-city/CityZonesView.vue'),             meta: { title: 'City Zones' } },
+          { path: 'zones/:id',         name: 'CityZoneDetail',        component: () => import('@/views/smart-city/CityZoneDetailView.vue'),        meta: { title: 'Zone Detail' } },
+          { path: 'data-products',     name: 'CityDataProducts',      component: () => import('@/views/smart-city/CityDataProductsView.vue'),      meta: { title: 'City Data Products' } },
           { path: 'data-products/:id', name: 'CityDataProductDetail', component: () => import('@/views/smart-city/CityDataProductDetailView.vue'), meta: { title: 'Data Product Detail' } }
         ]
       }
@@ -89,18 +98,22 @@ const routes: RouteRecordRaw[] = [
     ]
   },
 
-  // ─── Data Products ─────────────────────────────────────────────────────────
+  // ─── Data Products — restored Phase 5.2 (PR-5). The views derive data
+  //     products from existing simulation feeds (meters, PV, streetlights,
+  //     traffic zones); a FAP-aligned data-products.* subflow at
+  //     services/ai-insight-ui/orce/flows/data-products.json exposes the
+  //     same catalogue over UIBUILDER for future consumers.
   {
     path: '/data-products',
     name: 'DataProducts',
     component: () => import('@/views/DataProductsView.vue'),
     meta: { title: 'Data Products', requiresAuth: true, roles: ['viewer', 'analyst', 'operator', 'admin'] },
     children: [
-      { path: '', redirect: 'all' },
-      { path: 'all', name: 'AllDataProducts', component: () => import('@/views/data-products/AllProductsView.vue'), meta: { title: 'All Products' } },
-      { path: 'energy', name: 'EnergyProducts', component: () => import('@/views/data-products/EnergyProductsView.vue'), meta: { title: 'Energy Products' } },
-      { path: 'smart-city', name: 'CityProducts', component: () => import('@/views/data-products/CityProductsView.vue'), meta: { title: 'Smart City Products' } },
-      { path: ':id', name: 'DataProductDetail', component: () => import('@/views/data-products/ProductDetailView.vue'), meta: { title: 'Product Detail' } }
+      { path: '',         redirect: 'all' },
+      { path: 'all',      name: 'AllProducts',    component: () => import('@/views/data-products/AllProductsView.vue'),    meta: { title: 'All Data Products' } },
+      { path: 'energy',   name: 'EnergyProducts', component: () => import('@/views/data-products/EnergyProductsView.vue'), meta: { title: 'Energy Data Products' } },
+      { path: 'city',     name: 'CityProducts',   component: () => import('@/views/data-products/CityProductsView.vue'),   meta: { title: 'City Data Products' } },
+      { path: ':id',      name: 'ProductDetail',  component: () => import('@/views/data-products/ProductDetailView.vue'),  meta: { title: 'Product Detail' } }
     ]
   },
 
@@ -112,11 +125,15 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Analytics', requiresAuth: true, roles: ['viewer', 'analyst', 'operator', 'admin'] },
     children: [
       { path: '', redirect: 'overview' },
-      { path: 'overview', name: 'AnalyticsOverview', component: () => import('@/views/analytics/AnalyticsOverviewView.vue'), meta: { title: 'Analytics Overview' } },
-      { path: 'trends', name: 'Trends', component: () => import('@/views/analytics/TrendsView.vue'), meta: { title: 'Trend Analysis' } },
-      { path: 'correlations', name: 'Correlations', component: () => import('@/views/analytics/CorrelationsView.vue'), meta: { title: 'Correlations' } },
-      { path: 'anomalies', name: 'Anomalies', component: () => import('@/views/analytics/AnomaliesView.vue'), meta: { title: 'Anomaly Detection' } },
-      { path: 'recommendations', name: 'Recommendations', component: () => import('@/views/analytics/RecommendationsView.vue'), meta: { title: 'Recommendations' } }
+      { path: 'overview',         name: 'AnalyticsOverview',        component: () => import('@/views/analytics/AnalyticsOverviewView.vue'),  meta: { title: 'Analytics Overview' } },
+      // Trends / Correlations / Anomalies / Recommendations restored Phase 5.3.
+      // Backed by the /api/v1/{meters,pv,weather}/:id/history synthesisers in
+      // services/ai-insight-ui/orce/flows/analytics.json plus FAP analytics.*
+      // actions for aggregated views.
+      { path: 'trends',          name: 'AnalyticsTrends',          component: () => import('@/views/analytics/TrendsView.vue'),          meta: { title: 'Trends' } },
+      { path: 'correlations',    name: 'AnalyticsCorrelations',    component: () => import('@/views/analytics/CorrelationsView.vue'),    meta: { title: 'Correlations' } },
+      { path: 'anomalies',       name: 'AnalyticsAnomalies',       component: () => import('@/views/analytics/AnomaliesView.vue'),       meta: { title: 'Anomalies' } },
+      { path: 'recommendations', name: 'AnalyticsRecommendations', component: () => import('@/views/analytics/RecommendationsView.vue'), meta: { title: 'Recommendations' } }
     ]
   },
 
@@ -212,7 +229,9 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  // Use vite's BASE_URL (set from vite.config.ts `base`) so deep links and
+  // navigation work under the /aiInsight/ sub-path served by ORCE/uibuilder.
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 

@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { getSimHealth } from '@/services/api'
+import { getAdminRoles } from '@/services/dispatch'
+import { auth } from '@/auth'
 
-// Static role user counts — no admin user management API available
-const ROLE_USER_COUNTS: Record<string, number> = { admin: 1, operator: 2, analyst: 2, viewer: 2 }
+const ROLE_USER_COUNTS = ref<Record<string, number>>({ admin: 0, operator: 0, analyst: 0, viewer: 0 })
 
 const isLive = ref(false)
 const currentUser = ref<{ email: string; role: string } | null>(null)
 
 onMounted(async () => {
-  const health = await getSimHealth()
-  if (health?.status === 'ok' || health?.status === 'healthy') {
-    const stored = sessionStorage.getItem('facis_user')
-    currentUser.value = stored
-      ? JSON.parse(stored)
-      : { email: 'admin@facis.local', role: 'admin' }
+  currentUser.value = auth.user ? { email: auth.user.email, role: auth.user.role } : null
+  const resp = await getAdminRoles()
+  if (resp) {
     isLive.value = true
+    for (const r of resp.roles) {
+      ROLE_USER_COUNTS.value[r.name] = r.member_count ?? 0
+    }
   }
 })
 
@@ -32,44 +32,44 @@ interface RoleDef {
   permissions: string[]
 }
 
-const roles: RoleDef[] = [
+const roles = computed<RoleDef[]>(() => [
   {
     name: 'admin',
     label: 'Admin',
     description: 'Full platform access. Can manage users, configuration, integrations, schemas, and all modules. Responsible for system operations and security.',
-    color: '#ef4444',
+    color: 'var(--color-danger)',
     icon: 'pi-shield',
-    userCount: ROLE_USER_COUNTS['admin'],
+    userCount: ROLE_USER_COUNTS.value['admin'] ?? 0,
     permissions: ['Full Read', 'Full Write', 'User Management', 'Role Assignment', 'System Config', 'API Key Management', 'Export API', 'Admin Settings', 'Audit Log']
   },
   {
     name: 'operator',
     label: 'Operator',
     description: 'Operational access. Can manage integrations, configure schemas, restart adapters, and manage data flows. Cannot manage users or system settings.',
-    color: '#f59e0b',
+    color: 'var(--color-warning)',
     icon: 'pi-cog',
-    userCount: ROLE_USER_COUNTS['operator'],
+    userCount: ROLE_USER_COUNTS.value['operator'] ?? 0,
     permissions: ['Read All', 'Integration Config', 'Adapter Management', 'Schema Mapping', 'Alert Management', 'Data Product Write', 'Export API']
   },
   {
     name: 'analyst',
     label: 'Analyst',
     description: 'Analytical access. Can view all data products, run queries, generate reports, and interact with the AI assistant. Read-only on platform configuration.',
-    color: '#3b82f6',
+    color: 'var(--color-secondary)',
     icon: 'pi-chart-bar',
-    userCount: ROLE_USER_COUNTS['analyst'],
+    userCount: ROLE_USER_COUNTS.value['analyst'] ?? 0,
     permissions: ['Read All', 'Data Product Management', 'Analytics', 'AI Assistant', 'Report Generation', 'Export Data']
   },
   {
     name: 'viewer',
     label: 'Viewer',
     description: 'Read-only access to dashboards, use cases, and public data products. Cannot modify any platform configuration or access administrative functions.',
-    color: '#64748b',
+    color: 'var(--color-neutral-fg)',
     icon: 'pi-eye',
-    userCount: ROLE_USER_COUNTS['viewer'],
+    userCount: ROLE_USER_COUNTS.value['viewer'] ?? 0,
     permissions: ['Read Dashboard', 'Read Use Cases', 'Read Data Products', 'Read Analytics', 'Read Alerts']
   }
-]
+])
 
 // Permission matrix
 interface ModulePermission {
@@ -95,9 +95,9 @@ const permMatrix: ModulePermission[] = [
 ]
 
 const PERM_CONFIG: Record<string, { icon: string; color: string; bg: string; label: string }> = {
-  full:  { icon: 'pi-check-circle', color: '#15803d', bg: '#dcfce7', label: 'Full' },
-  read:  { icon: 'pi-eye',          color: '#1d4ed8', bg: '#dbeafe', label: 'Read' },
-  none:  { icon: 'pi-minus',        color: '#94a3b8', bg: '#f1f5f9', label: '—' }
+  full:  { icon: 'pi-check-circle', color: 'var(--color-success-dark)', bg: 'var(--color-success-soft)', label: 'Full' },
+  read:  { icon: 'pi-eye',          color: 'var(--color-info-dark)', bg: 'var(--color-info-light)', label: 'Read' },
+  none:  { icon: 'pi-minus',        color: 'var(--color-text-soft)', bg: 'var(--color-neutral-bg)', label: '—' }
 }
 </script>
 
@@ -181,8 +181,8 @@ const PERM_CONFIG: Record<string, { icon: string; color: string; bg: string; lab
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .view-page { display: flex; flex-direction: column; }
 

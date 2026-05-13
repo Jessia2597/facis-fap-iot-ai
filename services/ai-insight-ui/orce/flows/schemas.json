@@ -1,0 +1,57 @@
+[
+  {
+    "id": "tab_aiui_schemas",
+    "type": "tab",
+    "label": "AI Insight UI — Schemas",
+    "disabled": false,
+    "info": "Pure UIBUILDER Trino schema browser per FAP §10. Two actions:\n  schemas.list                    — list catalogs/schemas/tables in INFORMATION_SCHEMA\n  schemas.describe (params: catalog, schema, table) — DESCRIBE a single table\nUses the Trino OIDC token-grant flow with the same env vars the AI Insight backend uses (AI_INSIGHT_TRINO__*). Returns msg._result for fn_build_response."
+  },
+  {
+    "id": "link-from-ui-schemas",
+    "type": "link in",
+    "z": "tab_aiui_schemas",
+    "name": "← from UI (schemas)",
+    "links": ["link-to-schemas"],
+    "x": 140,
+    "y": 100,
+    "wires": [["fn_schemas_route"]]
+  },
+  {
+    "id": "fn_schemas_route",
+    "type": "function",
+    "z": "tab_aiui_schemas",
+    "name": "validate + prepare SQL",
+    "func": "const action = msg._req && msg._req.action;\nconst payload = (msg._req && msg._req.payload) || {};\n\nif (action === 'schemas.list') {\n    msg._sql = `SELECT table_catalog, table_schema, table_name FROM \"${env.get('AI_INSIGHT_TRINO__CATALOG') || 'fap-iotai-stackable'}\".information_schema.tables WHERE table_schema NOT IN ('information_schema','sys','pg_catalog') ORDER BY table_catalog, table_schema, table_name LIMIT 1000`;\n    msg._shape = 'list';\n    return msg;\n}\n\nif (action === 'schemas.describe') {\n    const IDENT_RE = /^[A-Za-z0-9_.-]{1,64}$/;\n    for (const k of ['catalog','schema','table']) {\n        if (payload[k] && !IDENT_RE.test(payload[k])) {\n            msg._result = { ok: false, errors: { fields: { [k]: 'must match ^[A-Za-z0-9_.-]{1,64}$' } } };\n            return msg;\n        }\n    }\n    if (!payload.catalog || !payload.schema || !payload.table) {\n        msg._result = { ok: false, errors: { fields: { catalog: payload.catalog ? '' : 'required', schema: payload.schema ? '' : 'required', table: payload.table ? '' : 'required' } } };\n        return msg;\n    }\n    const quote = (v) => '\"' + String(v).replace(/\"/g, '\"\"') + '\"';\n    msg._sql = `SELECT column_name, data_type, is_nullable, ordinal_position FROM ${quote(payload.catalog)}.information_schema.columns WHERE table_schema = '${payload.schema.replace(/'/g, \"''\")}' AND table_name = '${payload.table.replace(/'/g, \"''\")}' ORDER BY ordinal_position`;\n    msg._shape = 'describe';\n    return msg;\n}\n\nmsg._result = { ok: false, errors: { action: 'schemas: unknown action: ' + action } };\nreturn msg;\n",
+    "outputs": 1,
+    "x": 380,
+    "y": 100,
+    "wires": [["fn_schemas_run"]]
+  },
+  {
+    "id": "fn_schemas_run",
+    "type": "function",
+    "z": "tab_aiui_schemas",
+    "name": "fetch Trino token + run query",
+    "func": "// Skip if validation already produced a result.\nif (msg._result) return msg;\n\n// httpsFetch shim — function-node sandbox lacks global fetch. Uses Node stdlib.\nfunction httpsFetch(urlStr, opts = {}) {\n    return new Promise((resolve, reject) => {\n        let parsed;\n        try { parsed = new urlmod.URL(urlStr); }\n        catch (e) { return reject(new Error('bad URL: ' + urlStr)); }\n        const isHttps = parsed.protocol === 'https:';\n        const lib = isHttps ? https : http;\n        const body = opts.body;\n        const headers = Object.assign({}, opts.headers || {});\n        if (body && !headers['Content-Length']) headers['Content-Length'] = Buffer.byteLength(body);\n        const req = lib.request({\n            method: opts.method || 'GET',\n            hostname: parsed.hostname,\n            port: parsed.port || (isHttps ? 443 : 80),\n            path: parsed.pathname + (parsed.search || ''),\n            headers,\n            timeout: opts.timeoutMs || 5000,\n            rejectUnauthorized: opts.rejectUnauthorized !== false\n        }, (res) => {\n            let data = '';\n            res.on('data', (c) => { data += c; });\n            res.on('end', () => resolve({\n                ok: res.statusCode >= 200 && res.statusCode < 300,\n                status: res.statusCode,\n                json: () => { try { return Promise.resolve(JSON.parse(data)); } catch (e) { return Promise.reject(e); } }\n            }));\n        });\n        req.on('error', reject);\n        req.on('timeout', () => { req.destroy(new Error('timeout')); });\n        if (body) req.write(body);\n        req.end();\n    });\n}\n\nconst tokenUrl = env.get('AI_INSIGHT_TRINO__OIDC_TOKEN_URL');\nconst clientId = env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_ID');\nconst clientSecret = env.get('AI_INSIGHT_TRINO__OIDC_CLIENT_SECRET');\nconst username = env.get('AI_INSIGHT_TRINO__OIDC_USERNAME');\nconst password = env.get('AI_INSIGHT_TRINO__OIDC_PASSWORD');\nconst scope = env.get('AI_INSIGHT_TRINO__OIDC_SCOPE') || 'openid';\nconst trinoScheme = env.get('AI_INSIGHT_TRINO__HTTP_SCHEME') || 'https';\nconst trinoHost = env.get('AI_INSIGHT_TRINO__HOST');\nconst trinoPort = env.get('AI_INSIGHT_TRINO__PORT') || 8443;\nconst trinoUser = env.get('AI_INSIGHT_TRINO__USER') || 'trino';\n\nconst formEncode = (obj) => Object.entries(obj)\n    .filter(([, v]) => v !== undefined && v !== null && v !== '')\n    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)\n    .join('&');\n\nasync function getToken() {\n    const body = formEncode({ grant_type: 'password', client_id: clientId, client_secret: clientSecret, username, password, scope });\n    const res = await httpsFetch(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body, rejectUnauthorized: false });\n    if (!res.ok) throw new Error(`token grant failed: ${res.status}`);\n    return (await res.json()).access_token;\n}\n\nasync function runQuery(sql, token) {\n    const base = `${trinoScheme}://${trinoHost}:${trinoPort}`;\n    const headers = { 'Authorization': `Bearer ${token}`, 'X-Trino-User': trinoUser, 'Content-Type': 'text/plain' };\n    let res = await httpsFetch(`${base}/v1/statement`, { method: 'POST', headers, body: sql, rejectUnauthorized: false });\n    if (!res.ok) throw new Error(`POST /v1/statement failed: ${res.status}`);\n    let body = await res.json();\n    let columns = body.columns || null;\n    const rows = body.data ? [...body.data] : [];\n    while (body.nextUri) {\n        res = await httpsFetch(body.nextUri, { headers, rejectUnauthorized: false });\n        if (!res.ok) throw new Error(`nextUri failed: ${res.status}`);\n        body = await res.json();\n        if (body.columns) columns = body.columns;\n        if (body.data) rows.push(...body.data);\n    }\n    return { columns, rows };\n}\n\ntry {\n    if (!msg._sql) {\n        msg._result = { ok: false, errors: { system: 'no SQL prepared' } };\n        return msg;\n    }\n    const token = await getToken();\n    const { rows } = await runQuery(msg._sql, token);\n    let data;\n    if (msg._shape === 'list') {\n        data = { tables: rows.map(r => ({ catalog: r[0], schema: r[1], table: r[2] })), count: rows.length };\n    } else {\n        data = {\n            columns: rows.map(r => ({ name: r[0], type: r[1], nullable: r[2] === 'YES', position: r[3] })),\n            count: rows.length\n        };\n    }\n    msg._result = { ok: true, data };\n} catch (e) {\n    node.warn('Trino query failed: ' + String(e.message || e));\n    msg._result = { ok: false, errors: { integration: { service: 'trino', message: 'Trino query failed' } } };\n}\nreturn msg;\n",
+    "outputs": 1,
+    "x": 700,
+    "y": 100,
+    "wires": [["link-response-schemas"]],
+    "libs": [
+      { "var": "https", "module": "https" },
+      { "var": "http",  "module": "http" },
+      { "var": "urlmod", "module": "url" }
+    ]
+  },
+  {
+    "id": "link-response-schemas",
+    "type": "link out",
+    "z": "tab_aiui_schemas",
+    "name": "→ Response (schemas)",
+    "mode": "link",
+    "links": ["link-from-response"],
+    "x": 1040,
+    "y": 100,
+    "wires": []
+  }
+]

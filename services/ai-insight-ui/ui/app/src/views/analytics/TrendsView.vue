@@ -4,7 +4,7 @@ import SelectButton from 'primevue/selectbutton'
 import PageHeader from '@/components/common/PageHeader.vue'
 import TimeSeriesChart from '@/components/common/TimeSeriesChart.vue'
 import KpiCard from '@/components/common/KpiCard.vue'
-import { getMeters, getMeterHistory, getPVSystems, getPVHistory, getStreetlights, getStreetlightHistory } from '@/services/api'
+import { getMeters, getMeterHistory, getPVSystems, getPVHistory, getStreetlights, getStreetlightHistory } from '@/services/dispatch'
 import { computeTrends, extractMeterPowerKw, extractPvPowerKw, extractStreetlightPowerW } from '@/services/analytics'
 import type { TrendResult } from '@/services/analytics'
 
@@ -34,9 +34,9 @@ async function fetchData(): Promise<void> {
       firstLightId ? getStreetlightHistory(firstLightId) : Promise.resolve(null)
     ])
 
-    if (mHist?.readings?.length)  energyTrend.value   = computeTrends(mHist.readings,  extractMeterPowerKw)
-    if (pvHist?.readings?.length) pvTrend.value        = computeTrends(pvHist.readings, extractPvPowerKw)
-    if (lHist?.readings?.length)  lightingTrend.value  = computeTrends(lHist.readings,  extractStreetlightPowerW)
+    if (mHist?.readings?.length)  energyTrend.value    = computeTrends(mHist.readings as unknown as Array<{ timestamp: string; [key: string]: unknown }>, extractMeterPowerKw)
+    if (pvHist?.readings?.length) pvTrend.value        = computeTrends(pvHist.readings as unknown as Array<{ timestamp: string; [key: string]: unknown }>, extractPvPowerKw)
+    if (lHist?.readings?.length)  lightingTrend.value  = computeTrends(lHist.readings as unknown as Array<{ timestamp: string; [key: string]: unknown }>, extractStreetlightPowerW)
 
     isLive.value = true
   } catch {
@@ -74,7 +74,7 @@ function trendIcon(t: 'up' | 'down' | 'stable'): string {
   return t === 'up' ? 'pi-trending-up' : t === 'down' ? 'pi-trending-down' : 'pi-minus'
 }
 function trendColor(t: 'up' | 'down' | 'stable'): string {
-  return t === 'up' ? '#ef4444' : t === 'down' ? '#22c55e' : '#94a3b8'
+  return t === 'up' ? 'var(--color-danger)' : t === 'down' ? 'var(--color-success)' : 'var(--color-text-soft)'
 }
 </script>
 
@@ -109,18 +109,18 @@ function trendColor(t: 'up' | 'down' | 'stable'): string {
           </div>
 
           <div class="grid-kpi">
-            <KpiCard label="Avg Consumption" :value="energyTrend.avg.toFixed(1)" unit="kW" :trend="energyTrend.trend" :trend-value="`${energyTrend.trendPct > 0 ? '+' : ''}${energyTrend.trendPct}%`" icon="pi-bolt" color="#005fff" />
-            <KpiCard label="Peak Consumption" :value="energyTrend.max.toFixed(1)" unit="kW" trend="stable" icon="pi-arrow-up" color="#ef4444" />
-            <KpiCard label="Min Consumption"  :value="energyTrend.min.toFixed(1)" unit="kW" trend="stable" icon="pi-arrow-down" color="#22c55e" />
-            <KpiCard label="Avg PV Output" :value="pvTrend.avg.toFixed(1)" unit="kW" :trend="pvTrend.trend" icon="pi-sun" color="#f59e0b" />
+            <KpiCard label="Avg Consumption" :value="energyTrend.avg.toFixed(1)" unit="kW" :trend="energyTrend.trend" :trend-value="`${energyTrend.trendPct > 0 ? '+' : ''}${energyTrend.trendPct}%`" icon="pi-bolt" color="var(--color-primary)" />
+            <KpiCard label="Peak Consumption" :value="energyTrend.max.toFixed(1)" unit="kW" trend="stable" icon="pi-arrow-up" color="var(--color-danger)" />
+            <KpiCard label="Min Consumption"  :value="energyTrend.min.toFixed(1)" unit="kW" trend="stable" icon="pi-arrow-down" color="var(--color-success)" />
+            <KpiCard label="Avg PV Output" :value="pvTrend.avg.toFixed(1)" unit="kW" :trend="pvTrend.trend" icon="pi-sun" color="var(--color-warning)" />
           </div>
 
           <div class="card card-body">
             <div class="section-title">Energy Consumption & PV Generation — {{ selectedPeriod }}</div>
             <TimeSeriesChart
               :datasets="[
-                { label: 'Consumption (kW)', data: displayEnergyData, borderColor: '#005fff', backgroundColor: 'rgba(0,95,255,0.07)', fill: true, tension: 0.4 },
-                { label: 'PV Generation (kW)', data: displayPvData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.07)', fill: true, tension: 0.4 }
+                { label: 'Consumption (kW)', data: displayEnergyData, borderColor: 'var(--color-primary)', backgroundColor: 'rgba(0,95,255,0.07)', fill: true, tension: 0.4 },
+                { label: 'PV Generation (kW)', data: displayPvData, borderColor: 'var(--color-success)', backgroundColor: 'rgba(34,197,94,0.07)', fill: true, tension: 0.4 }
               ]"
               :labels="displayLabels"
               y-axis-label="kW"
@@ -137,9 +137,9 @@ function trendColor(t: 'up' | 'down' | 'stable'): string {
           </div>
 
           <div class="grid-kpi">
-            <KpiCard label="Avg Lighting Power" :value="lightingTrend.avg.toFixed(0)" unit="W" :trend="lightingTrend.trend" :trend-value="`${lightingTrend.trendPct > 0 ? '+' : ''}${lightingTrend.trendPct}%`" icon="pi-lightbulb" color="#f59e0b" />
-            <KpiCard label="Peak Lighting" :value="lightingTrend.max.toFixed(0)" unit="W" trend="stable" icon="pi-arrow-up" color="#ef4444" />
-            <KpiCard label="Min Lighting"  :value="lightingTrend.min.toFixed(0)" unit="W" trend="stable" icon="pi-arrow-down" color="#22c55e" />
+            <KpiCard label="Avg Lighting Power" :value="lightingTrend.avg.toFixed(0)" unit="W" :trend="lightingTrend.trend" :trend-value="`${lightingTrend.trendPct > 0 ? '+' : ''}${lightingTrend.trendPct}%`" icon="pi-lightbulb" color="var(--color-warning)" />
+            <KpiCard label="Peak Lighting" :value="lightingTrend.max.toFixed(0)" unit="W" trend="stable" icon="pi-arrow-up" color="var(--color-danger)" />
+            <KpiCard label="Min Lighting"  :value="lightingTrend.min.toFixed(0)" unit="W" trend="stable" icon="pi-arrow-down" color="var(--color-success)" />
             <KpiCard label="Lighting Trend" :value="`${lightingTrend.trendPct > 0 ? '+' : ''}${lightingTrend.trendPct}%`" :trend="lightingTrend.trend" :icon="trendIcon(lightingTrend.trend)" :color="trendColor(lightingTrend.trend)" />
           </div>
 
@@ -147,7 +147,7 @@ function trendColor(t: 'up' | 'down' | 'stable'): string {
             <div class="section-title">Streetlight Power Consumption — {{ selectedPeriod }}</div>
             <TimeSeriesChart
               :datasets="[
-                { label: 'Lighting Power (W)', data: displayLightingData, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.10)', fill: true, tension: 0.4 }
+                { label: 'Lighting Power (W)', data: displayLightingData, borderColor: 'var(--color-warning)', backgroundColor: 'rgba(245,158,11,0.10)', fill: true, tension: 0.4 }
               ]"
               :labels="displayLabels"
               y-axis-label="W"
@@ -182,8 +182,8 @@ function trendColor(t: 'up' | 'down' | 'stable'): string {
 </template>
 
 <style scoped>
-.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #15803d; background: #dcfce7; padding: 0.375rem 1.5rem; border-bottom: 1px solid #bbf7d0; }
-.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.5s infinite; }
+.live-banner { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--color-success-dark); background: var(--color-success-soft); padding: 0.375rem 1.5rem; border-bottom: 1px solid var(--color-success-light); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 4rem; color: var(--facis-text-secondary); font-size: 0.875rem; }
 
@@ -192,15 +192,15 @@ function trendColor(t: 'up' | 'down' | 'stable'): string {
 .trend-section { display: flex; flex-direction: column; gap: 1rem; }
 .trend-section__header { display: flex; align-items: center; justify-content: space-between; }
 .domain-badge { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; font-weight: 700; padding: 0.4rem 0.875rem; border-radius: 20px; }
-.domain-badge--energy { background: #fef3c7; color: #92400e; }
-.domain-badge--city   { background: #f3e8ff; color: #7c3aed; }
+.domain-badge--energy { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.domain-badge--city   { background: var(--color-info-light); color: var(--chart-series-6); }
 .period-label { font-size: 0.8rem; color: var(--facis-text-secondary); }
 .insight-notes { padding: 1.25rem; }
 .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; }
 @media (max-width: 768px) { .notes-grid { grid-template-columns: 1fr; } }
 .note-item { display: flex; gap: 0.875rem; padding: 1rem; border-radius: var(--facis-radius-sm); }
-.note-item--energy { background: #fffbeb; border-left: 3px solid #f59e0b; }
-.note-item--city   { background: #faf5ff; border-left: 3px solid #8b5cf6; }
+.note-item--energy { background: var(--color-warning-soft); border-left: 3px solid var(--color-warning); }
+.note-item--city   { background: var(--color-primary-soft); border-left: 3px solid var(--chart-series-6); }
 .note-icon { font-size: 1rem; color: var(--facis-text-muted); flex-shrink: 0; padding-top: 0.1rem; }
 .note-title { font-size: 0.875rem; font-weight: 600; color: var(--facis-text); margin-bottom: 0.35rem; }
 .note-body { font-size: 0.8rem; color: var(--facis-text-secondary); line-height: 1.5; }

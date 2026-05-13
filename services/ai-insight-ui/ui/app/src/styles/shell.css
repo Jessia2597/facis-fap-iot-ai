@@ -1,0 +1,61 @@
+/* ───────────────────────────────────────────────────────────
+ * FAP General Guideline §15 — main shell + page composition.
+ *
+ * The Reference FAP places ALL content inside one contained centered
+ * surface on top of a cool-gray canvas (§13 mandatory principle 1).
+ * The split-layout (left rail + right content) per §16 lives INSIDE
+ * that shell.
+ *
+ * Adaptation for the AI Insight Dashboard: the shell uses a wider
+ * `max-width: 1440px` than the wizard-oriented 1200px in the guideline,
+ * because a data-dense dashboard with sidebar + KPIs + tables benefits
+ * from extra horizontal real estate. All other shell properties match
+ * the §15 recipe (radius, soft shadow, cool-gray canvas, generous
+ * spacing).
+ * ─────────────────────────────────────────────────────────── */
+
+body {
+  background: var(--color-canvas);
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+
+.facis-shell {
+  max-width: 1440px;
+  margin: var(--space-4) auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-shell);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  min-height: calc(100vh - var(--space-6) * 2);
+}
+
+/* On narrow viewports the shell fills the canvas (no centred margin) so
+ * mobile users don't see slivers of canvas around a too-narrow shell. */
+@media (max-width: 1200px) {
+  .facis-shell {
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+  }
+}
+
+/* §16 — split layout: left rail + right content sit inside the shell. */
+.facis-shell-split {
+  display: grid;
+  grid-template-columns: var(--facis-sidebar-width) 1fr;
+  min-height: 100%;
+}
+
+.facis-shell-split--collapsed {
+  grid-template-columns: var(--facis-sidebar-collapsed) 1fr;
+}
+
+@media (max-width: 768px) {
+  .facis-shell-split,
+  .facis-shell-split--collapsed {
+    grid-template-columns: 1fr;
+  }
+}
